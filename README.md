@@ -107,7 +107,7 @@ Under construction, built with its own phased plan.
 
 - [x] Plan format and configuration spec
 - [x] `phase-driver` skill
-- [ ] `phase-planner` skill
+- [x] `phase-planner` skill
 - [ ] Examples, profiles, and install instructions
 
 ## Documentation
