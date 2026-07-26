@@ -55,7 +55,9 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 
 - a review by one of its `logins` with `commit_id == head.sha`, or
 - an inline review-thread comment by one of them at that sha, or
-- a check run named by its `check` at that sha that **actually ran and reported**: `status == completed`, conclusion not `skipped` or `cancelled`, **and** a non-empty `output.title` or `output.summary`.
+- a check run named by its `check` at that sha, judged by the entry's `proof`:
+  - **`output`** (default) — `status == completed`, conclusion not `skipped` or `cancelled`, **and** a non-empty `output.title` or `output.summary`.
+  - **`completed`** — `status == completed`, conclusion not `skipped` or `cancelled`.
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
 
@@ -71,9 +73,18 @@ It answers exactly one question: *did the reviewer look at this commit?* Not whe
 
 Keeping those apart is what lets one rule work for reviewers that signal findings by failing *and* reviewers that never fail by design. Anthropic's managed Code Review always concludes `neutral` so it can never block a merge; requiring `success` here would mean its proof never arrives.
 
-**And why output is required.** A job that exits 0 having reviewed nothing produces a green check. This is real, not theoretical: `claude-code-action` refuses to run when the workflow file differs from the default branch, and the job still concludes `success` in a few seconds. A guard condition, a missing secret, or a draft filter does the same. Requiring an artifact the reviewer wrote is what separates "looked and found nothing" from "never looked" — and only the first should open a merge.
+**And why `proof` is configurable rather than fixed.** A check run alone cannot tell you whether a review happened. Two runs of the same workflow, on the same PR, produced identical signals from opposite realities:
 
-This is the failure mode to be most paranoid about: a gate reporting satisfied while measuring nothing looks exactly like a healthy pass.
+| Run | Duration | Check | Reality |
+|---|---|---|---|
+| First | 10s | `success`, empty output | Skipped on workflow validation. Reviewed **nothing** |
+| Later | 8.5 min, 37 turns | `success`, empty output | Genuinely reviewed. Posted **nothing** |
+
+`proof: output` rejects both. `proof: completed` accepts both. There is no third rule that reads only the check run and separates them, so the choice is which error to prefer, and it belongs to whoever knows their reviewer.
+
+Default to `output`. **A false pass is silent and permanent — a gate reporting satisfied while measuring nothing looks exactly like a healthy pass.** A false block is loud, and someone notices within a phase. When you must relax it, prefer fixing the reviewer to say something on a clean pass.
+
+When a gate blocks because a reviewer produced no artifact, say exactly that — "the reviewer ran but posted nothing" is a different problem from "the reviewer hasn't run", and the user can only act on the difference if you name it.
 
 ## Merging
 
