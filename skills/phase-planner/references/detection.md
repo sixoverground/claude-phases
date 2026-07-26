@@ -31,7 +31,8 @@ Look at the head commits of several recently merged PRs and collect the check ru
 | A consistent set of checks | Leave `required: []` (all count) or name them if some are advisory |
 | Checks that appear only sometimes | Name the stable ones in `required` — an intermittent check in the required set stalls the gate |
 | Advisory checks (coverage, preview deploys, a reviewer's own check) | `ignore_checks`, or name only the real ones in `required` |
-| No checks on any recent PR | `allow_none: true`, and say so out loud — it means nothing is verifying merges |
+| No checks, and no CI configured anywhere | `allow_none: true`, and say so out loud — nothing will be verifying merges |
+| No checks, but workflows exist | **Do not set `allow_none: true`.** CI is configured and not reporting, which means it's broken or misrouted. Setting the flag here disables the failsafe permanently to work around a temporary fault. Flag it and ask |
 
 Checks appearing without a corresponding workflow file mean external CI — Xcode Cloud, CircleCI, Buildkite. Set `logs: check-output`, since Actions log APIs won't work for them.
 
@@ -66,7 +67,7 @@ From the repo's files:
 | Gradle with an Android plugin | `auto` — JVM unit tests can run locally, instrumented ones can't |
 | Markdown, config, or docs only | `none` |
 
-For `local`, check whether a `SessionStart` hook exists to install dependencies. Without one, the toolchain may not be present and `verify` will silently fall back to CI. That's a hygiene item, not a blocker.
+For `local`, check whether a `SessionStart` hook exists to install dependencies. Without one the toolchain may be missing, and `local` has **no fallback** — verification simply fails and the phase blocks. If you can't confirm the toolchain will be there, choose `auto` instead, which is the mode that falls back to CI by design.
 
 ## When there's nothing to observe
 

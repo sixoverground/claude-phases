@@ -19,6 +19,8 @@ Only three. Everything else you can find out yourself, and asking someone to rec
 2. **Which repos?** `owner/name`, possibly several.
 3. **Project name?** Lowercase, hyphenated. Becomes the plan's filename.
 
+One more thing you need but shouldn't have to ask for: **`home_repo`**, where the plan file lives and the only repo the driver writes state to. With a single repo it's that repo. With several, propose the one the work centres on — usually the backend or the repo with the most phases — and confirm it in the same breath as your detection findings. Don't leave it unset: it's required, and a plan without it doesn't load.
+
 ## 2. Detect how each repo works
 
 Never assume. Inspect, then show your evidence. See `references/detection.md` for what to query and what each result implies.

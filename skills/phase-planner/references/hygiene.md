@@ -30,7 +30,7 @@ Flag what's missing. Fix what you can — a workflow edit is a PR. Settings outs
 
 ## Makes local verification possible
 
-**A `SessionStart` hook** that installs dependencies, for any repo set to `verify: local`. Without it the toolchain may be missing and verification silently falls back to CI — slower, and the PR body will say so, but it's an avoidable round trip.
+**A `SessionStart` hook** that installs dependencies, for any repo set to `verify: local`. `local` has no fallback: if the toolchain isn't there, verification fails and the phase blocks. Use `verify: auto` if you'd rather it drop to CI instead.
 
 ## Worth mentioning, not blocking
 
