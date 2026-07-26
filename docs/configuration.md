@@ -121,7 +121,7 @@ Each entry is satisfied when **any** of these is true for the current head commi
 
 - a review by one of its `logins` at that commit, or
 - an inline review-thread comment by one of them at that commit, or
-- a **completed** check run named by its `check` at that commit — *whatever it concluded*.
+- a check run named by its `check` at that commit that **actually ran** — `status == completed` with a conclusion other than `skipped` or `cancelled`. Any other conclusion counts, including `failure` and `neutral`.
 
 That last one matters for CI-based reviewers: a clean pass leaves no comment, so the check run is the only proof it looked. Login matching is case-insensitive and ignores a trailing `[bot]`.
 
@@ -134,6 +134,8 @@ That last one matters for CI-based reviewers: a clean pass leaves no comment, so
 | Must the review check itself be green? | The checks gate — name it in `ci.required` |
 
 Keeping them apart is what lets one gate work for reviewers that signal findings by *failing* and reviewers that never fail by design. Anthropic's managed Code Review is the latter: its check run always completes `neutral` so it can never block a merge through branch protection. Requiring `success` here would mean its proof never arrives, and the merge would wait forever on a reviewer that had already done its job.
+
+**Why `skipped` and `cancelled` are excluded.** They're the one direction where being permissive is unsafe. A review workflow that skips — because a guard condition was false, a required secret is missing, or the PR is a draft — produces a completed check run that never looked at a line of code. Counting it would turn a misconfigured reviewer into a silent pass, which is strictly worse than no reviewer at all: the gate reports satisfied while measuring nothing. This is also why a review workflow should fail loudly rather than skip gracefully when it can't authenticate.
 
 Only diff-anchored comments create resolvable threads, so a reviewer must post **inline** comments for `threads_must_resolve` to mean anything.
 

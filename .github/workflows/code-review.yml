@@ -1,0 +1,44 @@
+name: Code Review
+
+# Reviews every PR and posts findings as inline comments on the diff.
+#
+# REQUIRES a CLAUDE_CODE_OAUTH_TOKEN repository secret. On Pro or Max, generate
+# it locally with `claude setup-token` and paste it into
+# Settings -> Secrets and variables -> Actions. Until that secret exists this
+# workflow fails — which is the correct signal, not a bug: a configured
+# reviewer that cannot authenticate should be visible, not silently skipped.
+#
+# For metered API billing instead, replace the auth line with:
+#   anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+#
+# See docs/review-setup.md for federation and cloud-provider options.
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# `synchronize` is load-bearing: the merge gate needs proof the reviewer
+# evaluated the CURRENT head commit. Without it, review goes stale the moment
+# the driver pushes a fix, and the gate waits forever.
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: code-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Claude review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
+          plugins: "code-review@claude-code-plugins"
+          prompt: "/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
