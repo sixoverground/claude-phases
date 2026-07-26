@@ -64,7 +64,7 @@ The rules that make a phased plan work. They're carried over from cpm, where the
 - **Independently mergeable**, so an abandoned plan still leaves value behind.
 - **Phase 0 is foundation** — dependencies, config, base structure.
 - **The last phase is cleanup** — remove the legacy path, drop unused deps.
-- **Sequential within a repo, parallel across repos.** Only real dependencies get a `Depends`; adding one "to be safe" serializes work that didn't need it.
+- **Sequential within a repo, parallel across repos.** Blank `Depends` means "the previous row," so phases meant to run in parallel across repos need their real dependency named explicitly — leaving it blank there creates a dependency, not the absence of one.
 
 For multi-repo work, order by what genuinely blocks what — usually the API before the clients that call it. When platforms must ship together, don't pretend a simultaneous merge exists: add a dependency plus an explicit cutover phase.
 
@@ -79,6 +79,8 @@ Each phase gets scope, `Depends on`, acceptance criteria, UAT, and risks.
 ## 5. Write the plan
 
 To `docs/plans/<project>.md` in the home repo, **committed directly to the default branch** — not through a PR. The driver reads it from there, and a plan sitting in an unmerged PR is invisible to it.
+
+**If the default branch rejects the commit**, branch protection is on. `plan_writes: plan-pr` doesn't rescue this — that key lives inside the plan file, so the commit that would deliver it is the one being refused. Instead: open a PR with the plan file, tell the user it must merge before the driver can start, and set `plan_writes: plan-pr` in the front matter so the driver uses the same path for every later status write. Don't hand off until it's merged; a driver pointed at a plan that isn't on the default branch will report the project as unstarted.
 
 Front matter carries the config you detected. Set the initial `YOLO` in Driver State: default it **off**, and say why — unattended merging is a decision someone should make deliberately once they trust the setup, not inherit from a default.
 

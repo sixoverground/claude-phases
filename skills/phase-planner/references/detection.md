@@ -73,12 +73,18 @@ For `local`, check whether a `SessionStart` hook exists to install dependencies.
 
 A brand-new repo has no PR history, so most of this returns nothing. Don't invent a config. Say what you couldn't determine and ask — one question now beats a gate that hangs on the first PR.
 
-The safe starting point for an unknown repo:
+The safe starting point for an unknown repo depends on whether CI *exists*, which you can tell from the repo even with no PR history:
 
 ```yaml
-ci: { allow_none: true }     # nothing observed to require
 review: { required: [] }     # no reviewer observed
 verify: auto                 # try local, fall back
 ```
 
-Then say plainly that the merge gate is currently checking very little, and what to add once CI and review are in place.
+Plus, for CI:
+
+- **No workflows and no external CI app** → `ci: { allow_none: true }`. Nothing is configured, so nothing will report.
+- **Workflows exist but no PR has exercised them** → **leave `allow_none` at its default of `false`.** A scaffolded repo commonly has `.github/workflows/*` committed and zero merged PRs, which looks identical to "no CI" if you only count check runs. Setting the flag there disables the failsafe permanently for a repo whose CI simply hasn't run yet. Say you couldn't confirm CI reports, and let the first PR settle it.
+
+Then say plainly how much the merge gate is actually checking, and what to add once CI and review are in place.
+
+**Branch protection.** Check whether the default branch accepts direct commits. The planner writes the plan there, and the driver writes every status transition there. If it's protected, say so now and follow the fallback in `SKILL.md` step 5 — discovering it at write time is late, and discovering it mid-plan is worse.

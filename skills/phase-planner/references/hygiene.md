@@ -18,7 +18,7 @@ Flag what's missing. Fix what you can — a workflow edit is a PR. Settings outs
 
 ## Prevents wasted CI and accidental deploys
 
-**`paths-ignore: ['docs/plans/**']`** on push-triggered workflows. The driver writes three plan commits per phase to the default branch. Without this they burn CI minutes, and on a repo that deploys from the default branch they trigger deploys. The driver also appends `[skip ci]` to plan commits, but `paths-ignore` is the belt to that's braces.
+**`paths-ignore: ['docs/plans/**']`** on push-triggered workflows. The driver writes three plan commits per phase to the default branch. Without this they burn CI minutes, and on a repo that deploys from the default branch they trigger deploys. The driver also appends `[skip ci]` to plan commits, but `paths-ignore` is belt and braces.
 
 **`workflow_dispatch`** on the CI workflow, if you want the driver to trigger builds without pushing an empty commit. Optional — without it, it triggers CI by pushing, which everyone does anyway.
 
