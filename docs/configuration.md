@@ -44,6 +44,7 @@ phases:
 | Key | Default | Meaning |
 |---|---|---|
 | `verify` | `auto` | Where tests run before the PR opens |
+| `uat` | `true` | Whether PRs carry a manual UAT checklist. `false` for repos where hand-testing is meaningless |
 
 | Value | Behavior |
 |---|---|
@@ -121,9 +122,34 @@ Each entry is satisfied when **any** of these is true for the current head commi
 
 - a review by one of its `logins` at that commit, or
 - an inline review-thread comment by one of them at that commit, or
-- a check run named by its `check` at that commit that **actually ran and reported something**: `status == completed`, a conclusion other than `skipped` or `cancelled`, **and** a non-empty `output.title` or `output.summary`. Any conclusion otherwise counts, including `failure` and `neutral`.
+- a check run named by its `check` at that commit, judged by that entry's `proof` setting.
 
-That last one matters for CI-based reviewers: a clean pass leaves no comment, so the check run is the only proof it looked. Login matching is case-insensitive and ignores a trailing `[bot]`.
+Login matching is case-insensitive and ignores a trailing `[bot]`.
+
+#### `proof` — how much a check run has to show
+
+| Value | A check run counts when | Use when |
+|---|---|---|
+| `output` *(default)* | `status == completed`, conclusion not `skipped` or `cancelled`, **and** a non-empty `output.title` or `output.summary` | Your reviewer always writes something, even on a clean pass |
+| `completed` | `status == completed`, conclusion not `skipped` or `cancelled` | Your reviewer is genuinely silent when it finds nothing |
+
+```yaml
+review:
+  required:
+    - check: "Claude review"
+      proof: completed
+```
+
+**This setting exists because the two failure modes are in genuine tension, and both are real.** They were observed on consecutive runs of the same workflow, on the same PR:
+
+| Run | Duration | Check | Reality |
+|---|---|---|---|
+| First | 10s | `success` | Skipped on workflow validation. Reviewed **nothing** |
+| Later | 8.5 min, 37 turns | `success` | Genuinely reviewed. Posted **nothing** |
+
+Both produced a completed check run with empty output. `output` correctly rejects the first and wrongly rejects the second; `completed` correctly accepts the second and wrongly accepts the first. **No rule reading only the check run can separate them** — so this is a choice about which error you would rather make, and it belongs to whoever knows their reviewer.
+
+Prefer `output`, and prefer a reviewer that says something on a clean pass. A false pass is silent and permanent; a false block is loud and you notice it within one phase.
 
 **Why conclusion is deliberately ignored here.** This gate answers one narrow question — *did the reviewer evaluate this commit?* — and a completed check answers it regardless of verdict. A review that found three bugs still reviewed the head. Three distinct questions used to ride on this one signal, and they're now separated:
 
@@ -182,6 +208,8 @@ YOLO controls exactly one thing: **who presses merge.**
 | Start the next phase after merge | driver | **driver** |
 
 **The next phase always continues after a merge, in both modes.** Merge from the GitHub mobile app with YOLO off and the driver notices, records it, and starts whatever that unblocks. Turning YOLO off buys a review checkpoint, not a manual pipeline.
+
+**YOLO also decides where UAT checklists go.** With it off, every PR carries its own phase's manual-test checklist, because you're there to read it. With it on, phases merge unattended and UAT is deferred to a cumulative checklist on the final PR. Toggling mid-plan is safe — `UAT-pending` in Driver State tracks what hasn't reached a human, so switching off mid-plan hands you the backlog along with the current phase. See [When UAT reaches a human](format.md#when-uat-reaches-a-human).
 
 It lives in the plan's **Driver State** block, not front matter, because it's runtime state — say `yolo on` or `yolo off` and it takes effect on the next gate evaluation, including for PRs already open.
 
