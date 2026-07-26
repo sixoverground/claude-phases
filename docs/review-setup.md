@@ -6,10 +6,12 @@ Four setups are supported, they compose, and none of them is more "correct" than
 
 | Setup | Cost | Plan required | Configured where | Can the planner set it up? |
 |---|---|---|---|---|
+| [Claude via GitHub Actions](#claude-via-github-actions) | Your subscription, or metered API + Actions minutes | **Any**, incl. Pro and Max | A workflow file in your repo | **Yes** |
 | [Managed Claude Code Review](#managed-claude-code-review) | ~$15–25 per review | Team or Enterprise | claude.ai admin settings | No — prints steps |
-| [Claude via GitHub Actions](#claude-via-github-actions) | API tokens + Actions minutes | Any | A workflow file in your repo | **Yes** |
 | [GitHub Copilot](#github-copilot) | Per your Copilot plan | Any with Copilot | GitHub repo settings | No — prints steps |
 | [Humans only, or nobody](#humans-only-or-nobody) | Free | Any | Nothing to configure | N/A |
+
+On Pro or Max, start with the Actions setup — it authenticates against your existing subscription and needs no admin access.
 
 ---
 
@@ -43,7 +45,17 @@ review:
 
 ## Claude via GitHub Actions
 
-Runs the same review logic in your own CI. Works on any plan.
+Runs review in your own CI. Works on **any plan, including Pro and Max** — which makes this the practical default, since the managed service is Team/Enterprise only.
+
+### Authenticate with your subscription (Pro and Max)
+
+You do not need a pay-as-you-go API key. Generate an OAuth token from your existing subscription:
+
+```bash
+claude setup-token
+```
+
+Add the output as a repository secret named `CLAUDE_CODE_OAUTH_TOKEN` (Settings → Secrets and variables → Actions), then:
 
 `.github/workflows/code-review.yml`:
 
@@ -66,13 +78,26 @@ jobs:
     steps:
       - uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
           prompt: "/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
 ```
 
-**You must add an `ANTHROPIC_API_KEY` repository secret** (Settings → Secrets and variables → Actions). Nothing can do this for you — not the planner, not any tool with repo write access.
+Reviews then draw on your subscription's usage rather than metered API spend.
+
+### Other authentication options
+
+| Method | Input | When |
+|---|---|---|
+| Subscription OAuth | `claude_code_oauth_token` | Pro and Max. The default choice |
+| API key | `anthropic_api_key` | Metered API billing, or no interactive machine to run `claude setup-token` on |
+| Workload identity federation | `anthropic_federation_rule_id` + org and service-account ids | Organizations avoiding static credentials. Note: inline comment classification is skipped under federation |
+| Bedrock / Vertex / Foundry | `use_bedrock`, `use_vertex` | Enterprise cloud deployments |
+
+**Whichever you choose, you must add the secret yourself.** Nothing can do it for you — not the planner, not any tool with repository write access. A review workflow with a missing secret fails on every PR, which is worse than having no reviewer at all, so add the secret before or alongside committing the workflow.
+
+The OAuth token is tied to your account and does not last forever; if reviews start failing to authenticate, re-run `claude setup-token` and update the secret.
 
 The `synchronize` trigger is what keeps review anchored to the head as the driver pushes fixes. Without it the gate stalls after the first push.
 
