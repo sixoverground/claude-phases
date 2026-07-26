@@ -33,8 +33,8 @@ Build claude-phases itself: a plan format plus two Claude skills that execute it
 
 | PR | Branch | Repo | Scope | Phase | Status | Link | Depends |
 |----|--------|------|-------|-------|--------|------|---------|
-| 1 | claude/session-plan-format | sixoverground/claude-phases | Plan format spec, configuration reference, plan template, README | 0 | In Progress | - |  |
-| 2 | claude/phase-driver-skill | sixoverground/claude-phases | `skills/phase-driver/` + recovery, gates, vocabulary references | 1 | Pending | - | 0 |
+| 1 | claude/session-plan-format | sixoverground/claude-phases | Plan format spec, configuration reference, plan template, README | 0 | Merged | #1 |  |
+| 2 | claude/phase-driver-skill | sixoverground/claude-phases | `skills/phase-driver/` + recovery, gates, vocabulary references | 1 | In Progress | - | 0 |
 | 3 | claude/phase-planner-skill | sixoverground/claude-phases | `skills/phase-planner/` — detect setup, propose config, write plans | 2 | Pending | - | 1 |
 | 4 | claude/examples-and-install | sixoverground/claude-phases | `examples/`, `profiles/`, install instructions, `docs/design.md` | 3 | Pending | - | 2 |
 
@@ -109,9 +109,10 @@ Build claude-phases itself: a plan format plus two Claude skills that execute it
 
 ## Driver State
 
-- Driver: idle
+- Driver: running
 - YOLO: off
-- Driver-ID: -
-- Active: -
-- Heartbeat: -
-- Note: YOLO starts off — this repo has no CI and no reviewer, so gates would pass vacuously
+- Driver-ID: a1c7f204
+- Active:
+  - Phase 1 — claude/phase-driver-skill — In Progress
+- Heartbeat: 2026-07-26T18:35:00Z
+- Note: phase 0 merged as #1. Review workflow lands with phase 1's PR — the first PR it can actually review
