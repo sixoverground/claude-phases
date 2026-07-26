@@ -24,7 +24,7 @@ Flag what's missing. Fix what you can — a workflow edit is a PR. Settings outs
 
 ## Prevents clutter and confusion
 
-**Auto-delete merged branches** (Settings → General). The driver creates one branch per phase and there is no API to delete them afterward, so a twelve-phase plan leaves twelve stale branches.
+**Auto-delete merged branches** (Settings → General). The driver creates one branch per phase and does not clean them up after merging, so a twelve-phase plan leaves twelve stale branches. Turning this on makes GitHub do it for you.
 
 **Branch protection.** If the default branch rejects direct pushes, the driver can't write plan status normally. Either allow the driver's identity to push, or set `plan_writes: plan-pr` so each status change becomes a small auto-merging PR. Detect this before the first phase rather than discovering it mid-run.
 
