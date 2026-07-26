@@ -62,6 +62,8 @@ One switch, one meaning: **who presses merge.**
 
 Flip it any time — `yolo on` / `yolo off` — including with a PR already open.
 
+It also decides where **UAT checklists** land. Off, every PR carries its own phase's manual-test steps, because you're there to read them. On, phases merge unattended and UAT is deferred to a cumulative checklist on the final PR, grouped by phase. Toggle mid-plan and nothing is lost — the driver tracks which phases nobody has verified and hands you the backlog with the next PR you're asked to merge.
+
 ## Multi-repo
 
 A project can span a web app, an iOS app, and an Android app. One plan file in the home repo covers all of them, and one session drives all of them.

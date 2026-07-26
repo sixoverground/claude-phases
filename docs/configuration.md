@@ -44,6 +44,7 @@ phases:
 | Key | Default | Meaning |
 |---|---|---|
 | `verify` | `auto` | Where tests run before the PR opens |
+| `uat` | `true` | Whether PRs carry a manual UAT checklist. `false` for repos where hand-testing is meaningless |
 
 | Value | Behavior |
 |---|---|
@@ -182,6 +183,8 @@ YOLO controls exactly one thing: **who presses merge.**
 | Start the next phase after merge | driver | **driver** |
 
 **The next phase always continues after a merge, in both modes.** Merge from the GitHub mobile app with YOLO off and the driver notices, records it, and starts whatever that unblocks. Turning YOLO off buys a review checkpoint, not a manual pipeline.
+
+**YOLO also decides where UAT checklists go.** With it off, every PR carries its own phase's manual-test checklist, because you're there to read it. With it on, phases merge unattended and UAT is deferred to a cumulative checklist on the final PR. Toggling mid-plan is safe — `UAT-pending` in Driver State tracks what hasn't reached a human, so switching off mid-plan hands you the backlog along with the current phase. See [When UAT reaches a human](format.md#when-uat-reaches-a-human).
 
 It lives in the plan's **Driver State** block, not front matter, because it's runtime state — say `yolo on` or `yolo off` and it takes effect on the next gate evaluation, including for PRs already open.
 

@@ -145,6 +145,7 @@ Three extra commits land on the default branch per phase. Without `[skip ci]` th
 - Active:
   - Phase 2 — acme/acme-ios#17 — In Review (gate: awaiting reviewer)
   - Phase 3 — acme/acme-android#9 — In Review (gate: CI pending)
+- UAT-pending: 0,1
 - Heartbeat: 2026-07-26T14:03:00Z
 - Note: -
 ```
@@ -155,6 +156,7 @@ Three extra commits land on the default branch per phase. Without `[skip ci]` th
 | `YOLO` | `on` — the driver merges once gates pass. `off` — you merge; the driver does everything else. Toggled at runtime |
 | `Driver-ID` | Random token identifying the driver instance holding the plan. See below |
 | `Active` | One entry per in-flight phase. A list, so several repos can be in flight at once |
+| `UAT-pending` | Phase ids whose UAT checklist hasn't reached a human yet. See [When UAT reaches a human](#when-uat-reaches-a-human) |
 | `Heartbeat` | UTC timestamp, rewritten on every turn that touches the plan |
 | `Note` | Free text for the current situation; the place a `Blocked` reason goes |
 
@@ -189,10 +191,46 @@ Below the table, one section per phase:
 - [ ] Invalid credentials show an inline error
 - [ ] Token persisted to the keychain
 
+**UAT.**
+- [ ] Sign in with a real account on a physical device; land on Home
+- [ ] Enter a wrong password; error appears inline, field keeps focus
+- [ ] Force-quit and reopen; still signed in
+- [ ] Airplane mode; a network error appears rather than a hang
+
 **Risks.** Keychain access on first launch needs an entitlement.
 ```
 
 Acceptance criteria become the PR body checklist, so write them as things that can be checked.
+
+### Acceptance criteria vs UAT
+
+They are different audiences and must not be merged.
+
+| | Acceptance criteria | UAT |
+|---|---|---|
+| Who performs it | The driver, before opening the PR | A human, by hand |
+| What it proves | The code does what the phase specified | The product actually works |
+| Typical item | "Endpoint returns 401 on a bad token" | "Sign in on a real device and land on Home" |
+| Verified by | Tests, build, CI | Someone using the thing |
+
+Write UAT as steps someone can follow without reading the diff: what to open, what to do, what they should see. "Test the login flow" is not a UAT step. Cover the happy path, the obvious failure, and anything adjacent that this phase could plausibly have broken.
+
+### When UAT reaches a human
+
+Which PR carries the checklist depends on YOLO, because YOLO determines whether anyone is stopping to look:
+
+| YOLO | Where the checklist goes |
+|---|---|
+| **off** | Every PR carries its own phase's UAT. You're merging each one, so you get the checklist at the moment you decide |
+| **on** | Phases merge unattended, so UAT is deferred: the **final PR** carries a cumulative checklist covering every phase, grouped by phase, plus end-to-end flows that only make sense once everything has landed |
+
+**`UAT-pending` in Driver State tracks what hasn't been surfaced yet.** When a phase merges under YOLO on, its id is appended. When a PR carries a UAT checklist, the ids it covered are removed. This is what makes toggling safe: turn YOLO off after three auto-merged phases and the next PR carries its own UAT *plus* the three that nobody has verified. Turn it back on and they accumulate again.
+
+Without that list, a mid-plan toggle silently loses UAT for every phase that merged while YOLO was on — the failure would be invisible, because the plan would look complete.
+
+**The final phase** is the last non-`Skipped` row in table order. If a plan somehow finishes with `UAT-pending` non-empty — the final phase was skipped, or its PR merged before the checklist was assembled — post the cumulative checklist as a GitHub issue titled `UAT: <project>` rather than dropping it.
+
+Set `uat: false` in a repo's config for repos where manual testing is meaningless.
 
 ---
 

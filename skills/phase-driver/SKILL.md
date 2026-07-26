@@ -62,8 +62,25 @@ For each, in order:
    - `ci` — don't attempt a local build.
    - `auto` — try local; if the toolchain isn't there, fall back to CI.
    - `none` — skip.
-6. **Push and open the PR**, titled `Phase N: <scope>`. Body: the acceptance criteria as a checklist, **which verification path actually ran**, anything out of scope you noticed, and `Driven by phase-driver — do not edit the plan file in this PR`.
+6. **Push and open the PR**, titled `Phase N: <scope>`. Body: the acceptance criteria as a checklist, **which verification path actually ran**, the UAT checklist per the rules below, anything out of scope you noticed, and `Driven by phase-driver — do not edit the plan file in this PR`.
 7. **Commit `In Review`** and the `Link`, immediately — before subscribing, before any wait. A PR that exists but isn't recorded is the most expensive state to recover from.
+
+### UAT checklists
+
+UAT is what a **human** does by hand. It is not the acceptance criteria, which you verified yourself — never merge the two, and never tick a UAT box. You are not the one who performs it.
+
+Start from the phase's `**UAT.**` items in Phase Details, then refine against what you actually built: you may have implemented it differently, and you know what's adjacent enough to have broken. Write steps someone can follow without reading the diff — what to open, what to do, what they should see. If a phase has no UAT section, write one.
+
+Which checklist goes where depends on YOLO, because YOLO decides whether anyone is stopping to look:
+
+- **YOLO off** — this PR carries its own phase's UAT, **plus** every phase in `UAT-pending` (grouped by phase, oldest first). Then clear those ids. Someone is looking at this PR; give them everything nobody has verified yet.
+- **YOLO on** — omit UAT from the PR and append this phase's id to `UAT-pending` when it merges. The **final phase** — the last non-`Skipped` row in table order — carries a cumulative checklist covering everything in `UAT-pending`, grouped by phase, plus end-to-end flows that only make sense once every phase has landed. Clear the list.
+
+Read the YOLO state **at the moment you open the PR**, not from memory. Toggling mid-plan is expected and `UAT-pending` is what makes it safe: turn YOLO off after three unattended merges and the next PR carries those three alongside its own.
+
+If the plan completes with `UAT-pending` non-empty — the final phase was skipped, or its PR merged before you assembled the checklist — open a GitHub issue titled `UAT: <project>` with the outstanding items. Never drop them; unverified work that nobody knows is unverified is the thing this exists to prevent.
+
+Skip all of this where a repo sets `uat: false`.
 
 ## 4. Watch
 
@@ -99,13 +116,13 @@ When a PR has no outstanding work, evaluate `references/gates.md` against it, us
 However the PR merged — you, the user from their phone, or anyone else:
 
 1. Unsubscribe from that PR.
-2. **Commit `Merged`** to the default branch.
+2. **Commit `Merged`** to the default branch. If YOLO was on and the PR carried no UAT checklist, append that phase's id to `UAT-pending` in the same write.
 3. Comment on the PR and tell the user.
 4. **Start whatever rows that unblocks**, in the same turn — unless `Driver: paused`.
 
 A merge always advances the plan. YOLO changes who presses the button, never whether the plan moves.
 
-When every row is `Merged` or `Skipped`: set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
+When every row is `Merged` or `Skipped`: set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop. If `UAT-pending` is not empty, open the `UAT: <project>` issue first — a plan isn't finished while verification nobody knows about is outstanding.
 
 ## Writing to the plan
 
