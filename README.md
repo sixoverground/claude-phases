@@ -44,12 +44,12 @@ Nothing merges until every gate passes. Each one is configurable, and each has a
 |---|---|
 | Not a draft | The PR isn't a draft |
 | No blocking label | No `do-not-merge` / `wip` / `blocked` |
-| Checks green | Every required check succeeded. Zero checks **blocks** unless you opt out |
+| Checks green | Every counted check concluded `success`, `skipped`, or `neutral`. Zero checks **blocks** unless you opt out |
 | No changes requested | No reviewer's latest review is `CHANGES_REQUESTED` |
 | Threads resolved | Every review thread is resolved |
-| Reviewer saw *this* commit | Required reviewers reviewed the current head, not an older push |
+| Reviewer saw *this* commit | Required reviewers evaluated the current head, not an older push |
 
-That last one is the subtle one. A reviewer's approval of an earlier commit says nothing about the code you're about to merge, so proof is anchored to the head SHA.
+That last one is the subtle one. A reviewer's approval of an earlier commit says nothing about the code you're about to merge, so proof is anchored to the head SHA — and it asks only whether the reviewer *looked*, not what it concluded. Whether findings were addressed is the threads gate; whether the review check itself must be green is the checks gate. Keeping those three apart is what lets one set of rules work for reviewers that signal findings by failing and reviewers that never fail by design.
 
 ## YOLO
 
@@ -112,6 +112,7 @@ Under construction, built with its own phased plan.
 
 - [Plan file format](docs/format.md) — structure, status vocabulary, recovery
 - [Configuration](docs/configuration.md) — every key, its default, and its off switch
+- [Reviewer setup](docs/review-setup.md) — managed Code Review, Actions, Copilot, or none
 
 ## Related
 

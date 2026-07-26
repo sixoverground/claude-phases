@@ -64,10 +64,21 @@ The driver never asks which CI product you use. It asks three separable question
 
 | Key | Default | Meaning |
 |---|---|---|
-| `ci.required` | `[]` | Check names that must pass. `[]` means *every* reported check must pass |
+| `ci.required` | `[]` | Check names that must pass. `[]` means *every* counted check must pass |
+| `ci.ignore_checks` | `[]` | Check names excluded from counting. For advisory checks — coverage reporters, preview deploys |
 | `ci.allow_none` | `false` | With `false`, zero checks **blocks** the merge (failsafe). Set `true` for repos with no CI |
 | `ci.dispatch` | `auto` | How the driver triggers a build |
 | `ci.logs` | `auto` | How the driver reads a failure |
+
+**What "pass" means.** A check passes when its conclusion is `success`, `skipped`, or **`neutral`**. This matches GitHub's own branch-protection semantics — `neutral` is explicitly a non-failing result, and advisory tools use it precisely so they never block a merge. Everything else blocks: `failure`, `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`. A check still running blocks until it finishes.
+
+**Which checks count.** Three mechanisms, in precedence order:
+
+1. `ci.required` is set → only those checks count; everything else is ignored.
+2. `ci.required: []` (the default) → every reported check counts.
+3. `ci.ignore_checks` → names excluded from counting in case 2.
+
+A reviewer's check named in `review.required[].check` is **automatically excluded** from this gate unless you also name it in `ci.required`. Nobody should have to work out that their code reviewer is deadlocking their own merge gate.
 
 **`ci.dispatch`**
 
@@ -103,18 +114,41 @@ The driver never asks which CI product you use. It asks three separable question
 review:
   required:
     - logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"]
-    - logins: ["claude"], check: "claude-review"
+    - check: "Claude Code Review"
 ```
 
 Each entry is satisfied when **any** of these is true for the current head commit:
 
 - a review by one of its `logins` at that commit, or
 - an inline review-thread comment by one of them at that commit, or
-- a successful check run named by its `check` at that commit.
+- a **completed** check run named by its `check` at that commit — *whatever it concluded*.
 
 That last one matters for CI-based reviewers: a clean pass leaves no comment, so the check run is the only proof it looked. Login matching is case-insensitive and ignores a trailing `[bot]`.
 
-Only diff-anchored comments create resolvable threads, so a reviewer must post **inline** comments for `threads_must_resolve` to mean anything. Copilot does this natively; Claude's review workflow needs `--comment`.
+**Why conclusion is deliberately ignored here.** This gate answers one narrow question — *did the reviewer evaluate this commit?* — and a completed check answers it regardless of verdict. A review that found three bugs still reviewed the head. Three distinct questions used to ride on this one signal, and they're now separated:
+
+| Question | Answered by |
+|---|---|
+| Did the reviewer look at this commit? | This gate — a completed check at the head SHA |
+| Were its findings addressed? | `threads_must_resolve` |
+| Must the review check itself be green? | The checks gate — name it in `ci.required` |
+
+Keeping them apart is what lets one gate work for reviewers that signal findings by *failing* and reviewers that never fail by design. Anthropic's managed Code Review is the latter: its check run always completes `neutral` so it can never block a merge through branch protection. Requiring `success` here would mean its proof never arrives, and the merge would wait forever on a reviewer that had already done its job.
+
+Only diff-anchored comments create resolvable threads, so a reviewer must post **inline** comments for `threads_must_resolve` to mean anything.
+
+### Reviewer setups
+
+All four are first-class, and they compose — require Copilot *and* a Claude check if you want both.
+
+| Setup | Config | Notes |
+|---|---|---|
+| **Managed Claude Code Review** | `required: [{ check: "Claude Code Review" }]` | Enabled by an org Owner at [claude.ai/admin-settings/claude-code](https://claude.ai/admin-settings/claude-code), not by a file in this repo. Team/Enterprise, research preview. Set Review Behavior to **After every push** so re-reviews track the head and threads auto-resolve when you fix what was flagged |
+| **Claude via GitHub Actions** | `required: [{ check: "<job name>" }]` | A workflow using `anthropics/claude-code-action@v1` with the `code-review` plugin on `[opened, synchronize]`. Any plan; runs in your own CI; needs an `ANTHROPIC_API_KEY` repo secret |
+| **GitHub Copilot** | `required: [{ logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"] }]` | Enable the "Review new pushes" ruleset so anchors track the head |
+| **Humans only, or nobody** | `required: []` | Gates for `CHANGES_REQUESTED` and thread resolution still apply to human reviews |
+
+See [review-setup.md](review-setup.md) for the full walkthrough of each.
 
 ### Stuck detection
 
