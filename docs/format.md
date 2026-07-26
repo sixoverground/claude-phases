@@ -1,0 +1,227 @@
+# Plan file format
+
+A plan is one markdown file, committed to a GitHub repo, that describes a piece of work split into phases — and doubles as the durable state of the driver executing it.
+
+It lives at `docs/plans/<project>.md` in the project's **home repo**.
+
+Three parts:
+
+1. **Front matter** — immutable configuration.
+2. **PR Sequence Table** — one row per phase, with a `Status` column that is the execution cursor.
+3. **Driver State** — mutable runtime state: liveness, and the toggles you flip from your phone.
+
+No value ever appears in two of those places. Config is config, per-phase status is the table, runtime state is Driver State.
+
+---
+
+## Why the plan file holds the state
+
+A Claude Code cloud session is ephemeral. Its container is reclaimed after inactivity, its context compacts as it grows, and it can die at any point — mid-implementation, between opening a PR and recording it, between merging and advancing.
+
+So the plan file is not documentation that happens to track progress. **It is the only durable state.** A fresh session must be able to reconstruct everything from the plan file plus what GitHub reports, with no memory of what came before. Every design rule below follows from that.
+
+Two invariants make it work:
+
+- **Status is written to the home repo's default branch, never inside a phase PR.** A status written inside a PR is invisible until that PR merges, so a fresh session would see `Pending` for a phase that already has an open PR — and start it again.
+- **Phase PRs never modify the plan file.** One writer means a squash merge can never conflict with its own bookkeeping, no matter how far the default branch has moved.
+
+---
+
+## 1. Front matter
+
+YAML, under a top-level `phases:` key. Every field is optional except `project`, `home_repo`, and at least one entry in `repos`. Defaults are listed in [configuration.md](configuration.md).
+
+```yaml
+---
+phases:
+  project: acme
+  home_repo: acme/acme-web         # where THIS file lives; the only repo the driver writes state to
+
+  defaults:                        # inherited by every repo, overridable per repo
+    branch_prefix: claude/
+    target_branch: main
+    verify: auto
+    merge: { method: squash }
+    ci:
+      required: []
+      allow_none: false
+      dispatch: auto
+      logs: auto
+    review:
+      required: []
+      changes_requested_blocks: true
+      threads_must_resolve: true
+    stuck: { max_cycles: 5 }
+
+  repos:
+    acme/acme-web: {}
+
+  max_concurrent: null
+---
+```
+
+Per-repo values deep-merge over `defaults`. A single-repo project lists one repo and inherits everything.
+
+---
+
+## 2. PR Sequence Table
+
+| Column | Required | Meaning |
+|---|---|---|
+| `PR` | yes | Ordinal, for humans reading the table |
+| `Branch` | yes | The phase branch, prefixed with `branch_prefix` |
+| `Repo` | yes | `owner/name`. **This is what makes multi-repo work** — each row targets exactly one repo |
+| `Scope` | yes | One line. The detail lives in Phase Details below the table |
+| `Phase` | yes | Phase id, referenced by `Depends`. `3a`/`3b` for splits |
+| `Status` | yes | The cursor. See below |
+| `Link` | no | `-` or `owner/repo#42`. A cache only — always re-derivable from GitHub |
+| `Depends` | no | Comma-separated phase ids. Blank means "the previous row" |
+
+```markdown
+| PR | Branch              | Repo              | Scope                    | Phase | Status  | Link | Depends |
+|----|---------------------|-------------------|--------------------------|-------|---------|------|---------|
+| 1  | claude/foundation   | acme/acme-web     | Project config, base deps| 0     | Merged  | #12  |         |
+| 2  | claude/auth-api     | acme/acme-web     | Session endpoints        | 1     | Merged  | #14  |         |
+| 3  | claude/auth-ios     | acme/acme-ios     | Sign-in screen           | 2     | In Review | #17 | 1       |
+| 4  | claude/auth-android | acme/acme-android | Sign-in screen           | 3     | In Review | #9  | 1       |
+| 5  | claude/cutover      | acme/acme-web     | Retire legacy login      | 4     | Pending |  -   | 2,3     |
+```
+
+Phases 2 and 3 both depend only on phase 1, so they run **concurrently** in different repos. Phase 4 waits for both.
+
+### Status vocabulary
+
+| Status | Meaning | Written by |
+|---|---|---|
+| `Pending` | Not started | plan author |
+| `In Progress` | Claimed; work underway; no PR yet | driver, **before** creating the branch |
+| `In Review` | PR open, subscribed, gates being evaluated | driver, immediately after opening the PR |
+| `Merged` | Merged (terminal success) | driver, after the merge is confirmed |
+| `Blocked` | Needs a human; reason recorded in Phase Details | driver or user |
+| `Skipped` | Dropped (terminal) | user |
+
+Legal transitions:
+
+```
+Pending ──▶ In Progress ──▶ In Review ──▶ Merged
+   ▲             │              │
+   └─────────────┴──────────────┘        (abandon)
+   
+any non-terminal ──▶ Blocked ──▶ (back to its prior status, or Pending)
+any non-terminal ──▶ Skipped
+```
+
+`Done` is accepted as a synonym for `Merged` when reading, for compatibility with plans written for [cpm](https://github.com/sixoverground/claude-project-manager).
+
+### Transition ordering
+
+The order matters — it's what makes each crash window recoverable:
+
+1. `Pending → In Progress` is committed **before** the branch is created. This is the claim.
+2. Branch, implement, verify, push, open the PR.
+3. `In Progress → In Review` (plus `Link`) is committed **immediately** after the PR exists — before subscribing, before any long wait.
+4. `In Review → Merged` is committed **after** the merge is confirmed.
+
+Each status commit goes to the home repo's default branch with the blob `sha` read at the start of the transition. A stale sha fails the write, which is a free compare-and-swap against a second driver.
+
+Commit messages end with `[skip ci]`:
+
+```
+chore(plan): acme phase 3 -> In Review [skip ci]
+```
+
+Three extra commits land on the default branch per phase. Without `[skip ci]` they burn CI minutes or, worse, trigger deploys. Adding `paths-ignore: ['docs/plans/**']` to push-triggered workflows is belt and braces.
+
+---
+
+## 3. Driver State
+
+```markdown
+## Driver State
+
+- Driver: running          <!-- running | paused | idle -->
+- YOLO: on                 <!-- on = driver merges; off = you merge -->
+- Driver-ID: d7f3a91c
+- Active:
+  - Phase 2 — acme/acme-ios#17 — In Review (gate: awaiting reviewer)
+  - Phase 3 — acme/acme-android#9 — In Review (gate: CI pending)
+- Heartbeat: 2026-07-26T14:03:00Z
+- Note: -
+```
+
+| Field | Meaning |
+|---|---|
+| `Driver` | `running` normally; `paused` finishes the current step and starts nothing new; `idle` when the plan is complete |
+| `YOLO` | `on` — the driver merges once gates pass. `off` — you merge; the driver does everything else. Toggled at runtime |
+| `Driver-ID` | Random token identifying the driver instance holding the plan. See below |
+| `Active` | One entry per in-flight phase. A list, so several repos can be in flight at once |
+| `Heartbeat` | UTC timestamp, rewritten on every turn that touches the plan |
+| `Note` | Free text for the current situation; the place a `Blocked` reason goes |
+
+### Driver-ID and the concurrency rule
+
+Two drivers acting on one plan would race. But a *single* long-lived session that wakes from a webhook shortly after writing its own heartbeat must not lock itself out. So identity, not just recency:
+
+| Condition | Action |
+|---|---|
+| `Driver-ID` matches the one I hold | It's me — proceed regardless of heartbeat age |
+| Different ID, heartbeat < 90 min | Another driver is live — report and stop |
+| Different ID, heartbeat stale | Take over: mint a new ID, continue |
+| No ID | Unclaimed — claim it |
+
+A fresh session holds no ID, so it always takes the third or fourth branch. A resuming session holds its own, so it never blocks itself.
+
+---
+
+## Phase Details
+
+Below the table, one section per phase:
+
+```markdown
+### Phase 2 — Sign-in screen (acme/acme-ios)
+
+**Scope.** Add the sign-in screen and wire it to `POST /sessions`.
+
+**Depends on.** Phase 1 (the endpoint must exist).
+
+**Acceptance criteria.**
+- [ ] Valid credentials navigate to the home screen
+- [ ] Invalid credentials show an inline error
+- [ ] Token persisted to the keychain
+
+**Risks.** Keychain access on first launch needs an entitlement.
+```
+
+Acceptance criteria become the PR body checklist, so write them as things that can be checked.
+
+---
+
+## Writing a good plan
+
+The rules that make phases work, carried over from cpm where they're already proven:
+
+- **One phase = one PR = one repo.** Never split a phase across repos; use two rows and a `Depends`.
+- **Sequential within a repo, parallel across repos.** Only declared dependencies serialize anything.
+- **Every phase leaves the project working.** A phase that requires the next one to compile isn't a phase.
+- **Size each phase to one session.** Roughly two hours of work. If it's bigger, split it into `3a` and `3b` — this is the single most common planning mistake, and it produces PRs nobody wants to review.
+- **Phase 0 is foundation** — dependencies, config, base architecture.
+- **The last phase is cleanup** — remove the legacy path, drop unused deps, final polish.
+
+## Recovery
+
+What a driver does when the plan and GitHub disagree — the situation after any crash:
+
+| Plan says | GitHub says | What happened | Action |
+|---|---|---|---|
+| `Pending`, stale heartbeat | no branch, no PR | Never started | Start it |
+| `Pending` | open PR on the branch | Died before recording the PR | Adopt the PR, write `In Review` |
+| `In Progress`, foreign ID, heartbeat < 90 min | — | Another driver is live | Refuse, report |
+| `In Progress`, stale | no branch | Claimed, died before any work | Reset to `Pending`, restart |
+| `In Progress`, stale | branch, no PR | Died mid-implementation | Inspect the diff against the scope; finish and open the PR, or reset |
+| `In Progress` | open PR | Died before recording the PR | Write `In Review`, adopt |
+| `In Review` | PR open | Normal | Re-subscribe, re-evaluate gates |
+| `In Review` | PR merged | Died between merging and recording it | Write `Merged`, advance |
+| `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
+| all rows terminal | — | Complete | Set `Driver: idle`, report |
+
+Applied **per row**, not once per plan — with several repos in flight, each recovers independently.

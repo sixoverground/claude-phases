@@ -1,0 +1,202 @@
+# Configuration reference
+
+Every key lives in the plan file's front matter under `phases:`. The only assumptions this project makes are **GitHub** and **Claude Code** — CI provider, languages, review setup, and branch conventions are all configurable, including "none at all" for each.
+
+Values in `defaults:` are inherited by every repo. Values under a specific repo deep-merge over them, so you override one key without restating the rest.
+
+```yaml
+phases:
+  defaults:
+    ci: { allow_none: false, logs: auto }
+  repos:
+    acme/docs:
+      ci: { allow_none: true }     # logs: auto is still inherited
+```
+
+---
+
+## Top level
+
+| Key | Default | Meaning |
+|---|---|---|
+| `project` | *required* | Project name. Also the plan's filename |
+| `home_repo` | *required* | `owner/name` where the plan file lives. The **only** repo the driver writes plan state to |
+| `repos` | *required* | Map of `owner/name` → per-repo overrides. `{}` means "inherit everything" |
+| `defaults` | `{}` | Values inherited by every repo |
+| `max_concurrent` | `null` | Global cap on simultaneously open phase PRs. `null` means no cap beyond the built-in one-per-repo rule |
+
+---
+
+## Per-repo (and `defaults`)
+
+### Branch and merge
+
+| Key | Default | Meaning |
+|---|---|---|
+| `branch_prefix` | `claude/` | Prefix for phase branches. Also how the driver recognizes its own branches |
+| `target_branch` | repo's default branch | What phases branch from and merge into |
+| `merge.method` | `squash` | `squash`, `merge`, or `rebase` |
+| `plan_writes` | `default-branch` | `default-branch`, or `plan-pr` when the default branch is protected. See below |
+| `yolo` | `true` | `false` pins this repo to manual merges regardless of the global toggle. Config can only restrict, never force |
+
+### Verification
+
+| Key | Default | Meaning |
+|---|---|---|
+| `verify` | `auto` | Where tests run before the PR opens |
+
+| Value | Behavior |
+|---|---|
+| `local` | Run the repo's tests/build in the session container before pushing. Fastest loop — no CI round-trip. Needs the toolchain to be installable; a `SessionStart` hook is the reliable way to guarantee that |
+| `ci` | Don't attempt a local build. Let CI verify |
+| `auto` | Try local; fall back to CI if the toolchain isn't there, **and say which path ran in the PR body** |
+| `none` | No verification. For docs-only repos |
+
+What's realistic:
+
+- **Web / backend** — `local`. Node, Python, Go, and Rust toolchains all install in the container.
+- **Android** — `auto`. JVM unit tests are feasible; emulator-backed instrumented tests belong in CI.
+- **iOS** — `ci`. Building needs macOS and Xcode; no Linux container has them.
+
+### CI
+
+The driver never asks which CI product you use. It asks three separable questions, and every provider answers them differently.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `ci.required` | `[]` | Check names that must pass. `[]` means *every* reported check must pass |
+| `ci.allow_none` | `false` | With `false`, zero checks **blocks** the merge (failsafe). Set `true` for repos with no CI |
+| `ci.dispatch` | `auto` | How the driver triggers a build |
+| `ci.logs` | `auto` | How the driver reads a failure |
+
+**`ci.dispatch`**
+
+| Value | Behavior |
+|---|---|
+| `auto` | Use `workflow_dispatch` if a workflow declares it; otherwise trigger by pushing |
+| `workflow:<file>` | Dispatch that specific workflow against the phase branch |
+| `push` | Only ever trigger CI by pushing a commit |
+| `none` | Never dispatch. For CI that starts on its own conditions, like Xcode Cloud |
+
+**`ci.logs`** — this one determines how autonomously a red build gets fixed.
+
+| Value | Behavior |
+|---|---|
+| `actions` | Fetch real failure text from the GitHub Actions log API. The fix loop matches a local one apart from latency |
+| `check-output` | Read the check run's title, summary, and `details_url`. Often enough to identify a failing test; sometimes only enough to know *that* it failed. When it's uninformative the driver reports and links out rather than guessing |
+| `none` | Red is red. Report and ask |
+| `auto` | Use Actions logs when the check belongs to an Actions run, otherwise fall back to `check-output` |
+
+**Observation is universal.** Whatever the provider, results reach the driver as check runs and commit statuses on the head commit — Actions, Xcode Cloud, CircleCI, Buildkite, Bitrise, Jenkins via the status API. The merge gate reads those, so it needs no provider-specific logic.
+
+### Review
+
+| Key | Default | Meaning |
+|---|---|---|
+| `review.required` | `[]` | Reviewers that must have seen the current head. `[]` means no AI-reviewer gate |
+| `review.changes_requested_blocks` | `true` | An outstanding `CHANGES_REQUESTED` blocks the merge |
+| `review.threads_must_resolve` | `true` | Every review thread must be resolved |
+
+`review.required` is a **list**, so a repo can require more than one reviewer:
+
+```yaml
+review:
+  required:
+    - logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"]
+    - logins: ["claude"], check: "claude-review"
+```
+
+Each entry is satisfied when **any** of these is true for the current head commit:
+
+- a review by one of its `logins` at that commit, or
+- an inline review-thread comment by one of them at that commit, or
+- a successful check run named by its `check` at that commit.
+
+That last one matters for CI-based reviewers: a clean pass leaves no comment, so the check run is the only proof it looked. Login matching is case-insensitive and ignores a trailing `[bot]`.
+
+Only diff-anchored comments create resolvable threads, so a reviewer must post **inline** comments for `threads_must_resolve` to mean anything. Copilot does this natively; Claude's review workflow needs `--comment`.
+
+### Stuck detection
+
+| Key | Default | Meaning |
+|---|---|---|
+| `stuck.max_cycles` | `5` | Consecutive wakes where a gate fails for the same reason, with an unmoved head, before the phase is marked `Blocked` |
+
+Counted per row, so one wedged platform never stalls the others.
+
+---
+
+## YOLO
+
+YOLO controls exactly one thing: **who presses merge.**
+
+| | YOLO **on** | YOLO **off** |
+|---|---|---|
+| Implement, open PR, watch | driver | driver |
+| Fix failing CI | driver | driver |
+| Address review comments, resolve threads | driver | driver |
+| Evaluate the gates | driver | driver |
+| **Press merge** | **driver, once gates pass** | **you** — the driver pings with the PR link and a gate summary |
+| Start the next phase after merge | driver | **driver** |
+
+**The next phase always continues after a merge, in both modes.** Merge from the GitHub mobile app with YOLO off and the driver notices, records it, and starts whatever that unblocks. Turning YOLO off buys a review checkpoint, not a manual pipeline.
+
+It lives in the plan's **Driver State** block, not front matter, because it's runtime state — say `yolo on` or `yolo off` and it takes effect on the next gate evaluation, including for PRs already open.
+
+A repo can set `yolo: false` in front matter to stay manual no matter what the toggle says. The effective rule is `YOLO(state) AND repo.yolo(config)` — config can only ever be more conservative.
+
+---
+
+## Protected default branches
+
+If the home repo's default branch rejects direct commits, set:
+
+```yaml
+plan_writes: plan-pr
+```
+
+Each status transition then becomes a one-file PR with auto-merge enabled, instead of a direct commit. Noisier, but still durable and still resume-safe. The driver detects the rejection on its first transition and tells you once.
+
+---
+
+## Worked examples
+
+**A single repo with GitHub Actions and Copilot** — the common case:
+
+```yaml
+phases:
+  project: my-app
+  home_repo: me/my-app
+  repos:
+    me/my-app:
+      review:
+        required: [{ logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"] }]
+```
+
+**A repo with no CI and no bot reviewer:**
+
+```yaml
+phases:
+  project: my-notes
+  home_repo: me/my-notes
+  repos:
+    me/my-notes:
+      verify: none
+      ci: { allow_none: true }
+```
+
+Every gate still runs; they just have nothing to block on. `changes_requested_blocks` and `threads_must_resolve` still apply to human reviewers.
+
+**Cross-platform, mixed everything** — see [`examples/cross-platform.md`](../examples/cross-platform.md).
+
+---
+
+## Configurations that can't work
+
+The planner refuses to write a plan whose gates can never pass, because that's a wall you'd otherwise hit only after your first PR is already open:
+
+- a name in `ci.required` that no workflow produces
+- a login in `review.required` that has never reviewed in that repo
+- `ci.allow_none: false` on a repo with no CI configured at all
+
+Copy-paste starting points for common setups live in [`profiles/`](../profiles/).
