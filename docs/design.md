@@ -69,7 +69,7 @@ Setting up one Claude review workflow on this repository produced **six runs tha
 | 5 | 22s | Aborted waiting on a sub-agent |
 | 6 | 9 min | Real review, found four real bugs, and **could not post any of them** — every `gh` call denied at the tool-permission layer |
 
-Six greens. One of them meant "reviewed and clean." None of them was distinguishable from the others in GitHub's UI.
+Six greens, and **not one of them meant "reviewed and clean."** Nothing in GitHub's UI separated them from each other — or from the seventh run, which finally was.
 
 Three rules come from that:
 

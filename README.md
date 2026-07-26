@@ -115,6 +115,7 @@ That last part is the point. A cloud session started from the mobile app arrives
 
 ```bash
 git clone https://github.com/sixoverground/claude-phases
+mkdir -p ~/.claude/skills
 cp -r claude-phases/skills/* ~/.claude/skills/
 ```
 
