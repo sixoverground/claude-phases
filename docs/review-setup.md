@@ -86,10 +86,31 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
-          prompt: "/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+          # --comment makes the review POST its findings. Without it the
+          # review runs, finds real issues, and reports them only to the job
+          # log — the PR gets nothing.
+          prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+          # And this lets the posting actually succeed. Without it the gh
+          # calls are denied by the tool-permission layer, the job still
+          # concludes `success`, and the PR still gets nothing.
+          claude_args: |
+            --allowedTools "Bash(gh api:*),Bash(gh pr:*)"
 ```
 
 Reviews then draw on your subscription's usage rather than metered API spend.
+
+### Both flags are required, and neither fails loudly
+
+This pair cost an afternoon to work out, so it is worth stating plainly:
+
+| Missing | Symptom |
+|---|---|
+| `--comment` | Review runs fully, findings appear **only in the job log**, check is green |
+| `--allowedTools` | Review runs fully, tries to post, every `gh` call is denied, check is **still green** |
+
+In both cases the job concludes `success` and the PR looks reviewed. Nothing in GitHub's UI distinguishes that from a genuine clean pass — which is why the merge gate here refuses to treat a bare green check as proof of review.
+
+Verify on a PR with a deliberate flaw. If no inline comment appears, read the job log rather than trusting the check.
 
 ### The workflow does nothing until it's on the default branch
 
@@ -102,7 +123,7 @@ identical content to the version on the repository's default branch.
 
 This is a security control, and a sensible one — otherwise a PR author could edit the review workflow in their own PR to weaken or disable the review of that PR. The consequence is that **the PR which introduces the workflow is never reviewed by it**, and neither is any PR that modifies it. Reviews begin with the next PR after it merges.
 
-The trap: the job still concludes **`success`** in that state, having reviewed nothing. Don't read a green check on the introducing PR as confirmation the reviewer works — it only confirms the workflow parses. Verify on the *next* PR, and see [configuration.md](configuration.md#review) for why the merge gate requires check output rather than trusting a green conclusion.
+The trap: the job still concludes **`success`** in that state, having reviewed nothing. Don't read a green check on the introducing PR as confirmation the reviewer works — it only confirms the workflow parses. Verify on the *next* PR, and see [configuration.md](configuration.md#review) for how the merge gate decides what counts as proof that a review happened.
 
 ### Other authentication options
 
@@ -121,10 +142,23 @@ The `synchronize` trigger is what keeps review anchored to the head as the drive
 
 ```yaml
 review:
-  required: [{ check: "review" }]     # the job name, as it appears on the PR
+  required:
+    - check: "Claude review"   # the job's `name:`, as it appears on the PR
+      proof: completed
 ```
 
 Confirm the check name on a real PR before trusting it — it's the job name, which you control, and getting it wrong means the gate waits forever for a check that never appears under that name.
+
+**`proof: completed` is deliberate here.** On a clean pass this reviewer leaves nothing the gate can anchor to:
+
+| Signal | On a clean pass |
+|---|---|
+| Inline comments | none — it had nothing to say |
+| A review at the head SHA | none — reviews are only created when there are findings |
+| Check run `output` | empty (`title`, `summary`, `text` all `""`) |
+| A top-level PR comment | yes — but an issue comment, so no commit anchor |
+
+With the default `proof: output` the gate would block every clean review permanently. The cost of `completed` is that a skipped or no-op job also counts as a review, so pair it with the workflow above having no graceful-skip guard — a reviewer that cannot run should be red, not absent.
 
 ---
 
