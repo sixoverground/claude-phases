@@ -1,0 +1,11 @@
+# Nothing reviews. Every review gate off.
+#
+# Worth being clear about what this means: with `ci.allow_none: true` as well,
+# the merge gate checks only that the PR is not a draft and carries no blocking
+# label. Combined with YOLO on, code merges with nothing having looked at it.
+#
+# Reasonable for a scratch repo. Think twice anywhere else.
+review:
+  required: []
+  changes_requested_blocks: false
+  threads_must_resolve: false

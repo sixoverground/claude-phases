@@ -1,0 +1,8 @@
+# CircleCI, Buildkite, Jenkins, Bitrise — anything that posts check runs or
+# commit statuses to GitHub without a workflow file in the repo.
+ci:
+  required: []
+  allow_none: false
+  dispatch: push               # no Actions dispatch available
+  logs: check-output           # the driver reads the check summary and links out
+                               # when that is not enough to diagnose a failure

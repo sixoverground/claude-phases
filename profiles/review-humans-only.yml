@@ -1,0 +1,12 @@
+# People review; no bot gate.
+#
+# `required: []` skips the reviewer-saw-this-commit gate, but the other two
+# review gates still do real work against human reviewers.
+review:
+  required: []
+  changes_requested_blocks: true    # an outstanding CHANGES_REQUESTED blocks
+  threads_must_resolve: true        # every inline thread must be resolved
+
+# If you want a human approval to be strictly required before anything merges,
+# use GitHub branch protection — or turn YOLO off, which stops the driver at a
+# ready-to-merge ping and leaves the merge to you.

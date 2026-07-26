@@ -1,0 +1,11 @@
+# GitHub Actions.
+#
+# `required: []` counts every check that reports. Name specific checks
+# instead if some are advisory, or list them in `ignore_checks`.
+ci:
+  required: []
+  ignore_checks: []
+  allow_none: false        # zero checks blocks — a CI that stopped reporting
+                           # looks identical to a repo with no CI
+  dispatch: auto           # uses workflow_dispatch when a workflow declares it
+  logs: actions            # real failure text, so the driver can fix it itself

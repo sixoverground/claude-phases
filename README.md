@@ -101,20 +101,52 @@ Running tests in the session is preferred — the loop is seconds instead of a C
 
 Web and backend code runs locally. Android runs its JVM unit tests locally and leaves instrumented tests to CI. iOS is CI-only — building needs macOS and Xcode, which no Linux container has.
 
+## Install
+
+Two skills: `phase-planner` writes plans, `phase-driver` executes them. Install both.
+
+### For Claude Code cloud sessions — the one that matters
+
+Upload `skills/phase-planner/` and `skills/phase-driver/` as skills on your claude.ai account. Account-level skills are provisioned into **every** cloud session automatically, for every repo, with nothing committed to your project repos.
+
+That last part is the point. A cloud session started from the mobile app arrives with the skills already present, so driving a plan from your phone needs no setup in the repo you're driving.
+
+### For the local CLI
+
+```bash
+git clone https://github.com/sixoverground/claude-phases
+cp -r claude-phases/skills/* ~/.claude/skills/
+```
+
+### For one project only
+
+Copy the same directories into `.claude/skills/` in the repo. Note that many projects gitignore `.claude/`, in which case this won't survive a fresh clone — prefer the account-level install.
+
+### Then
+
+1. Open a Claude Code session on your repo and say **"plan a project"** — `phase-planner` will interview you, inspect the repo, and write `docs/plans/<project>.md`.
+2. Work through [the hygiene checklist](skills/phase-planner/references/hygiene.md) it gives you.
+3. Say **"run the next phase"**. From anywhere, including your phone.
+
 ## Status
 
-Under construction, built with its own phased plan.
+Working, and built with its own phased plan — every commit here arrived through the loop described above.
 
 - [x] Plan format and configuration spec
 - [x] `phase-driver` skill
 - [x] `phase-planner` skill
-- [ ] Examples, profiles, and install instructions
+- [x] Examples, profiles, and install instructions
+
+Not yet done: the skills have been written and reviewed but never run end to end against a repo other than this one. Treat the first plan you drive as a test.
 
 ## Documentation
 
 - [Plan file format](docs/format.md) — structure, status vocabulary, recovery
 - [Configuration](docs/configuration.md) — every key, its default, and its off switch
 - [Reviewer setup](docs/review-setup.md) — managed Code Review, Actions, Copilot, or none
+- [Design notes](docs/design.md) — why the rules are what they are, and what a green check doesn't tell you
+- [Examples](examples/) — a two-phase single repo, and a four-repo cross-platform plan
+- [Profiles](profiles/) — copy-paste config for common CI and review setups
 
 ## Related
 

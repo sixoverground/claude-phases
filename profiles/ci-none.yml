@@ -1,0 +1,10 @@
+# No CI. A supported setup, not a degraded one.
+#
+# The checks gate passes vacuously. Everything else still applies: an
+# outstanding CHANGES_REQUESTED blocks, and review threads must resolve.
+ci:
+  allow_none: true             # without this, zero checks blocks every merge
+  dispatch: none
+  logs: none
+
+verify: none                   # nothing to build
