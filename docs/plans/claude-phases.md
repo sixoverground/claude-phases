@@ -14,7 +14,9 @@ phases:
       dispatch: auto
       logs: auto
     review:
-      required: []                 # no bot reviewer configured yet
+      required:
+        - check: "Claude review"
+          proof: completed         # see Note — silent on clean passes
       changes_requested_blocks: true
       threads_must_resolve: true
     stuck: { max_cycles: 5 }
@@ -35,8 +37,8 @@ Build claude-phases itself: a plan format plus two Claude skills that execute it
 |----|--------|------|-------|-------|--------|------|---------|
 | 1 | claude/session-plan-format | sixoverground/claude-phases | Plan format spec, configuration reference, plan template, README | 0 | Merged | #1 |  |
 | 2 | claude/phase-driver-skill | sixoverground/claude-phases | `skills/phase-driver/` + recovery, gates, vocabulary references | 1 | Merged | #2 | 0 |
-| 3 | claude/phase-planner-skill | sixoverground/claude-phases | `skills/phase-planner/` — detect setup, propose config, write plans | 2 | In Progress | - | 1 |
-| 4 | claude/examples-and-install | sixoverground/claude-phases | `examples/`, `profiles/`, install instructions, `docs/design.md` | 3 | Pending | - | 2 |
+| 3 | claude/phase-planner-skill | sixoverground/claude-phases | `skills/phase-planner/` — detect setup, propose config, write plans | 2 | Merged | #3 | 1 |
+| 4 | claude/examples-and-install | sixoverground/claude-phases | `examples/`, `profiles/`, install instructions, `docs/design.md` | 3 | In Progress | - | 2 |
 
 ## Phase Details
 
@@ -113,7 +115,7 @@ Build claude-phases itself: a plan format plus two Claude skills that execute it
 - YOLO: off
 - Driver-ID: a1c7f204
 - Active:
-  - Phase 2 — claude/phase-planner-skill — In Progress
+  - Phase 3 — claude/examples-and-install — In Progress
 - UAT-pending: -
-- Heartbeat: 2026-07-26T19:20:00Z
-- Note: reviewer unresolved — 3 runs, all `success`, all producing zero artifacts. Not yet in review.required
+- Heartbeat: 2026-07-26T20:15:00Z
+- Note: reviewer proven on #3 (4 real findings) and now gated. proof=completed because on a clean pass it leaves no inline comment, no review at the head SHA, and empty check output — `output` would block every clean review permanently. Trade accepted: a skipped job would also count, which is why the workflow has no graceful-skip guard.
