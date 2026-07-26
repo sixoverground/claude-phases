@@ -47,4 +47,9 @@ jobs:
           show_full_output: true
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
+          # The review posts inline comments via `gh api`. Without this the
+          # tool-permission layer denies those calls, the review completes
+          # `success`, and nothing is posted — 14 denials on the first runs.
+          claude_args: |
+            --allowedTools "Bash(gh api:*),Bash(gh pr:*)"
           prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
