@@ -76,6 +76,11 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
+      # Required. The action restores trusted config (CLAUDE.md, .claude/, ...)
+      # from origin/main before running, which needs a git repo present.
+      # Without it the job fails with "fatal: not a git repository".
+      - uses: actions/checkout@v4
+
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
