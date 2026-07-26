@@ -43,10 +43,8 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # Diagnostic: the review ran 8.5min/37 turns on PR #2 but posted
-          # nothing, with permission_denials_count=14. This surfaces what it
-          # found and which permissions were denied. Remove once resolved.
+          # Keep until inline comments are confirmed posting, then remove.
           show_full_output: true
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
-          prompt: "/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+          prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
