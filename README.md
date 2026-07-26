@@ -104,7 +104,7 @@ Web and backend code runs locally. Android runs its JVM unit tests locally and l
 Under construction, built with its own phased plan.
 
 - [x] Plan format and configuration spec
-- [ ] `phase-driver` skill
+- [x] `phase-driver` skill
 - [ ] `phase-planner` skill
 - [ ] Examples, profiles, and install instructions
 
