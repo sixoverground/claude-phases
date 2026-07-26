@@ -86,6 +86,19 @@ jobs:
 
 Reviews then draw on your subscription's usage rather than metered API spend.
 
+### The workflow does nothing until it's on the default branch
+
+`claude-code-action` refuses to run when the workflow file differs from the copy on the repository's default branch, logging:
+
+```
+Skipping action due to workflow validation: The workflow file must exist and have
+identical content to the version on the repository's default branch.
+```
+
+This is a security control, and a sensible one — otherwise a PR author could edit the review workflow in their own PR to weaken or disable the review of that PR. The consequence is that **the PR which introduces the workflow is never reviewed by it**, and neither is any PR that modifies it. Reviews begin with the next PR after it merges.
+
+The trap: the job still concludes **`success`** in that state, having reviewed nothing. Don't read a green check on the introducing PR as confirmation the reviewer works — it only confirms the workflow parses. Verify on the *next* PR, and see [configuration.md](configuration.md#review) for why the merge gate requires check output rather than trusting a green conclusion.
+
 ### Other authentication options
 
 | Method | Input | When |
