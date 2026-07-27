@@ -1,0 +1,12 @@
+# GitHub Copilot review.
+#
+# Three logins because the reporting identity has varied. Matching is
+# case-insensitive and ignores a trailing [bot].
+#
+# Enable the "Review new pushes" ruleset, or proof goes stale the first time
+# the driver pushes a fix and the gate stalls.
+review:
+  required:
+    - logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"]
+  changes_requested_blocks: true
+  threads_must_resolve: true

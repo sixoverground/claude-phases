@@ -1,0 +1,22 @@
+# Claude review running in your own GitHub Actions workflow.
+# Works on any plan, including Pro and Max.
+#
+# `check` is your job's `name:`. Confirm it on a real PR — get it wrong and
+# the gate waits forever for a check that never appears under that name.
+review:
+  required:
+    - check: "Claude review"
+      proof: completed
+  changes_requested_blocks: true
+  threads_must_resolve: true
+
+# Why proof: completed rather than the stricter default.
+#
+# On a clean pass this reviewer leaves nothing the gate can anchor to: no
+# inline comment, no review at the head SHA, and empty check-run output. Its
+# only signal is a top-level PR comment, which carries no commit anchor. With
+# `proof: output` the gate would block every clean review permanently.
+#
+# The cost: a skipped or no-op job also counts as a review. Pair this with a
+# workflow that has NO graceful-skip guard, so a reviewer that cannot run goes
+# red rather than quietly green. See docs/review-setup.md.

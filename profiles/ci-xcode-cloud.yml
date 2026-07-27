@@ -1,0 +1,14 @@
+# Xcode Cloud, or any CI that starts on its own PR conditions.
+#
+# It reports to GitHub as check runs like any other provider, so the merge
+# gate needs no special handling. Two things differ: it cannot be triggered
+# on demand, and its logs are not reachable through the Actions API.
+ci:
+  required:
+    - "Xcode Cloud - Build"    # confirm the exact names on a real PR
+    - "Xcode Cloud - Test"
+  allow_none: false
+  dispatch: none               # starts itself; the driver triggers it by pushing
+  logs: check-output           # check summary + details_url, not raw logs
+
+verify: ci                     # macOS and Xcode cannot exist in a Linux container

@@ -1,0 +1,13 @@
+# Anthropic's managed Code Review (Team/Enterprise, research preview).
+# Enabled by an org Owner at claude.ai/admin-settings/claude-code — not by
+# anything in this repo. Set Review Behavior to "After every push".
+review:
+  required:
+    - check: "Claude Code Review"
+      proof: output          # it writes a severity table into the check output
+  changes_requested_blocks: true
+  threads_must_resolve: true
+
+# Its check run always concludes `neutral` by design so it can never block a
+# merge through branch protection. That is handled: `neutral` passes the
+# checks gate, and proof-of-review ignores the conclusion entirely.
