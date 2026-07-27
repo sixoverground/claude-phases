@@ -20,7 +20,7 @@ Break work into phases. Let a Claude Code session build them one PR at a time �
 
 ## Quick start
 
-**1. Install the skills.** Go to [claude.ai/settings/capabilities](https://claude.ai/settings/capabilities) and upload both `skills/phase-planner/` and `skills/phase-driver/` from this repo. Account-level skills appear in every Claude Code session automatically — including cloud sessions started from your phone — with nothing added to your own repos.
+**1. Install the skills.** Upload both `skills/phase-planner/` and `skills/phase-driver/` from this repo in your claude.ai skills settings. Account-level skills appear in every Claude Code **cloud** session automatically — including sessions started from your phone — with nothing added to your own repos. (Using the local CLI instead? See [Install — the other ways](#install--the-other-ways).)
 
 **2. Write a plan.** Open a Claude Code session on your repo and say:
 
