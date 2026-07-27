@@ -18,6 +18,28 @@ Break work into phases. Let a Claude Code session build them one PR at a time �
                                          📱 Claude mobile app
 ```
 
+## Quick start
+
+**1. Install the skills.** Go to [claude.ai/settings/capabilities](https://claude.ai/settings/capabilities) and upload both `skills/phase-planner/` and `skills/phase-driver/` from this repo. Account-level skills appear in every Claude Code session automatically — including cloud sessions started from your phone — with nothing added to your own repos.
+
+**2. Write a plan.** Open a Claude Code session on your repo and say:
+
+> plan a project
+
+It asks what you're building, inspects the repo to work out your CI and review setup, and writes `docs/plans/<project>.md`.
+
+**3. Build it.** Say:
+
+> run the next phase
+
+It implements the first phase, opens a PR, and waits. Fixes CI if it breaks. Answers review comments. Merges when the gates pass, then starts the next phase.
+
+**4. Steer it from anywhere.** `status`, `why`, `pause`, `yolo off`, `skip phase 3`, `merge now`.
+
+That's the whole loop. The rest of this README explains why it's built the way it is — worth reading before you trust it with a real project, but not before your first one.
+
+---
+
 ## The problem
 
 Long-running agent work needs somewhere durable to keep its place. A cloud session's container gets reclaimed, its context compacts, and it can die between opening a PR and recording that it did.
@@ -101,15 +123,13 @@ Running tests in the session is preferred — the loop is seconds instead of a C
 
 Web and backend code runs locally. Android runs its JVM unit tests locally and leaves instrumented tests to CI. iOS is CI-only — building needs macOS and Xcode, which no Linux container has.
 
-## Install
+## Install — the other ways
 
-Two skills: `phase-planner` writes plans, `phase-driver` executes them. Install both.
+The [quick start](#quick-start) covers the account-level install, which is the one to use. These are the alternatives.
 
-### For Claude Code cloud sessions — the one that matters
+### Why account-level is the one that matters
 
-Upload `skills/phase-planner/` and `skills/phase-driver/` as skills on your claude.ai account. Account-level skills are provisioned into **every** cloud session automatically, for every repo, with nothing committed to your project repos.
-
-That last part is the point. A cloud session started from the mobile app arrives with the skills already present, so driving a plan from your phone needs no setup in the repo you're driving.
+A cloud session started from the mobile app arrives with account skills already present, so driving a plan from your phone needs no setup in the repo you're driving. The other two options below don't have that property.
 
 ### For the local CLI
 
