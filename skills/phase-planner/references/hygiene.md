@@ -18,7 +18,9 @@ Flag what's missing. Fix what you can — a workflow edit is a PR. Settings outs
 
 ## Prevents wasted CI and accidental deploys
 
-**`paths-ignore: ['docs/plans/**']`** on push-triggered workflows. The driver writes three plan commits per phase to the default branch. Without this they burn CI minutes, and on a repo that deploys from the default branch they trigger deploys. The driver also appends `[skip ci]` to plan commits, but `paths-ignore` is belt and braces.
+**`paths-ignore: ['docs/plans/**']`** on push-triggered workflows. The driver writes three plan commits per phase to the plan branch. Without this they burn CI minutes, and on a repo that deploys from that branch they trigger deploys. The driver also appends `[skip ci]` to plan commits, but `paths-ignore` is belt and braces.
+
+Less of a concern when the plan branch isn't the default branch, since push triggers are often pinned to the default — but preview deploys usually aren't, so check rather than assume.
 
 **`workflow_dispatch`** on the CI workflow, if you want the driver to trigger builds without pushing an empty commit. Optional — without it, it triggers CI by pushing, which everyone does anyway.
 
@@ -26,7 +28,9 @@ Flag what's missing. Fix what you can — a workflow edit is a PR. Settings outs
 
 **Auto-delete merged branches** (Settings → General). The driver creates one branch per phase and does not clean them up after merging, so a twelve-phase plan leaves twelve stale branches. Turning this on makes GitHub do it for you.
 
-**Branch protection.** If the default branch rejects direct pushes, the driver can't write plan status normally. Either allow the driver's identity to push, or set `plan_writes: plan-pr` so each status change becomes a small auto-merging PR. Detect this before the first phase rather than discovering it mid-run.
+**Branch protection.** If the plan branch rejects direct pushes, the driver can't write plan status normally. Either allow the driver's identity to push, or set `plan_writes: plan-pr` so each status change becomes a small auto-merging PR. Detect this before the first phase rather than discovering it mid-run. A feature branch used as `plan_branch` is usually unprotected, which sidesteps this even when the default branch is locked down.
+
+**Don't delete the plan branch while a plan is running.** With `plan_branch` on a feature branch, merging that feature and letting GitHub auto-delete the branch takes the plan with it — and the driver stops rather than guessing. Finish the plan first, or move the plan file to the default branch before the feature merges.
 
 ## Makes local verification possible
 

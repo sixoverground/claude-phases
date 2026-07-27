@@ -4,9 +4,29 @@ Read the repo, don't interrogate the user. Everything below is observable, and o
 
 Run this per repo. Show the evidence, then let them correct it.
 
+## Read current code, not PR history
+
+This file already says that what a workflow *declares* differs from what actually *reports*. The same holds one level up, for the code a plan is written against: **a merged PR describes what was added, not what survived.**
+
+Merged PR bodies, plan files from earlier projects, and design docs are all evidence of intent at a moment in the past. Components get removed, renamed, or rewritten afterward, and nothing goes back to amend the PR that introduced them. A phase scoped around a component that no longer exists reads as perfectly researched right up until the driver tries to build it.
+
+So use PR history to find *where* to look and *what questions to ask* — then open the files. Phase scope, "what the codebase already gives us", and any claim about how something currently works must come from the code on the branch you're targeting.
+
+The failure is not hypothetical: a phase in this project's own first real plan was written around an iOS component taken from a merged PR body, which had since been deleted for causing a hang.
+
 ## Default branch → `target_branch`
 
 Read it from the repository. Never assume `main`: `develop`, `master`, and `trunk` are all in the wild, and getting it wrong means every phase branches from the wrong place.
+
+Ask whether phases should target the default branch at all. Work that must land as a unit — a feature nobody wants half-shipped — targets a long-running feature branch instead. When they say yes, confirm the branch exists in every repo, set `target_branch` on each, and set `plan_branch` to match in the home repo so the plan travels with the feature. See [Where the plan lives](../../../docs/configuration.md#where-the-plan-lives).
+
+## Trigger filters → whether required checks can fire at all
+
+Detection normally asks *which* checks appear. When `target_branch` isn't the default branch, ask a second question: **can they appear on a PR into that branch?**
+
+`on: pull_request:` with a `branches:` filter fires only for PRs whose base is listed. A check seen on every PR into `main` may never appear on a PR into `feature/x`, and the gate then waits forever for something that was never going to run. Read the filter on every workflow behind a name you're about to put in `ci.required` or `review.required[].check`.
+
+Checks with no workflow file — CodeQL default setup, Xcode Cloud, other external providers — carry their own start conditions, which are usually scoped to the default branch and which you cannot read. Don't require those when targeting a feature branch. Leave them unnamed and they're counted only if they turn up, which is the right behaviour while their scope is unknown. Say in the handoff that they're advisory and worth confirming on the first PR.
 
 ## Workflows → `ci.dispatch`
 
@@ -87,4 +107,4 @@ Plus, for CI:
 
 Then say plainly how much the merge gate is actually checking, and what to add once CI and review are in place.
 
-**Branch protection.** Check whether the default branch accepts direct commits. The planner writes the plan there, and the driver writes every status transition there. If it's protected, say so now and follow the fallback in `SKILL.md` step 5 — discovering it at write time is late, and discovering it mid-plan is worse.
+**Branch protection.** Check whether the **plan branch** accepts direct commits — the default branch, or `plan_branch` if you're setting one. The planner writes the plan there, and the driver writes every status transition there. If it's protected, say so now and follow the fallback in `SKILL.md` step 5 — discovering it at write time is late, and discovering it mid-plan is worse. A feature branch is usually unprotected even when the default branch isn't, so check the branch you'll actually use rather than the repo's headline setting.

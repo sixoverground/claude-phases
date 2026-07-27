@@ -8,19 +8,33 @@ A Claude Code cloud session is ephemeral. Its container is reclaimed after inact
 
 That single fact drives everything. A fresh session must reconstruct the world from the plan file plus what GitHub reports, with no memory of what came before. Every other decision here is downstream.
 
-### Status is written to the default branch, never inside the phase PR
+### Status is written outside the phase PR, on the plan branch
 
 The predecessor to this project — [cpm](https://github.com/sixoverground/claude-project-manager) — writes phase status *inside* the phase PR. That works there, because cpm is an external poller that tracks the cursor itself; the plan file is documentation.
 
-Here it would be fatal. A status written inside a PR is invisible on the default branch until that PR merges. A fresh session reading the plan would see `Pending` for a phase that already has an open PR, and start it a second time. Resume becomes structurally impossible, and the failure mode is duplicate branches for a single phase — the most confusing state to unpick.
+Here it would be fatal. A status written inside a PR is invisible until that PR merges. A fresh session reading the plan would see `Pending` for a phase that already has an open PR, and start it a second time. Resume becomes structurally impossible, and the failure mode is duplicate branches for a single phase — the most confusing state to unpick.
 
-So the driver commits status to the home repo's default branch, before the action it describes: claim before branching, record the PR before waiting on it. Every crash window in [the recovery table](format.md#recovery) closes because of that ordering. It is the thing most worth not "tidying up" later.
+So the driver commits status before the action it describes: claim before branching, record the PR before waiting on it. Every crash window in [the recovery table](format.md#recovery) closes because of that ordering. It is the thing most worth not "tidying up" later.
+
+### The plan branch is not necessarily the default branch
+
+This started out written as "the default branch", and stayed that way until the first attempt to plan a real project — a feature spanning two repos, every phase targeting `feature/calendar`, nothing reaching `main` until the whole thing worked. The plan had to live on the feature branch, and the spec had no way to say so.
+
+The requirement was never the default branch specifically. It is:
+
+> a branch that no phase PR modifies, and that is readable without merging one.
+
+A feature branch satisfies both. So `plan_branch` names it, defaulting to the default branch because that remains the common case.
+
+The one interaction worth stating: `plan_branch` is usually also `target_branch`, so phase PRs merge into the branch the plan sits on. That's safe because phase PRs never touch the plan file — but it does mean the blob `sha` moves under the driver's feet on every merge, which is why the sha must be re-read at the start of every transition rather than cached across one.
+
+Two failure modes come with it, and both are handled by refusing rather than guessing. A `plan_branch` that doesn't exist is a planner refusal. A `plan_branch` that has been *deleted* mid-plan — the feature merged, GitHub auto-deleted the branch — makes the driver stop and report. Falling back to the default branch there would show every row `Pending` and re-run a project that had already shipped, which is the worst outcome in the system dressed up as recovery.
 
 ### Phase PRs never touch the plan file
 
-One writer means a squash merge can never conflict with its own bookkeeping, however far the default branch has moved. Without it, every phase risks a conflict in the file that records that phase's progress.
+One writer means a squash merge can never conflict with its own bookkeeping, however far the plan branch has moved. Without it, every phase risks a conflict in the file that records that phase's progress.
 
-It also makes the plan readable as a live dashboard: the default branch always shows current state, not state as of the last merge.
+It also makes the plan readable as a live dashboard: the plan branch always shows current state, not state as of the last merge.
 
 ### Driver-ID, and why recency isn't enough
 
@@ -53,6 +67,14 @@ cpm treats `NEUTRAL` as blocking. That's stricter than GitHub itself, which trea
 A repo whose CI silently stopped running looks exactly like a repo with no CI. The failsafe direction is to stop, so zero checks blocks unless `ci.allow_none: true` says otherwise deliberately.
 
 The same reasoning appears in the planner: it distinguishes *no CI exists* from *CI exists and isn't reporting*, because setting `allow_none: true` for the second case permanently disables a failsafe to work around a temporary fault.
+
+### A required check that can never fire
+
+Detection asks which checks appear on recent PRs. That answer is conditional on those PRs' base branch, and nothing about the check run says so.
+
+`on: pull_request:` with a `branches:` filter fires only for the bases listed. Point a plan at a feature branch and a check that ran on all fifty PRs into `main` may run on none of yours. Because the gate waits for a *named* check, and the check never appears, the failure is a permanent hang with nothing red to look at — the hardest shape of failure to diagnose, arriving hours after the plan was written.
+
+Hence the planner refusal, and hence the rule about checks whose triggers you can't read at all — CodeQL default setup, Xcode Cloud, any external provider with its own start conditions. Those are left out of `ci.required` when targeting a feature branch, so they're counted if they appear and waited on if they don't. It's the same failsafe direction as zero-checks, pointed at a different unknown.
 
 ## What a green check does not tell you
 

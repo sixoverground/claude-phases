@@ -21,6 +21,14 @@ Apply this **per non-terminal row**, not once per plan. With several repos in fl
 | `Blocked` | anything | Waiting on a human | Leave it. Only a user instruction clears `Blocked` |
 | all rows `Merged`/`Skipped` | — | Complete | `Driver: idle`, summarize, stop |
 
+## The plan branch is gone
+
+If `plan_branch` names a branch that no longer exists — deleted after a feature merged, renamed, or never created — **stop and report.** Do not fall back to the default branch, and do not recreate the branch.
+
+Both fallbacks look helpful and are worse than stopping. A plan read from the default branch shows every row `Pending`, so the driver would start the whole project again on top of work that already shipped. Recreating the branch from the default branch does the same thing with an audit trail that makes it look deliberate.
+
+Tell the user which branch is missing and where the plan was last seen. Restoring a branch is seconds of work for someone who knows what happened, and unrecoverable guesswork for you.
+
 ## The awkward one: a branch with no PR
 
 You can't tell from the plan whether the previous driver got most of the way through the phase or died on its first commit. Look at the actual diff against the phase's scope and acceptance criteria.
