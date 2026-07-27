@@ -21,6 +21,7 @@ phases:
 |---|---|---|
 | `project` | *required* | Project name. Also the plan's filename |
 | `home_repo` | *required* | `owner/name` where the plan file lives. The **only** repo the driver writes plan state to |
+| `plan_branch` | home repo's default branch | The branch the plan file lives on. Every plan read and write uses it. See [Where the plan lives](#where-the-plan-lives) |
 | `repos` | *required* | Map of `owner/name` → per-repo overrides. `{}` means "inherit everything" |
 | `defaults` | `{}` | Values inherited by every repo |
 | `max_concurrent` | `null` | Global cap on simultaneously open phase PRs. `null` means no cap beyond the built-in one-per-repo rule |
@@ -36,7 +37,7 @@ phases:
 | `branch_prefix` | `claude/` | Prefix for phase branches. Also how the driver recognizes its own branches |
 | `target_branch` | repo's default branch | What phases branch from and merge into |
 | `merge.method` | `squash` | `squash`, `merge`, or `rebase` |
-| `plan_writes` | `default-branch` | `default-branch`, or `plan-pr` when the default branch is protected. See below |
+| `plan_writes` | `direct` | `direct`, or `plan-pr` when the plan branch is protected. `default-branch` is accepted as an alias for `direct`. See below |
 | `yolo` | `true` | `false` pins this repo to manual merges regardless of the global toggle. Config can only restrict, never force |
 
 ### Verification
@@ -217,15 +218,42 @@ A repo can set `yolo: false` in front matter to stay manual no matter what the t
 
 ---
 
-## Protected default branches
+## Where the plan lives
 
-If the home repo's default branch rejects direct commits, set:
+By default the plan file sits on the home repo's default branch, and that's right for most projects.
+
+The requirement is narrower than "the default branch", though. The plan branch must be **a branch no phase PR modifies, readable without merging one** — that's what lets a fresh session reconstruct state. Two situations call for something other than the default:
+
+### Feature-branch work
+
+When every phase targets a long-running feature branch and nothing reaches `main` until the feature is whole, the plan belongs on that branch too, so the work travels together:
+
+```yaml
+phases:
+  home_repo: acme/acme-web
+  plan_branch: feature/calendar
+  defaults:
+    target_branch: feature/calendar
+```
+
+`plan_branch` being the same branch phase PRs merge into is fine — phase PRs never touch the plan file, so a squash merge can't conflict with it. The driver re-reads the plan's blob `sha` at the start of every transition, which is what keeps that safe.
+
+Two things to get right:
+
+- **Create the branch first.** The planner refuses to write a plan whose `plan_branch` doesn't exist, and the driver stops rather than falling back to the default branch — a plan read from the wrong branch reports every phase as unstarted.
+- **Don't delete it mid-plan.** If the feature branch merges and is deleted before the plan finishes, the plan goes with it. Move the plan file to the default branch first, or leave the branch until the last row is `Merged`.
+
+A feature branch is also usually unprotected, which means `plan_writes` can stay `direct` even when the default branch is locked down.
+
+### A protected plan branch
+
+If the plan branch rejects direct commits, set:
 
 ```yaml
 plan_writes: plan-pr
 ```
 
-Each status transition then becomes a one-file PR with auto-merge enabled, instead of a direct commit. Noisier, but still durable and still resume-safe. The driver detects the rejection on its first transition and tells you once.
+Each status transition then becomes a one-file PR against the plan branch with auto-merge enabled, instead of a direct commit. Noisier, but still durable and still resume-safe. The driver detects the rejection on its first transition and tells you once.
 
 ---
 

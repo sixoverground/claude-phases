@@ -22,8 +22,10 @@ So the plan file is not documentation that happens to track progress. **It is th
 
 Two invariants make it work:
 
-- **Status is written to the home repo's default branch, never inside a phase PR.** A status written inside a PR is invisible until that PR merges, so a fresh session would see `Pending` for a phase that already has an open PR — and start it again.
-- **Phase PRs never modify the plan file.** One writer means a squash merge can never conflict with its own bookkeeping, no matter how far the default branch has moved.
+- **Status is written to the home repo's plan branch, never inside a phase PR.** A status written inside a PR is invisible until that PR merges, so a fresh session would see `Pending` for a phase that already has an open PR — and start it again.
+- **Phase PRs never modify the plan file.** One writer means a squash merge can never conflict with its own bookkeeping, no matter how far the plan branch has moved.
+
+The **plan branch** is `plan_branch`, defaulting to the home repo's default branch. What the first invariant actually requires is a branch that no phase PR modifies and that is readable without merging one — the default branch is the usual answer, not the only one. Feature-branch work, where every phase targets `feature/x` and nothing reaches `main` until the feature is whole, puts the plan on `feature/x` and satisfies it just as well.
 
 ---
 
@@ -122,7 +124,9 @@ The order matters — it's what makes each crash window recoverable:
 3. `In Progress → In Review` (plus `Link`) is committed **immediately** after the PR exists — before subscribing, before any long wait.
 4. `In Review → Merged` is committed **after** the merge is confirmed.
 
-Each status commit goes to the home repo's default branch with the blob `sha` read at the start of the transition. A stale sha fails the write, which is a free compare-and-swap against a second driver.
+Each status commit goes to the home repo's plan branch with the blob `sha` read at the start of the transition. A stale sha fails the write, which is a free compare-and-swap against a second driver.
+
+Read that sha at the start of every transition rather than caching it. When the plan branch is also a `target_branch`, merging a phase PR moves the branch the plan sits on, so a sha from before the merge is stale by construction.
 
 Commit messages end with `[skip ci]`:
 
@@ -130,7 +134,9 @@ Commit messages end with `[skip ci]`:
 chore(plan): acme phase 3 -> In Review [skip ci]
 ```
 
-Three extra commits land on the default branch per phase. Without `[skip ci]` they burn CI minutes or, worse, trigger deploys. Adding `paths-ignore: ['docs/plans/**']` to push-triggered workflows is belt and braces.
+Three extra commits land on the plan branch per phase. Without `[skip ci]` they burn CI minutes or, worse, trigger deploys. Adding `paths-ignore: ['docs/plans/**']` to push-triggered workflows is belt and braces.
+
+A plan branch that isn't the default branch often sidesteps this entirely, since push-triggered workflows are commonly pinned to the default branch. Check rather than assume — a deploy pipeline that runs on every branch will still fire.
 
 ---
 

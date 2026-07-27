@@ -49,8 +49,14 @@ Before writing, check the config you're about to produce against what you observ
 - a `check` in `review.required` matches no check run you've seen
 - `ci.allow_none: false` on a repo with no CI at all
 - `target_branch` names a branch that doesn't exist
+- `plan_branch` names a branch that doesn't exist
+- a required check comes from a workflow that **can't fire on `target_branch`** — see below
 
 Every one of these produces a gate that waits forever. The failure surfaces as "waiting for CI" long after the plan was written, when nobody remembers what was configured — so it must be caught here.
+
+**The base-branch trap.** A check seen on recent PRs is not proof it will appear on *your* PRs. `on: pull_request:` with a `branches:` filter fires only for PRs targeting the branches listed, and PRs into a feature branch commonly fall outside it. Read the filter for every workflow producing a name in `ci.required` or `review.required[].check`, and refuse if `target_branch` isn't matched. Naming which workflow and which filter is most of the fix.
+
+The same applies to checks you *can't* read: CodeQL default setup and external providers like Xcode Cloud configure their own start conditions, often scoped to the default branch. Don't put those in `ci.required` when targeting a feature branch. Left unnamed they're counted only if they actually appear, which is the behaviour you want while their scope is unverified.
 
 **Also warn** when a reviewer is configured but is only known to post top-level comments. `threads_must_resolve` needs diff-anchored comments to mean anything.
 
@@ -78,9 +84,11 @@ Each phase gets scope, `Depends on`, acceptance criteria, UAT, and risks.
 
 ## 5. Write the plan
 
-To `docs/plans/<project>.md` in the home repo, **committed directly to the default branch** — not through a PR. The driver reads it from there, and a plan sitting in an unmerged PR is invisible to it.
+To `docs/plans/<project>.md` in the home repo, **committed directly to the plan branch** — not through a PR. The driver reads it from there, and a plan sitting in an unmerged PR is invisible to it.
 
-**If the default branch rejects the commit**, branch protection is on. `plan_writes: plan-pr` doesn't rescue this — that key lives inside the plan file, so the commit that would deliver it is the one being refused. Instead: open a PR with the plan file, tell the user it must merge before the driver can start, and set `plan_writes: plan-pr` in the front matter so the driver uses the same path for every later status write. Don't hand off until it's merged; a driver pointed at a plan that isn't on the default branch will report the project as unstarted.
+The plan branch is the home repo's default branch unless you set `plan_branch`. Propose setting it when every repo's `target_branch` is the same non-default branch: that's feature-branch work, and the plan belongs with the feature rather than on a `main` the feature hasn't reached. Set both keys, and confirm the branch exists in the home repo before writing.
+
+**If the plan branch rejects the commit**, branch protection is on. `plan_writes: plan-pr` doesn't rescue this — that key lives inside the plan file, so the commit that would deliver it is the one being refused. Instead: open a PR with the plan file, tell the user it must merge before the driver can start, and set `plan_writes: plan-pr` in the front matter so the driver uses the same path for every later status write. Don't hand off until it's merged; a driver pointed at a plan that isn't on the plan branch will report the project as unstarted.
 
 Front matter carries the config you detected. Set the initial `YOLO` in Driver State: default it **off**, and say why — unattended merging is a decision someone should make deliberately once they trust the setup, not inherit from a default.
 

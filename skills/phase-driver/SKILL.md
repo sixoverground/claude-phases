@@ -11,7 +11,7 @@ Read `references/recovery.md`, `references/gates.md`, and `references/vocabulary
 
 ## Golden rules
 
-1. **Never modify the plan file from a phase branch.** Plan writes go to `home_repo`'s default branch, always.
+1. **Never modify the plan file from a phase branch.** Plan writes go to `home_repo`'s **plan branch**, always.
 2. **Write status before the action it describes**, not after. Claim before branching; record the PR before waiting on it.
 3. **Pass the `sha` you just read** on every plan write. A stale sha means another driver moved — re-read and retry, don't overwrite.
 4. **Every plan commit message ends `[skip ci]`.**
@@ -25,6 +25,8 @@ Read `references/recovery.md`, `references/gates.md`, and `references/vocabulary
 Look for `docs/plans/*.md` in the current repo. More than one, and no phase named: list them and ask.
 
 Parse the front matter under `phases:` — that is your entire configuration. Resolve per-repo settings by deep-merging each repo's entry over `defaults`. Never look for configuration anywhere else; there is no other config file.
+
+**The plan branch** is `plan_branch`, or the home repo's default branch when that key is absent. Every read and every write of the plan file uses it. It is usually the default branch; on feature-branch work — where phases target `feature/x` and nothing reaches `main` until the feature is whole — the plan lives there instead, so that status is visible without merging a phase PR. If `plan_branch` names a branch that doesn't exist, stop and say so. Never fall back to the default branch: a plan read from the wrong branch reports every phase as unstarted, and the driver would start them all a second time.
 
 ## 2. Reconcile — always, before anything
 
@@ -54,7 +56,7 @@ Startable rows are `Pending`, with every id in `Depends` now `Merged` or `Skippe
 For each, in order:
 
 1. **Ensure the repo is reachable.** If it isn't in the session's scope, add it and clone it. If access is denied, mark that row `Blocked` with the error and carry on with the others — one inaccessible repo must not stall the rest.
-2. **Commit `In Progress`** to the default branch. This is the claim, and it comes first.
+2. **Commit `In Progress`** to the plan branch. This is the claim, and it comes first.
 3. **Branch** from that repo's `target_branch`, named from the row's `Branch`.
 4. **Implement** the phase against its Phase Details: scope, acceptance criteria, risks. Match the surrounding code. Stay inside the phase's scope — if you find unrelated problems, note them in the PR body rather than fixing them.
 5. **Verify** per that repo's `verify`:
@@ -116,7 +118,7 @@ When a PR has no outstanding work, evaluate `references/gates.md` against it, us
 However the PR merged — you, the user from their phone, or anyone else:
 
 1. Unsubscribe from that PR.
-2. **Commit `Merged`** to the default branch. If YOLO was on and the PR carried no UAT checklist, append that phase's id to `UAT-pending` in the same write.
+2. **Commit `Merged`** to the plan branch. If YOLO was on and the PR carried no UAT checklist, append that phase's id to `UAT-pending` in the same write.
 3. Comment on the PR and tell the user.
 4. **Start whatever rows that unblocks**, in the same turn — unless `Driver: paused`.
 
@@ -126,8 +128,10 @@ When every row is `Merged` or `Skipped`: set `Driver: idle`, clear `Active`, pos
 
 ## Writing to the plan
 
-`create_or_update_file` against `home_repo` on its default branch, passing the `sha` you read at the start of the transition. Message: `chore(plan): <project> phase <N> -> <Status> [skip ci]`.
+`create_or_update_file` against `home_repo` on the plan branch, passing the `sha` you read at the start of the transition. Message: `chore(plan): <project> phase <N> -> <Status> [skip ci]`.
+
+Re-read that `sha` at the start of **every** transition. When the plan branch is also a `target_branch`, merging a phase PR moves it, and a sha cached from before the merge is already stale.
 
 On a sha conflict: re-read, re-apply your change, retry. Three failures means another driver is active — stop and report rather than forcing it.
 
-If the default branch rejects direct commits, switch to `plan_writes: plan-pr` — each transition becomes a single-file PR with auto-merge — and tell the user once that you've done so.
+If the plan branch rejects direct commits, switch to `plan_writes: plan-pr` — each transition becomes a single-file PR with auto-merge, targeting the plan branch — and tell the user once that you've done so.
