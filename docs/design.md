@@ -129,6 +129,15 @@ Note that `local` has no fallback — if the toolchain is missing, verification 
 
 ## Finishing a plan
 
+### What the run is converging on
+
+The target experience, stated once because several rules only make sense against it: start a plan with YOLO on, and each phase opens a PR, clears CI, squash-merges, and deletes its branch — repeating to the last phase, leaving **one clean PR against the default branch with a UAT checklist ready to run**.
+
+Blockers interrupt that rather than ending it. A phase the driver cannot get green becomes a small PR handed to the developer, and the run resumes unattended once CI clears. The developer is the exception handler, not a participant in the loop.
+
+Read that way, the two rules below stop being tidiness and become load-bearing: a leftover branch breaks "a branch that exists means work that hasn't landed", and a per-phase checklist under YOLO breaks "the thing you're handed at the end is the thing to verify".
+
+
 ### The last phase merging is not the same as the feature being done
 
 Phases target a feature branch so nothing reaches the default branch until the whole feature exists. That makes the last merge quietly anticlimactic: the branch is complete, every phase was reviewed against its siblings, and **nobody has been asked to look at the result as a thing**. A driver that goes idle there leaves the actual decision — does this land on `main` — unowned and unstated.

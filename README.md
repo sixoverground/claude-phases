@@ -86,6 +86,19 @@ Flip it any time — `yolo on` / `yolo off` — including with a PR already open
 
 It also decides where **UAT checklists** land. Off, every PR carries its own phase's manual-test steps, because you're there to read them. On, phases merge unattended and UAT is deferred to one cumulative checklist, grouped by phase. Toggle mid-plan and nothing is lost — the driver tracks which phases nobody has verified and hands you the backlog with the next PR you're asked to merge.
 
+## What a YOLO run looks like
+
+The shape the whole design is aiming at:
+
+> Kick off a phased plan with YOLO on. Each phase opens a PR, clears CI, squash-merges into the target branch, and deletes its branch. That repeats to the last phase. What you're left with is **one clean PR against your default branch, with a UAT checklist ready to run.**
+
+Blockers don't break that, they interrupt it. When the driver can't get a phase green on its own it hands you *that* PR — one phase, small, with the failure explained. You resolve it, and the moment CI clears the run continues unattended to the next blocker or to the end. You are the exception handler, not a step in the loop.
+
+Two consequences worth naming, because they follow from this and not from taste:
+
+- **Branches are deleted as they merge**, so a branch that still exists means work that hasn't landed. That is only a useful signal if it holds without exception.
+- **UAT accumulates rather than arriving per-phase.** A checklist on a PR the driver merges two minutes later isn't a prompt, it's a filing. It goes on the one PR you actually have to decide about.
+
 ## Finishing
 
 Phases normally target a feature branch, so nothing reaches `main` until the feature is whole. When the last one merges, the driver opens an **integration PR** from that branch to your default branch — what shipped phase by phase, what was deliberately left out, what setup the feature needs — and **never merges it, even with YOLO on.** YOLO is about phase PRs the driver built and verified; this one is the whole feature landing on the branch everything else builds on.
