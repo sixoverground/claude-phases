@@ -82,7 +82,7 @@ Read the YOLO state **at the moment you open the PR**, not from memory. Toggling
 
 §8 covers what happens if the plan finishes and the list never landed anywhere.
 
-Skip all of this where a repo sets `uat: false`. An integration PR still opens — it is worth having regardless — just without a checklist.
+Skip all of this where a repo sets `uat: false`. Under YOLO an integration PR still opens at the end — it is worth having regardless — just without a checklist.
 
 ## 4. Watch
 
@@ -132,15 +132,17 @@ A merge always advances the plan. YOLO changes who presses the button, never whe
 
 ## 8. Finishing the plan
 
-When every row is `Merged` or `Skipped`, in this order: **open the integration PR**, then set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
+When every row is `Merged` or `Skipped`, in this order: **open the integration PR if YOLO is on**, then set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
+
+**Everything in this section is YOLO-only.** With YOLO off the developer merged every phase themselves and read every checklist as they went — they know exactly where the branch stands, and opening a PR to their default branch on their behalf presumes a decision they are already positioned to make. The handoff exists because YOLO means nobody was watching.
 
 ### The integration PR
 
 Phases usually target a feature branch rather than the default one, so that nothing reaches `main` until the feature is whole. When the last phase merges, that branch is finished and nobody has been asked to look at it as a whole — every review so far was of one phase against its siblings.
 
-So: **for each repo whose `target_branch` is not its default branch and which merged at least one phase, open a PR from `target_branch` to that repo's default branch.** Title it `<project>: <n> phases`. Body: what shipped, phase by phase with links; anything the plan recorded as deliberately out of scope; and any setup the feature needs that no PR could contain.
+So, with YOLO on: **for each repo whose `target_branch` is not its default branch and which merged at least one phase, open a PR from `target_branch` to that repo's default branch.** Title it `<project>: <n> phases`. Body: what shipped, phase by phase with links; anything the plan recorded as deliberately out of scope; and any setup the feature needs that no PR could contain.
 
-**Never merge it, whatever YOLO says.** YOLO governs phase PRs — work the plan produced and the driver verified. This one is the feature reaching the branch everything else builds on, and its blast radius is the whole repo. Open it, report it, go idle.
+**Never merge it. YOLO opens this PR and does not merge it**, and that is not an inconsistency. YOLO is a judgement about *phase* PRs — work the plan produced, scoped by the plan, verified by the driver, gated per phase. This one is the whole feature landing on the branch everything else builds on, and none of that reasoning reaches it. Open it, report it, go idle.
 
 Don't wait on its CI either. Checks that were scoped to the default branch may report here for the first time — CodeQL and mobile build services commonly are — and a first red result on a check no phase ever saw is information for the user, not a gate for you to drive to green.
 
@@ -148,11 +150,11 @@ Don't wait on its CI either. Checks that were scoped to the default branch may r
 
 With more than one repo, the **home repo's** integration PR carries the entire checklist across all repos, and the others link to it. UAT is end-to-end by nature; splitting it by repo produces two lists that each describe half a user journey.
 
-Where `target_branch` *is* the default branch there is no integration PR to open, and the rules stand as they were: the final phase PR carries the cumulative checklist.
+Where `target_branch` *is* the default branch there is no integration PR to open, and the rules stand as they were: the final phase PR carries the cumulative checklist. Same with YOLO off, where every PR carried its own UAT as it went and there is no backlog to hand over.
 
 ### The fallback
 
-If the plan completes with `UAT-pending` non-empty and no integration PR was opened — every repo targets its default branch, and the final phase was skipped or merged before you assembled the list — open a GitHub issue titled `UAT: <project>` with the outstanding items. Never drop them; unverified work that nobody knows is unverified is the thing this exists to prevent.
+If the plan completes with `UAT-pending` non-empty and no integration PR was opened — every repo targets its default branch, or the final phase was skipped or merged before you assembled the list — open a GitHub issue titled `UAT: <project>` with the outstanding items. Never drop them; unverified work that nobody knows is unverified is the thing this exists to prevent.
 
 ## Writing to the plan
 

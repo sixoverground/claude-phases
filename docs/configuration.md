@@ -37,7 +37,7 @@ phases:
 | `branch_prefix` | `claude/` | Prefix for phase branches. Also how the driver recognizes its own branches |
 | `target_branch` | repo's default branch | What phases branch from and merge into |
 | `merge.method` | `squash` | `squash`, `merge`, or `rebase` |
-| `merge.delete_branch` | `true` | Delete the phase branch after the driver merges it. Only applies to merges the driver performs — a human merging in the UI controls their own checkbox. Only ever deletes a branch matching `branch_prefix`, never the plan branch or a `target_branch`. `false` for repos whose rulesets require branches to persist |
+| `merge.delete_branch` | `true` | Delete the phase branch after the driver merges it. **YOLO-only** — with YOLO off the driver never merges, so it never deletes. Only applies to merges the driver performs — a human merging in the UI controls their own checkbox. Only ever deletes a branch matching `branch_prefix`, never the plan branch or a `target_branch`. `false` for repos whose rulesets require branches to persist |
 | `plan_writes` | `direct` | `direct`, or `plan-pr` when the plan branch is protected. `default-branch` is accepted as an alias for `direct`. See below |
 | `yolo` | `true` | `false` pins this repo to manual merges regardless of the global toggle. Config can only restrict, never force |
 

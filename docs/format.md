@@ -268,6 +268,6 @@ What a driver does when the plan and GitHub disagree — the situation after any
 | `In Review` | PR open | Normal | Re-subscribe, re-evaluate gates |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, advance |
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
-| all rows terminal | — | Complete | Open the integration PR if `target_branch` is not the default branch, then set `Driver: idle` and report |
+| all rows terminal | — | Complete | With YOLO on, open the integration PR if `target_branch` is not the default branch. Then set `Driver: idle` and report |
 
 Applied **per row**, not once per plan — with several repos in flight, each recovers independently.
