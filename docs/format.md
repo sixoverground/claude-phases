@@ -228,7 +228,7 @@ Which PR carries the checklist depends on YOLO, because YOLO determines whether 
 | YOLO | Where the checklist goes |
 |---|---|
 | **off** | Every PR carries its own phase's UAT. You're merging each one, so you get the checklist at the moment you decide |
-| **on** | Phases merge unattended, so UAT is deferred to a cumulative checklist covering every phase, grouped by phase, plus end-to-end flows that only make sense once everything has landed. It lands on the **integration PR** — `target_branch` → default branch, opened when the plan completes — or on the **final phase's PR** where phases already target the default branch and no integration PR exists |
+| **on** | Phases merge unattended, so UAT is deferred to **one comprehensive test script** covering every phase — a single runnable list, not per-phase sections — plus the end-to-end flows that only make sense once everything has landed. It lands on the **integration PR** — `target_branch` → default branch, opened when the plan completes — or on the **final phase's PR** where phases already target the default branch and no integration PR exists |
 
 **`UAT-pending` in Driver State tracks what hasn't been surfaced yet.** When a phase merges under YOLO on, its id is appended. When a PR carries a UAT checklist, the ids it covered are removed. This is what makes toggling safe: turn YOLO off after three auto-merged phases and the next PR carries its own UAT *plus* the three that nobody has verified. Turn it back on and they accumulate again.
 
