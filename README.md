@@ -84,7 +84,7 @@ One switch, one meaning: **who presses merge.**
 
 Flip it any time — `yolo on` / `yolo off` — including with a PR already open.
 
-It also decides where **UAT checklists** land. Off, every PR carries its own phase's manual-test steps, because you're there to read them. On, phases merge unattended and UAT is deferred to one cumulative checklist, grouped by phase. Toggle mid-plan and nothing is lost — the driver tracks which phases nobody has verified and hands you the backlog with the next PR you're asked to merge.
+It also decides where **UAT checklists** land. Off, every PR carries its own phase's manual-test steps, because you're there to read them. On, phases merge unattended and UAT is deferred to a single script at the end. Toggle mid-plan and nothing is lost — the driver tracks which phases nobody has verified and hands you the backlog with the next PR you're asked to merge.
 
 ## What a YOLO run looks like
 
@@ -103,7 +103,9 @@ Two consequences worth naming, because they follow from this and not from taste:
 
 Phases normally target a feature branch, so nothing reaches `main` until the feature is whole. When the last one merges **under YOLO**, the driver opens an **integration PR** from that branch to your default branch — what shipped phase by phase, what was deliberately left out, what setup the feature needs — and **never merges it, even with YOLO on.** YOLO is about phase PRs the driver built and verified; this one is the whole feature landing on the branch everything else builds on.
 
-That PR is also where the cumulative UAT checklist goes. It is the first thing in the entire plan a human has to act on, which makes it the only place a checklist actually asks anyone to do something.
+That PR is also where the UAT goes, and it arrives as **one comprehensive test script** — ordered so you can run it top to bottom, deduplicated, with later phases' corrections folded into the steps they supersede. Not a per-phase changelog with checkboxes: which phase produced which step is an artifact of how the work was built, not of how you verify it.
+
+It is also the first thing in the entire plan a human has to act on, which makes it the only place a checklist actually asks anyone to do something.
 
 With YOLO **off** none of this happens, and shouldn't: you merged every phase yourself and read each checklist as it came, so you already know where the branch stands. The handoff exists because YOLO means nobody was watching.
 

@@ -75,14 +75,28 @@ Start from the phase's `**UAT.**` items in Phase Details, then refine against wh
 
 Which checklist goes where depends on YOLO, because YOLO decides whether anyone is stopping to look:
 
-- **YOLO off** — this PR carries its own phase's UAT, **plus** every phase in `UAT-pending` (grouped by phase, oldest first). Then clear those ids. Someone is looking at this PR; give them everything nobody has verified yet.
-- **YOLO on** — omit UAT from the PR and append this phase's id to `UAT-pending` when it merges. The cumulative checklist — everything in `UAT-pending`, grouped by phase, plus the end-to-end flows that only make sense once every phase has landed — goes on the **integration PR** at the end of the plan (§8), or on the **final phase**'s PR if no integration PR will exist because phases target the default branch directly. Clear the list when it lands somewhere.
+- **YOLO off** — this PR carries its own phase's UAT, **plus** everything in `UAT-pending`, assembled into one script by the rules below. Then clear those ids. Someone is looking at this PR; give them everything nobody has verified yet.
+- **YOLO on** — omit UAT from the PR and append this phase's id to `UAT-pending` when it merges. The cumulative script — everything in `UAT-pending`, plus the end-to-end flows that only make sense once every phase has landed — goes on the **integration PR** at the end of the plan (§8), or on the **final phase**'s PR if no integration PR will exist because phases target the default branch directly. Clear the list when it lands somewhere.
 
 Read the YOLO state **at the moment you open the PR**, not from memory. Toggling mid-plan is expected and `UAT-pending` is what makes it safe: turn YOLO off after three unattended merges and the next PR carries those three alongside its own.
 
 §8 covers what happens if the plan finishes and the list never landed anywhere.
 
-Skip all of this where a repo sets `uat: false`. Under YOLO an integration PR still opens at the end — it is worth having regardless — just without a checklist.
+Where a repo sets `uat: false`, skip everything in this section, including the assembly rules below. Under YOLO an integration PR still opens at the end — it is worth having regardless — just without a checklist.
+
+### Assembling more than one phase's UAT
+
+**Write a test script, not a changelog with checkboxes.** Whoever runs it wants to sit down once and verify the feature; they do not care which phase produced which step, and phase numbers are an artifact of how the work was built rather than of how it is tested.
+
+So when a PR carries more than one phase's worth:
+
+1. **One list.** No per-phase sections. Group by theme or by user journey only where that genuinely helps someone execute it — setup, then connect, then edit, then disconnect. If the feature is small, no headings at all.
+2. **Ordered so it can be run top to bottom.** Anything that blocks everything else goes first — accounts, domains, migrations, env vars — and steps that depend on earlier state follow it. A script that has to be re-read to find a runnable order is a list, not a script.
+3. **Merge duplicates.** Adjacent phases routinely specify the same click. One step, once.
+4. **Reconcile contradictions, and say so in the step itself.** A later phase can invalidate an earlier phase's step, and grouping by phase hides that because both survive under their own heading. If phase 2 says *confirm the event comes back* and phase 4 changed that to *confirm it stays gone*, the script gets **one** step describing what the code does now, with a trailing note in that same step naming what it supersedes — *"this reverses what phase 2 specified; phase 4 changed a remote delete to unlink"*. The note belongs there and nowhere else: whoever runs the script may have read the plan, and without it a correct step looks like a bug they have just found. Fix the stale line in the plan's Phase Details too — a checklist that disagrees with the code is as harmful as a comment that does, and worse, because a human executes it and believes it.
+5. **Say what has not been verified.** If nothing has been exercised against a live third party or a real device, put that at the top in a sentence. It is the single most useful line in the document, and it is invisible from the checkboxes alone.
+
+Where each step came from stops mattering the moment the plan is done. What matters is whether someone can run the thing end to end and know the feature works.
 
 ## 4. Watch
 
@@ -148,7 +162,7 @@ Don't wait on its CI either. Checks that were scoped to the default branch may r
 
 **The cumulative UAT checklist goes on the integration PR**, not on the final phase's PR, whenever an integration PR will exist. With YOLO on the final phase PR is merged by the driver within minutes of opening, so a checklist placed there is written into something nobody had to read. The integration PR is the first thing on the whole plan a human must act on, which is the only place a checklist has leverage. Clear `UAT-pending` when you open it.
 
-With more than one repo, the **home repo's** integration PR carries the entire checklist across all repos, and the others link to it. UAT is end-to-end by nature; splitting it by repo produces two lists that each describe half a user journey.
+With more than one repo, the **home repo's** integration PR carries the entire script across all repos, and the others link to it. UAT is end-to-end by nature; splitting it by repo produces two lists that each describe half a user journey — the same reason it is not split by phase.
 
 Where `target_branch` *is* the default branch there is no integration PR to open, and the rules stand as they were: the final phase PR carries the cumulative checklist. Same with YOLO off, where every PR carried its own UAT as it went and there is no backlog to hand over.
 

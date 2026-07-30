@@ -154,6 +154,12 @@ The first version put it on the final phase's PR. Under YOLO that PR is merged b
 
 The integration PR is the first artifact in the whole plan that a human must act on. A checklist has leverage only where a decision is already required, so that is where it goes. Where phases already target the default branch there is no integration PR, the final phase PR is the last thing anyone sees, and the original rule stands.
 
+### Why it is one script rather than sections per phase
+
+The first version grouped the cumulative list by phase, which is the order the work was produced in and no help at all to the person running it. Someone verifying a feature reads top to bottom once; phase numbers ask them to reassemble a user journey from a build history.
+
+Grouping by phase also actively hides a defect. Phases can supersede each other's steps — one plan had phase 2 asking a tester to confirm a deleted event *comes back* and phase 4 changing that behaviour to *stays gone* — and under per-phase headings both survive, each correct within its own section and contradictory in the document. One list forces the contradiction into a single step, which is the point at which someone has to notice and resolve it.
+
 ### Deleting the merged branch
 
 GitHub's merge API has no equivalent of the UI's "delete branch after merge" checkbox, so unless the driver deletes the branch itself, phases it merges leave branches behind while phases a human merges do not. The result is a branch list where staleness is uncorrelated with anything, and no way to tell finished work from abandoned work at a glance.
