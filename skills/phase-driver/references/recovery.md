@@ -17,9 +17,9 @@ Apply this **per non-terminal row**, not once per plan. With several repos in fl
 | `In Review` | PR open | Normal operation | Re-subscribe, re-evaluate the gate against the current head |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, then start whatever it unblocks |
 | `In Review` | PR closed, not merged | A human killed it | Ask why. Default to `Blocked` if there's no answer |
-| `In Review` | no PR at all, branch gone | Someone cleaned up | Reset to `Pending` |
+| `In Review` | no PR at all, branch gone | Someone cleaned up. **Not** the driver's own post-merge delete — that only ever runs on a branch whose PR is merged, and a merged PR still exists to be found | Reset to `Pending` |
 | `Blocked` | anything | Waiting on a human | Leave it. Only a user instruction clears `Blocked` |
-| all rows `Merged`/`Skipped` | — | Complete | `Driver: idle`, summarize, stop |
+| all rows `Merged`/`Skipped` | — | Complete | Open the integration PR (SKILL.md §8) if one is due, then `Driver: idle`, summarize, stop |
 
 ## The plan branch is gone
 

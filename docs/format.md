@@ -228,13 +228,15 @@ Which PR carries the checklist depends on YOLO, because YOLO determines whether 
 | YOLO | Where the checklist goes |
 |---|---|
 | **off** | Every PR carries its own phase's UAT. You're merging each one, so you get the checklist at the moment you decide |
-| **on** | Phases merge unattended, so UAT is deferred: the **final PR** carries a cumulative checklist covering every phase, grouped by phase, plus end-to-end flows that only make sense once everything has landed |
+| **on** | Phases merge unattended, so UAT is deferred to a cumulative checklist covering every phase, grouped by phase, plus end-to-end flows that only make sense once everything has landed. It lands on the **integration PR** — `target_branch` → default branch, opened when the plan completes — or on the **final phase's PR** where phases already target the default branch and no integration PR exists |
 
 **`UAT-pending` in Driver State tracks what hasn't been surfaced yet.** When a phase merges under YOLO on, its id is appended. When a PR carries a UAT checklist, the ids it covered are removed. This is what makes toggling safe: turn YOLO off after three auto-merged phases and the next PR carries its own UAT *plus* the three that nobody has verified. Turn it back on and they accumulate again.
 
 Without that list, a mid-plan toggle silently loses UAT for every phase that merged while YOLO was on — the failure would be invisible, because the plan would look complete.
 
-**The final phase** is the last non-`Skipped` row in table order. If a plan somehow finishes with `UAT-pending` non-empty — the final phase was skipped, or its PR merged before the checklist was assembled — post the cumulative checklist as a GitHub issue titled `UAT: <project>` rather than dropping it.
+**The final phase** is the last non-`Skipped` row in table order. Under YOLO it is merged by the driver within minutes of opening, which is why the cumulative checklist belongs on the integration PR wherever one exists: a checklist on a PR nobody had to read is a record, not a prompt.
+
+If a plan somehow finishes with `UAT-pending` non-empty and no integration PR was opened — every repo targets its default branch, and the final phase was skipped or merged before the checklist was assembled — post the cumulative checklist as a GitHub issue titled `UAT: <project>` rather than dropping it.
 
 Set `uat: false` in a repo's config for repos where manual testing is meaningless.
 
@@ -266,6 +268,6 @@ What a driver does when the plan and GitHub disagree — the situation after any
 | `In Review` | PR open | Normal | Re-subscribe, re-evaluate gates |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, advance |
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
-| all rows terminal | — | Complete | Set `Driver: idle`, report |
+| all rows terminal | — | Complete | Open the integration PR if `target_branch` is not the default branch, then set `Driver: idle` and report |
 
 Applied **per row**, not once per plan — with several repos in flight, each recovers independently.

@@ -127,6 +127,28 @@ The rule that matters is not which mode you pick but that **the PR body records 
 
 Note that `local` has no fallback — if the toolchain is missing, verification fails and the phase blocks. `auto` is the mode that drops to CI. Conflating them was itself a bug the reviewer caught.
 
+## Finishing a plan
+
+### The last phase merging is not the same as the feature being done
+
+Phases target a feature branch so nothing reaches the default branch until the whole feature exists. That makes the last merge quietly anticlimactic: the branch is complete, every phase was reviewed against its siblings, and **nobody has been asked to look at the result as a thing**. A driver that goes idle there leaves the actual decision — does this land on `main` — unowned and unstated.
+
+So completion opens an **integration PR** from `target_branch` to the default branch, and stops. It is the one PR in the system the driver never merges, even under YOLO, and the asymmetry is the point: YOLO is a judgement that *phase* PRs are safe to land unattended, because the driver wrote them against a scope, verified them, and drove their gates. None of that reasoning transfers to a diff spanning every phase landing on the branch everything else builds on.
+
+It is also where checks scoped to the default branch report for the first time. CodeQL default setup and hosted mobile build services are usually configured for the default branch only, so they never fire on a feature base — a plan can be entirely green and still meet those checks here for the first time. That is information for the user, not a gate for the driver to drive green.
+
+### Why the cumulative UAT moved off the final phase PR
+
+The first version put it on the final phase's PR. Under YOLO that PR is merged by the driver within minutes of opening, so the checklist was being written into something no human ever had to open — technically recorded, functionally invisible. The failure looked exactly like success: a complete plan, a full checklist, and nobody prompted to run any of it.
+
+The integration PR is the first artifact in the whole plan that a human must act on. A checklist has leverage only where a decision is already required, so that is where it goes. Where phases already target the default branch there is no integration PR, the final phase PR is the last thing anyone sees, and the original rule stands.
+
+### Deleting the merged branch
+
+GitHub's merge API has no equivalent of the UI's "delete branch after merge" checkbox, so unless the driver deletes the branch itself, phases it merges leave branches behind while phases a human merges do not. The result is a branch list where staleness is uncorrelated with anything, and no way to tell finished work from abandoned work at a glance.
+
+The guard is narrow on purpose — the branch must match `branch_prefix`, and must not be the plan branch or any `target_branch`. A driver that deletes the branch its own plan lives on has destroyed its own memory, which is the one failure in this system with no recovery path.
+
 ## Things deliberately not done
 
 **Writing status inside the phase PR.** Breaks resume. Non-negotiable.

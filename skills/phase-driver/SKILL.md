@@ -76,13 +76,13 @@ Start from the phase's `**UAT.**` items in Phase Details, then refine against wh
 Which checklist goes where depends on YOLO, because YOLO decides whether anyone is stopping to look:
 
 - **YOLO off** — this PR carries its own phase's UAT, **plus** every phase in `UAT-pending` (grouped by phase, oldest first). Then clear those ids. Someone is looking at this PR; give them everything nobody has verified yet.
-- **YOLO on** — omit UAT from the PR and append this phase's id to `UAT-pending` when it merges. The **final phase** — the last non-`Skipped` row in table order — carries a cumulative checklist covering everything in `UAT-pending`, grouped by phase, plus end-to-end flows that only make sense once every phase has landed. Clear the list.
+- **YOLO on** — omit UAT from the PR and append this phase's id to `UAT-pending` when it merges. The cumulative checklist — everything in `UAT-pending`, grouped by phase, plus the end-to-end flows that only make sense once every phase has landed — goes on the **integration PR** at the end of the plan (§8), or on the **final phase**'s PR if no integration PR will exist because phases target the default branch directly. Clear the list when it lands somewhere.
 
 Read the YOLO state **at the moment you open the PR**, not from memory. Toggling mid-plan is expected and `UAT-pending` is what makes it safe: turn YOLO off after three unattended merges and the next PR carries those three alongside its own.
 
-If the plan completes with `UAT-pending` non-empty — the final phase was skipped, or its PR merged before you assembled the checklist — open a GitHub issue titled `UAT: <project>` with the outstanding items. Never drop them; unverified work that nobody knows is unverified is the thing this exists to prevent.
+§8 covers what happens if the plan finishes and the list never landed anywhere.
 
-Skip all of this where a repo sets `uat: false`.
+Skip all of this where a repo sets `uat: false`. An integration PR still opens — it is worth having regardless — just without a checklist.
 
 ## 4. Watch
 
@@ -106,8 +106,14 @@ Reconcile first. Then handle what woke you, against the row it belongs to:
 
 When a PR has no outstanding work, evaluate `references/gates.md` against it, using that repo's resolved config. Then:
 
-- **YOLO on** — re-read the head SHA as your *last* read before merging, with no other calls in between, and merge with that repo's `merge.method`.
+- **YOLO on** — re-read the head SHA as your *last* read before merging, with no other calls in between, and merge with that repo's `merge.method`. Then **delete the phase branch**, unless the repo sets `merge.delete_branch: false`.
 - **YOLO off** — do not merge. Tell the user it's ready, with the PR link and a per-gate summary, and set the row's `Note` to `ready to merge`. Re-ping only if the head moves and it passes again. Don't nag on a timer.
+
+**Deleting the branch is yours to do because the API will not.** GitHub's merge endpoint has no equivalent of the UI's "delete branch after merge" checkbox, so a driver that merges and stops leaves a branch behind for every phase it shipped — while phases a human merged get cleaned up. Nobody notices until the branch list is half stale and it is no longer obvious which of them are finished.
+
+Delete only a branch **you** created: it must match that repo's `branch_prefix`, and it must not be the plan branch or any repo's `target_branch`. Those three checks are the whole guard, and skipping them is how a driver deletes the branch its own plan lives on.
+
+A failed delete is not a failed merge. Branch protection or a ruleset can forbid it; say so once and carry on, because the phase is merged either way and nothing downstream depends on the branch being gone.
 
 `YOLO` lives in the Driver State block. A repo may also pin `yolo: false` in front matter, which wins — config can restrict, never enable.
 
@@ -124,7 +130,29 @@ However the PR merged — you, the user from their phone, or anyone else:
 
 A merge always advances the plan. YOLO changes who presses the button, never whether the plan moves.
 
-When every row is `Merged` or `Skipped`: set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop. If `UAT-pending` is not empty, open the `UAT: <project>` issue first — a plan isn't finished while verification nobody knows about is outstanding.
+## 8. Finishing the plan
+
+When every row is `Merged` or `Skipped`, in this order: **open the integration PR**, then set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
+
+### The integration PR
+
+Phases usually target a feature branch rather than the default one, so that nothing reaches `main` until the feature is whole. When the last phase merges, that branch is finished and nobody has been asked to look at it as a whole — every review so far was of one phase against its siblings.
+
+So: **for each repo whose `target_branch` is not its default branch and which merged at least one phase, open a PR from `target_branch` to that repo's default branch.** Title it `<project>: <n> phases`. Body: what shipped, phase by phase with links; anything the plan recorded as deliberately out of scope; and any setup the feature needs that no PR could contain.
+
+**Never merge it, whatever YOLO says.** YOLO governs phase PRs — work the plan produced and the driver verified. This one is the feature reaching the branch everything else builds on, and its blast radius is the whole repo. Open it, report it, go idle.
+
+Don't wait on its CI either. Checks that were scoped to the default branch may report here for the first time — CodeQL and mobile build services commonly are — and a first red result on a check no phase ever saw is information for the user, not a gate for you to drive to green.
+
+**The cumulative UAT checklist goes on the integration PR**, not on the final phase's PR, whenever an integration PR will exist. With YOLO on the final phase PR is merged by the driver within minutes of opening, so a checklist placed there is written into something nobody had to read. The integration PR is the first thing on the whole plan a human must act on, which is the only place a checklist has leverage. Clear `UAT-pending` when you open it.
+
+With more than one repo, the **home repo's** integration PR carries the entire checklist across all repos, and the others link to it. UAT is end-to-end by nature; splitting it by repo produces two lists that each describe half a user journey.
+
+Where `target_branch` *is* the default branch there is no integration PR to open, and the rules stand as they were: the final phase PR carries the cumulative checklist.
+
+### The fallback
+
+If the plan completes with `UAT-pending` non-empty and no integration PR was opened — every repo targets its default branch, and the final phase was skipped or merged before you assembled the list — open a GitHub issue titled `UAT: <project>` with the outstanding items. Never drop them; unverified work that nobody knows is unverified is the thing this exists to prevent.
 
 ## Writing to the plan
 
