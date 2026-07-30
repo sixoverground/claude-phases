@@ -53,7 +53,7 @@ The second problem is control. Scheduled routines aren't visible in the Claude m
 1. **Plan.** `phase-planner` inspects your repos, proposes configuration from what it finds, and writes `docs/plans/<project>.md` — a table of phases, one PR each.
 2. **Run.** Tell a Claude Code session "run the next phase". `phase-driver` picks the first `Pending` phase, branches, implements it, verifies it, and opens a PR.
 3. **Watch.** It subscribes to the PR and sleeps. CI failures and review comments wake it; it fixes them and pushes.
-4. **Merge.** When the gates pass it squash-merges — or, with YOLO off, pings you and waits while you merge from your phone.
+4. **Merge.** With YOLO on, when the gates pass it squash-merges and deletes the branch. With YOLO off it pings you and waits while you merge from your phone — and merges nothing, deletes nothing.
 5. **Continue.** Either way, the merge advances the plan and the next phase starts. Repeat until done.
 
 At any point, from anywhere: `status`, `why`, `pause`, `yolo off`, `skip phase 4`, `smaller`, `merge now`.
@@ -84,7 +84,28 @@ One switch, one meaning: **who presses merge.**
 
 Flip it any time — `yolo on` / `yolo off` — including with a PR already open.
 
-It also decides where **UAT checklists** land. Off, every PR carries its own phase's manual-test steps, because you're there to read them. On, phases merge unattended and UAT is deferred to a cumulative checklist on the final PR, grouped by phase. Toggle mid-plan and nothing is lost — the driver tracks which phases nobody has verified and hands you the backlog with the next PR you're asked to merge.
+It also decides where **UAT checklists** land. Off, every PR carries its own phase's manual-test steps, because you're there to read them. On, phases merge unattended and UAT is deferred to one cumulative checklist, grouped by phase. Toggle mid-plan and nothing is lost — the driver tracks which phases nobody has verified and hands you the backlog with the next PR you're asked to merge.
+
+## What a YOLO run looks like
+
+The shape the whole design is aiming at:
+
+> Kick off a phased plan with YOLO on. Each phase opens a PR, clears CI, squash-merges into the target branch, and deletes its branch. That repeats to the last phase. What you're left with is **one clean PR against your default branch, with a UAT checklist ready to run.**
+
+Blockers don't break that, they interrupt it. When the driver can't get a phase green on its own it hands you *that* PR — one phase, small, with the failure explained. You resolve it, and the moment CI clears the run continues unattended to the next blocker or to the end. You are the exception handler, not a step in the loop.
+
+Two consequences worth naming, because they follow from this and not from taste:
+
+- **Branches are deleted as they merge**, so a branch that still exists means work that hasn't landed. That is only a useful signal if it holds without exception.
+- **UAT accumulates rather than arriving per-phase.** A checklist on a PR the driver merges two minutes later isn't a prompt, it's a filing. It goes on the one PR you actually have to decide about.
+
+## Finishing
+
+Phases normally target a feature branch, so nothing reaches `main` until the feature is whole. When the last one merges **under YOLO**, the driver opens an **integration PR** from that branch to your default branch — what shipped phase by phase, what was deliberately left out, what setup the feature needs — and **never merges it, even with YOLO on.** YOLO is about phase PRs the driver built and verified; this one is the whole feature landing on the branch everything else builds on.
+
+That PR is also where the cumulative UAT checklist goes. It is the first thing in the entire plan a human has to act on, which makes it the only place a checklist actually asks anyone to do something.
+
+With YOLO **off** none of this happens, and shouldn't: you merged every phase yourself and read each checklist as it came, so you already know where the branch stands. The handoff exists because YOLO means nobody was watching.
 
 ## Multi-repo
 
