@@ -8,7 +8,7 @@ Pick one CI profile and one review profile per repo. They compose.
 |---|---|
 | [`ci-github-actions.yml`](ci-github-actions.yml) | Workflows in `.github/workflows/` |
 | [`ci-xcode-cloud.yml`](ci-xcode-cloud.yml) | Xcode Cloud, or anything that starts on its own PR conditions |
-| [`ci-external.yml`](ci-external.yml) | CircleCI, Buildkite, Jenkins, Bitrise — reports to GitHub, no Actions log API |
+| [`ci-external.yml`](ci-external.yml) | CircleCI, Buildkite, Jenkins, Bitrise: reports to GitHub, no Actions log API |
 | [`ci-none.yml`](ci-none.yml) | No CI at all |
 
 | Review | When |

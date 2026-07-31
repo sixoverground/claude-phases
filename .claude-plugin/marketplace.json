@@ -1,0 +1,15 @@
+{
+  "name": "sixoverground",
+  "description": "Tools for running long agent work against real repositories.",
+  "owner": {
+    "name": "Craig Phares",
+    "url": "https://github.com/sixoverground"
+  },
+  "plugins": [
+    {
+      "name": "claude-phases",
+      "source": "./",
+      "description": "Break work into phases and let a Claude Code session build them one PR at a time, steered from anywhere."
+    }
+  ]
+}

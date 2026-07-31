@@ -1,0 +1,31 @@
+name: CI or review setup not supported
+description: Your CI provider, reviewer, or repository layout does not work with the merge gate
+labels: [compatibility]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CI is modelled as three capabilities (observe, dispatch, read logs) rather than a list of vendors, so an unanticipated provider is meant to work. When one does not, that is a gap worth naming.
+
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your setup
+      description: The CI provider, the reviewer, and how they report on a pull request.
+    validations:
+      required: true
+
+  - type: textarea
+    id: failure
+    attributes:
+      label: Where it breaks
+      description: Which gate stalls or misfires, and what the driver said about it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: check-names
+    attributes:
+      label: Check names on a real PR
+      description: The exact names as GitHub reports them, and their conclusions. Detection guesses from workflow files are often wrong; this is the ground truth.
+      render: text

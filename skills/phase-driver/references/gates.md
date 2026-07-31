@@ -1,19 +1,19 @@
 # The merge gate
 
-Six gates. All must pass before a merge. Evaluate them against a specific commit — the PR's current head — and discard the result the moment the head moves.
+Six gates. All must pass before a merge. Evaluate them against a specific commit (the PR's current head) and discard the result the moment the head moves.
 
 Use the row's repo's resolved config (its entry deep-merged over `defaults`).
 
 | # | Gate | Passes when | Off switch |
 |---|---|---|---|
-| 1 | Not a draft | `draft == false` | none — a draft is an explicit "not ready" |
+| 1 | Not a draft | `draft == false` | none: a draft is an explicit "not ready" |
 | 2 | No blocking label | No label in `blocking_labels` (default `do-not-merge`, `wip`, `blocked`) | `blocking_labels: []` |
 | 3 | Checks green | Every counted check concluded `success`, `skipped`, or `neutral` | `ci.allow_none: true` covers the zero-checks case |
 | 4 | No changes requested | For each reviewer, their *latest* review is not `CHANGES_REQUESTED` | `review.changes_requested_blocks: false` |
 | 5 | Threads resolved | Every review thread has `isResolved == true` | `review.threads_must_resolve: false` |
 | 6 | Reviewer saw this commit | Every entry in `review.required` is satisfied at the head SHA | `review.required: []` (the default) |
 
-## Gate 3 — checks
+## Gate 3: checks
 
 Read check runs and commit statuses for the head commit. Legacy integrations post statuses rather than check runs, so read both.
 
@@ -22,9 +22,9 @@ Read check runs and commit statuses for the head commit. Legacy integrations pos
 1. `ci.required` is non-empty → only those names count. Everything else is ignored.
 2. Otherwise every reported check counts,
 3. minus anything in `ci.ignore_checks`,
-4. minus any check named in `review.required[].check` — a reviewer's own check never gates the merge unless you explicitly put it in `ci.required`.
+4. minus any check named in `review.required[].check`. A reviewer's own check never gates the merge unless you explicitly put it in `ci.required`.
 
-**Passing conclusions: `success`, `skipped`, `neutral`.** Everything else blocks: `failure`, `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`. A check still running blocks until it finishes — wait, don't fail.
+**Passing conclusions: `success`, `skipped`, `neutral`.** Everything else blocks: `failure`, `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`. A check still running blocks until it finishes, wait, don't fail.
 
 `neutral` passes because GitHub itself treats it as non-blocking, and advisory tools use it precisely so they never block a merge. Treating it as a failure deadlocks every merge on any repo with an advisory reporter.
 
@@ -34,10 +34,10 @@ Read check runs and commit statuses for the head commit. Legacy integrations pos
 
 Per the repo's `ci.logs`:
 
-- **`actions`** — fetch the failed jobs' logs for the run and read the actual error. Same fix loop as local, just slower.
-- **`check-output`** — read the check run's `output.title`, `output.summary`, and `details_url`. Often enough to name the failing test; sometimes only enough to know it failed.
-- **`none`** — don't guess.
-- **`auto`** — Actions logs when the check belongs to an Actions run, otherwise check output.
+- **`actions`**. Fetch the failed jobs' logs for the run and read the actual error. Same fix loop as local, just slower.
+- **`check-output`**. Read the check run's `output.title`, `output.summary`, and `details_url`. Often enough to name the failing test; sometimes only enough to know it failed.
+- **`none`.** Don't guess.
+- **`auto`**. Actions logs when the check belongs to an Actions run, otherwise check output.
 
 **When the output doesn't tell you why it failed, say so and link `details_url`.** Do not push a speculative fix. Three guesses cost more than one honest question, and a wrong guess that turns CI green is worse than a red build.
 
@@ -45,19 +45,19 @@ Per the repo's `ci.logs`:
 
 One re-run of failed jobs per head commit, and disclose it in the PR. Re-running until green is how a real failure gets laundered into a pass.
 
-## Gates 4, 5, 6 — review
+## Gates 4, 5, 6: review
 
-**Gate 4** — group reviews by author, take each author's most recent. A `CHANGES_REQUESTED` that the same reviewer later superseded with an approval or a comment no longer blocks.
+**Gate 4.** Group reviews by author, take each author's most recent. A `CHANGES_REQUESTED` that the same reviewer later superseded with an approval or a comment no longer blocks.
 
-**Gate 5** — every review thread resolved. Only diff-anchored comments form resolvable threads, so this does nothing for a reviewer that posts only top-level comments. Resolve a thread only when you've actually addressed it.
+**Gate 5.** Every review thread resolved. Only diff-anchored comments form resolvable threads, so this does nothing for a reviewer that posts only top-level comments. Resolve a thread only when you've actually addressed it.
 
-**Gate 6** — each entry in `review.required` needs proof it evaluated **this** commit. An entry is satisfied by any of:
+**Gate 6.** Each entry in `review.required` needs proof it evaluated **this** commit. An entry is satisfied by any of:
 
 - a review by one of its `logins` with `commit_id == head.sha`, or
 - an inline review-thread comment by one of them at that sha, or
 - a check run named by its `check` at that sha, judged by the entry's `proof`:
-  - **`output`** (default) — `status == completed`, conclusion not `skipped` or `cancelled`, **and** a non-empty `output.title` or `output.summary`.
-  - **`completed`** — `status == completed`, conclusion not `skipped` or `cancelled`.
+  - **`output`** (default). `status == completed`, conclusion not `skipped` or `cancelled`, **and** a non-empty `output.title` or `output.summary`.
+  - **`completed`.** `status == completed`, conclusion not `skipped` or `cancelled`.
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
 
@@ -69,7 +69,7 @@ It answers exactly one question: *did the reviewer look at this commit?* Not whe
 |---|---|
 | Did the reviewer look at this commit? | 6 |
 | Were its findings addressed? | 5 |
-| Must the review check itself be green? | 3 — put its name in `ci.required` |
+| Must the review check itself be green? | 3: put its name in `ci.required` |
 
 Keeping those apart is what lets one rule work for reviewers that signal findings by failing *and* reviewers that never fail by design. Anthropic's managed Code Review always concludes `neutral` so it can never block a merge; requiring `success` here would mean its proof never arrives.
 
@@ -82,9 +82,9 @@ Keeping those apart is what lets one rule work for reviewers that signal finding
 
 `proof: output` rejects both. `proof: completed` accepts both. There is no third rule that reads only the check run and separates them, so the choice is which error to prefer, and it belongs to whoever knows their reviewer.
 
-Default to `output`. **A false pass is silent and permanent — a gate reporting satisfied while measuring nothing looks exactly like a healthy pass.** A false block is loud, and someone notices within a phase. When you must relax it, prefer fixing the reviewer to say something on a clean pass.
+Default to `output`. **A false pass is silent and permanent. A gate reporting satisfied while measuring nothing looks exactly like a healthy pass.** A false block is loud, and someone notices within a phase. When you must relax it, prefer fixing the reviewer to say something on a clean pass.
 
-When a gate blocks because a reviewer produced no artifact, say exactly that — "the reviewer ran but posted nothing" is a different problem from "the reviewer hasn't run", and the user can only act on the difference if you name it.
+When a gate blocks because a reviewer produced no artifact, say exactly that. "The reviewer ran but posted nothing" is a different problem from "the reviewer hasn't run", and the user can only act on the difference if you name it.
 
 ## Merging
 

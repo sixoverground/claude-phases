@@ -1,0 +1,54 @@
+name: Bug report
+description: The driver or planner did something wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The most useful thing you can include is the plan file's Driver State block and the phase row that went wrong. The driver writes its reasoning there, so it usually explains itself.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What the driver or planner did, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: plan-state
+    attributes:
+      label: Plan file state
+      description: The front matter, the PR Sequence Table row, and the Driver State block. Redact repo names if you need to.
+      render: markdown
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The plugin version, or the commit SHA if you installed from a clone.
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How the skills are installed
+      options:
+        - Plugin
+        - Account-level skills on claude.ai
+        - ~/.claude/skills
+        - .claude/skills in the repo
+    validations:
+      required: true
+
+  - type: textarea
+    id: setup
+    attributes:
+      label: CI and review setup
+      description: Which CI reports on your PRs, and which reviewer. A `profiles/` name is enough if you used one.
+
+  - type: checkboxes
+    id: yolo
+    attributes:
+      label: Was YOLO on?
+      options:
+        - label: YOLO was on when this happened

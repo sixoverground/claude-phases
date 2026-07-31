@@ -55,7 +55,7 @@ The smallest plan worth writing: add rate limiting to an existing API, in two ph
 - [ ] Set the flag on locally, hammer one endpoint past the limit, confirm a 429 with a `Retry-After` header
 - [ ] Wait for the bucket to refill; confirm requests succeed again
 
-**Risks.** Middleware order matters — registering after auth means unauthenticated floods aren't limited.
+**Risks.** Middleware order matters. Registering after auth means unauthenticated floods aren't limited.
 
 ---
 
@@ -73,7 +73,7 @@ The smallest plan worth writing: add rate limiting to an existing API, in two ph
 **UAT.**
 - [ ] Exceed the limit on a cheap endpoint; confirm 429 and that the response body is a useful error, not a stack trace
 - [ ] Confirm an expensive endpoint has its lower limit and returns 429 sooner
-- [ ] Confirm normal usage never trips the limit — click through the main flow at human speed
+- [ ] Confirm normal usage never trips the limit: click through the main flow at human speed
 - [ ] Check logs: rate-limit rejections should be visible without being noisy
 
 **Risks.** Limits set too low break real users, and it looks like an outage rather than a config error. Start generous.
