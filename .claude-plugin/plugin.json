@@ -1,0 +1,20 @@
+{
+  "name": "claude-phases",
+  "description": "Break work into phases and let a Claude Code session build them one PR at a time, steered from anywhere.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Craig Phares",
+    "url": "https://github.com/sixoverground"
+  },
+  "homepage": "https://github.com/sixoverground/claude-phases",
+  "repository": "https://github.com/sixoverground/claude-phases",
+  "license": "MIT",
+  "keywords": [
+    "planning",
+    "pull-requests",
+    "ci",
+    "code-review",
+    "multi-repo",
+    "automation"
+  ]
+}

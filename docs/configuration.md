@@ -1,6 +1,6 @@
 # Configuration reference
 
-Every key lives in the plan file's front matter under `phases:`. The only assumptions this project makes are **GitHub** and **Claude Code** — CI provider, languages, review setup, and branch conventions are all configurable, including "none at all" for each.
+Every key lives in the plan file's front matter under `phases:`. The only assumptions this project makes are **GitHub** and **Claude Code**. CI provider, languages, review setup, and branch conventions are all configurable, including "none at all" for each.
 
 Values in `defaults:` are inherited by every repo. Values under a specific repo deep-merge over them, so you override one key without restating the rest.
 
@@ -37,7 +37,7 @@ phases:
 | `branch_prefix` | `claude/` | Prefix for phase branches. Also how the driver recognizes its own branches |
 | `target_branch` | repo's default branch | What phases branch from and merge into |
 | `merge.method` | `squash` | `squash`, `merge`, or `rebase` |
-| `merge.delete_branch` | `true` | Delete the phase branch after the driver merges it. **YOLO-only** — with YOLO off the driver never merges, so it never deletes. Only applies to merges the driver performs — a human merging in the UI controls their own checkbox. Only ever deletes a branch matching `branch_prefix`, never the plan branch or a `target_branch`. `false` for repos whose rulesets require branches to persist |
+| `merge.delete_branch` | `true` | Delete the phase branch after the driver merges it. **YOLO-only**, with YOLO off the driver never merges, so it never deletes. Only applies to merges the driver performs, a human merging in the UI controls their own checkbox. Only ever deletes a branch matching `branch_prefix`, never the plan branch or a `target_branch`. `false` for repos whose rulesets require branches to persist |
 | `plan_writes` | `direct` | `direct`, or `plan-pr` when the plan branch is protected. `default-branch` is accepted as an alias for `direct`. See below |
 | `yolo` | `true` | `false` pins this repo to manual merges regardless of the global toggle. Config can only restrict, never force |
 
@@ -50,16 +50,16 @@ phases:
 
 | Value | Behavior |
 |---|---|
-| `local` | Run the repo's tests/build in the session container before pushing. Fastest loop — no CI round-trip. Needs the toolchain to be installable; a `SessionStart` hook is the reliable way to guarantee that |
+| `local` | Run the repo's tests/build in the session container before pushing. Fastest loop, no CI round-trip. Needs the toolchain to be installable; a `SessionStart` hook is the reliable way to guarantee that |
 | `ci` | Don't attempt a local build. Let CI verify |
 | `auto` | Try local; fall back to CI if the toolchain isn't there, **and say which path ran in the PR body** |
 | `none` | No verification. For docs-only repos |
 
 What's realistic:
 
-- **Web / backend** — `local`. Node, Python, Go, and Rust toolchains all install in the container.
-- **Android** — `auto`. JVM unit tests are feasible; emulator-backed instrumented tests belong in CI.
-- **iOS** — `ci`. Building needs macOS and Xcode; no Linux container has them.
+- **Web / backend.** `local`. Node, Python, Go, and Rust toolchains all install in the container.
+- **Android.** `auto`. JVM unit tests are feasible; emulator-backed instrumented tests belong in CI.
+- **iOS.** `ci`. Building needs macOS and Xcode; no Linux container has them.
 
 ### CI
 
@@ -68,12 +68,12 @@ The driver never asks which CI product you use. It asks three separable question
 | Key | Default | Meaning |
 |---|---|---|
 | `ci.required` | `[]` | Check names that must pass. `[]` means *every* counted check must pass |
-| `ci.ignore_checks` | `[]` | Check names excluded from counting. For advisory checks — coverage reporters, preview deploys |
+| `ci.ignore_checks` | `[]` | Check names excluded from counting. For advisory checks such as coverage reporters and preview deploys |
 | `ci.allow_none` | `false` | With `false`, zero checks **blocks** the merge (failsafe). Set `true` for repos with no CI |
 | `ci.dispatch` | `auto` | How the driver triggers a build |
 | `ci.logs` | `auto` | How the driver reads a failure |
 
-**What "pass" means.** A check passes when its conclusion is `success`, `skipped`, or **`neutral`**. This matches GitHub's own branch-protection semantics — `neutral` is explicitly a non-failing result, and advisory tools use it precisely so they never block a merge. Everything else blocks: `failure`, `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`. A check still running blocks until it finishes.
+**What "pass" means.** A check passes when its conclusion is `success`, `skipped`, or **`neutral`**. This matches GitHub's own branch-protection semantics. `neutral` is explicitly a non-failing result, and advisory tools use it precisely so they never block a merge. Everything else blocks: `failure`, `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`. A check still running blocks until it finishes.
 
 **Which checks count.** Three mechanisms, in precedence order:
 
@@ -92,7 +92,7 @@ A reviewer's check named in `review.required[].check` is **automatically exclude
 | `push` | Only ever trigger CI by pushing a commit |
 | `none` | Never dispatch. For CI that starts on its own conditions, like Xcode Cloud |
 
-**`ci.logs`** — this one determines how autonomously a red build gets fixed.
+**`ci.logs`**. This one determines how autonomously a red build gets fixed.
 
 | Value | Behavior |
 |---|---|
@@ -101,7 +101,7 @@ A reviewer's check named in `review.required[].check` is **automatically exclude
 | `none` | Red is red. Report and ask |
 | `auto` | Use Actions logs when the check belongs to an Actions run, otherwise fall back to `check-output` |
 
-**Observation is universal.** Whatever the provider, results reach the driver as check runs and commit statuses on the head commit — Actions, Xcode Cloud, CircleCI, Buildkite, Bitrise, Jenkins via the status API. The merge gate reads those, so it needs no provider-specific logic.
+**Observation is universal.** Whatever the provider, results reach the driver as check runs and commit statuses on the head commit. Actions, Xcode Cloud, CircleCI, Buildkite, Bitrise, Jenkins via the status API. The merge gate reads those, so it needs no provider-specific logic.
 
 ### Review
 
@@ -128,7 +128,7 @@ Each entry is satisfied when **any** of these is true for the current head commi
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
 
-#### `proof` — how much a check run has to show
+#### `proof`: how much a check run has to show
 
 | Value | A check run counts when | Use when |
 |---|---|---|
@@ -149,33 +149,33 @@ review:
 | First | 10s | `success` | Skipped on workflow validation. Reviewed **nothing** |
 | Later | 8.5 min, 37 turns | `success` | Genuinely reviewed. Posted **nothing** |
 
-Both produced a completed check run with empty output. `output` correctly rejects the first and wrongly rejects the second; `completed` correctly accepts the second and wrongly accepts the first. **No rule reading only the check run can separate them** — so this is a choice about which error you would rather make, and it belongs to whoever knows their reviewer.
+Both produced a completed check run with empty output. `output` correctly rejects the first and wrongly rejects the second; `completed` correctly accepts the second and wrongly accepts the first. **No rule reading only the check run can separate them**, so this is a choice about which error you would rather make, and it belongs to whoever knows their reviewer.
 
 Prefer `output`, and prefer a reviewer that says something on a clean pass. A false pass is silent and permanent; a false block is loud and you notice it within one phase.
 
-**Why conclusion is deliberately ignored here.** This gate answers one narrow question — *did the reviewer evaluate this commit?* — and a completed check answers it regardless of verdict. A review that found three bugs still reviewed the head. Three distinct questions used to ride on this one signal, and they're now separated:
+**Why conclusion is deliberately ignored here.** This gate answers one narrow question: *did the reviewer evaluate this commit?* A completed check answers it regardless of verdict. A review that found three bugs still reviewed the head. Three distinct questions used to ride on this one signal, and they're now separated:
 
 | Question | Answered by |
 |---|---|
-| Did the reviewer look at this commit? | This gate — a completed check at the head SHA |
+| Did the reviewer look at this commit? | This gate, a completed check at the head SHA |
 | Were its findings addressed? | `threads_must_resolve` |
-| Must the review check itself be green? | The checks gate — name it in `ci.required` |
+| Must the review check itself be green? | The checks gate, name it in `ci.required` |
 
 Keeping them apart is what lets one gate work for reviewers that signal findings by *failing* and reviewers that never fail by design. Anthropic's managed Code Review is the latter: its check run always completes `neutral` so it can never block a merge through branch protection. Requiring `success` here would mean its proof never arrives, and the merge would wait forever on a reviewer that had already done its job.
 
 **Why a green check alone isn't enough.** This is the one direction where being permissive is unsafe, and it bites in more ways than it first appears.
 
-A review workflow that doesn't review still produces a completed check run. It happens when a guard condition is false, a required secret is missing, the PR is a draft — or, in a case observed on this very repository, when `claude-code-action` refuses to run because the workflow file differs from the copy on the default branch. In that last case the *action* skipped while the *job* concluded `success`, ten seconds in, having read nothing. A conclusion-based rule counts that as a review.
+A review workflow that doesn't review still produces a completed check run. It happens when a guard condition is false, when a required secret is missing, when the PR is a draft, or, in a case observed on this very repository, when `claude-code-action` refuses to run because the workflow file differs from the copy on the default branch. In that last case the *action* skipped while the *job* concluded `success`, ten seconds in, having read nothing. A conclusion-based rule counts that as a review.
 
-So proof requires an artifact, not an exit code. A check run must carry output — a title or summary the reviewer wrote — for it to count. A job that exits 0 without reporting anything is indistinguishable from a job that never looked, and should be treated as the latter.
+So proof requires an artifact, not an exit code. A check run must carry output, a title or summary the reviewer wrote, for it to count. A job that exits 0 without reporting anything is indistinguishable from a job that never looked, and should be treated as the latter.
 
-The failure this prevents is the worst kind: the gate reports satisfied while measuring nothing, and it looks identical to a healthy pass. A reviewer that can't run should fail loudly instead — which is why the shipped workflow has no graceful-skip guard.
+The failure this prevents is the worst kind: the gate reports satisfied while measuring nothing, and it looks identical to a healthy pass. A reviewer that can't run should fail loudly instead, which is why the shipped workflow has no graceful-skip guard.
 
 Only diff-anchored comments create resolvable threads, so a reviewer must post **inline** comments for `threads_must_resolve` to mean anything.
 
 ### Reviewer setups
 
-All four are first-class, and they compose — require Copilot *and* a Claude check if you want both.
+All four are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
 
 | Setup | Config | Notes |
 |---|---|---|
@@ -206,16 +206,16 @@ YOLO controls exactly one thing: **who presses merge.**
 | Fix failing CI | driver | driver |
 | Address review comments, resolve threads | driver | driver |
 | Evaluate the gates | driver | driver |
-| **Press merge** | **driver, once gates pass** | **you** — the driver pings with the PR link and a gate summary |
+| **Press merge** | **driver, once gates pass** | **you**, the driver pings with the PR link and a gate summary |
 | Start the next phase after merge | driver | **driver** |
 
 **The next phase always continues after a merge, in both modes.** Merge from the GitHub mobile app with YOLO off and the driver notices, records it, and starts whatever that unblocks. Turning YOLO off buys a review checkpoint, not a manual pipeline.
 
-**YOLO also decides where UAT checklists go.** With it off, every PR carries its own phase's manual-test checklist, because you're there to read it. With it on, phases merge unattended and UAT is deferred to a single comprehensive test script on the **integration PR** the driver opens when the plan completes — or on the final phase's PR where phases already target the default branch and no integration PR exists. Toggling mid-plan is safe — `UAT-pending` in Driver State tracks what hasn't reached a human, so switching off mid-plan hands you the backlog along with the current phase. See [When UAT reaches a human](format.md#when-uat-reaches-a-human).
+**YOLO also decides where UAT checklists go.** With it off, every PR carries its own phase's manual-test checklist, because you're there to read it. With it on, phases merge unattended and UAT is deferred to a single comprehensive test script on the **integration PR** the driver opens when the plan completes, or on the final phase's PR where phases already target the default branch and no integration PR exists. Toggling mid-plan is safe. `UAT-pending` in Driver State tracks what hasn't reached a human, so switching off mid-plan hands you the backlog along with the current phase. See [When UAT reaches a human](format.md#when-uat-reaches-a-human).
 
-It lives in the plan's **Driver State** block, not front matter, because it's runtime state — say `yolo on` or `yolo off` and it takes effect on the next gate evaluation, including for PRs already open.
+It lives in the plan's **Driver State** block, not front matter, because it's runtime state. Say `yolo on` or `yolo off` and it takes effect on the next gate evaluation, including for PRs already open.
 
-A repo can set `yolo: false` in front matter to stay manual no matter what the toggle says. The effective rule is `YOLO(state) AND repo.yolo(config)` — config can only ever be more conservative.
+A repo can set `yolo: false` in front matter to stay manual no matter what the toggle says. The effective rule is `YOLO(state) AND repo.yolo(config)`: config can only ever be more conservative.
 
 ---
 
@@ -223,7 +223,7 @@ A repo can set `yolo: false` in front matter to stay manual no matter what the t
 
 By default the plan file sits on the home repo's default branch, and that's right for most projects.
 
-The requirement is narrower than "the default branch", though. The plan branch must be **a branch no phase PR modifies, readable without merging one** — that's what lets a fresh session reconstruct state. Two situations call for something other than the default:
+The requirement is narrower than "the default branch", though. The plan branch must be **a branch no phase PR modifies, readable without merging one**. That's what lets a fresh session reconstruct state. Two situations call for something other than the default:
 
 ### Feature-branch work
 
@@ -237,11 +237,11 @@ phases:
     target_branch: feature/calendar
 ```
 
-`plan_branch` being the same branch phase PRs merge into is fine — phase PRs never touch the plan file, so a squash merge can't conflict with it. The driver re-reads the plan's blob `sha` at the start of every transition, which is what keeps that safe.
+`plan_branch` being the same branch phase PRs merge into is fine. Phase PRs never touch the plan file, so a squash merge can't conflict with it. The driver re-reads the plan's blob `sha` at the start of every transition, which is what keeps that safe.
 
 Two things to get right:
 
-- **Create the branch first.** The planner refuses to write a plan whose `plan_branch` doesn't exist, and the driver stops rather than falling back to the default branch — a plan read from the wrong branch reports every phase as unstarted.
+- **Create the branch first.** The planner refuses to write a plan whose `plan_branch` doesn't exist, and the driver stops rather than falling back to the default branch. A plan read from the wrong branch reports every phase as unstarted.
 - **Don't delete it mid-plan.** If the feature branch merges and is deleted before the plan finishes, the plan goes with it. Move the plan file to the default branch first, or leave the branch until the last row is `Merged`.
 
 A feature branch is also usually unprotected, which means `plan_writes` can stay `direct` even when the default branch is locked down.
@@ -260,7 +260,7 @@ Each status transition then becomes a one-file PR against the plan branch with a
 
 ## Worked examples
 
-**A single repo with GitHub Actions and Copilot** — the common case:
+**A single repo with GitHub Actions and Copilot**, the common case:
 
 ```yaml
 phases:
@@ -286,7 +286,7 @@ phases:
 
 Every gate still runs; they just have nothing to block on. `changes_requested_blocks` and `threads_must_resolve` still apply to human reviewers.
 
-**Cross-platform, mixed everything** — see [`examples/cross-platform.md`](../examples/cross-platform.md).
+**Cross-platform, mixed everything.** See [`examples/cross-platform.md`](../examples/cross-platform.md).
 
 ---
 

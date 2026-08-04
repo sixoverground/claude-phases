@@ -5,8 +5,14 @@ name: Code Review
 # REQUIRES a CLAUDE_CODE_OAUTH_TOKEN repository secret. On Pro or Max, generate
 # it locally with `claude setup-token` and paste it into
 # Settings -> Secrets and variables -> Actions. Until that secret exists this
-# workflow fails — which is the correct signal, not a bug: a configured
+# workflow fails, which is the correct signal rather than a bug: a configured
 # reviewer that cannot authenticate should be visible, not silently skipped.
+#
+# The one case where failing is the wrong signal is a PR from a fork. GitHub
+# does not pass secrets to `pull_request` runs on forks, so the token would be
+# empty and the check would go red on a contribution its author cannot fix.
+# The job is skipped there instead. Do not reach for `pull_request_target` to
+# get the secret back: that runs the fork's code with write permissions.
 #
 # For metered API billing instead, replace the auth line with:
 #   anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -35,6 +41,8 @@ jobs:
   review:
     name: Claude review
     runs-on: ubuntu-latest
+    # Forks get no secrets. See the note at the top of this file.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
       # Required: the action restores trusted config (CLAUDE.md, .claude/, ...)
       # from origin/main before running, which needs a git repo present.

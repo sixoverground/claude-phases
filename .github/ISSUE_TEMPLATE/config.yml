@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/sixoverground/claude-phases/security/advisories/new
+    about: Report privately rather than in a public issue. See SECURITY.md.
+  - name: How a gate or key works
+    url: https://github.com/sixoverground/claude-phases/blob/main/docs/configuration.md
+    about: Every configuration key, its default, and its off switch.

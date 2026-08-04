@@ -1,14 +1,14 @@
 # Plan file format
 
-A plan is one markdown file, committed to a GitHub repo, that describes a piece of work split into phases — and doubles as the durable state of the driver executing it.
+A plan is one markdown file, committed to a GitHub repo, that describes a piece of work split into phases, and doubles as the durable state of the driver executing it.
 
 It lives at `docs/plans/<project>.md` in the project's **home repo**.
 
 Three parts:
 
-1. **Front matter** — immutable configuration.
-2. **PR Sequence Table** — one row per phase, with a `Status` column that is the execution cursor.
-3. **Driver State** — mutable runtime state: liveness, and the toggles you flip from your phone.
+1. **Front matter.** Immutable configuration.
+2. **PR Sequence Table**. One row per phase, with a `Status` column that is the execution cursor.
+3. **Driver State**. Mutable runtime state: liveness, and the toggles you flip from your phone.
 
 No value ever appears in two of those places. Config is config, per-phase status is the table, runtime state is Driver State.
 
@@ -16,16 +16,16 @@ No value ever appears in two of those places. Config is config, per-phase status
 
 ## Why the plan file holds the state
 
-A Claude Code cloud session is ephemeral. Its container is reclaimed after inactivity, its context compacts as it grows, and it can die at any point — mid-implementation, between opening a PR and recording it, between merging and advancing.
+A Claude Code cloud session is ephemeral. Its container is reclaimed after inactivity, its context compacts as it grows, and it can die at any point: mid-implementation, between opening a PR and recording it, or between merging and advancing.
 
 So the plan file is not documentation that happens to track progress. **It is the only durable state.** A fresh session must be able to reconstruct everything from the plan file plus what GitHub reports, with no memory of what came before. Every design rule below follows from that.
 
 Two invariants make it work:
 
-- **Status is written to the home repo's plan branch, never inside a phase PR.** A status written inside a PR is invisible until that PR merges, so a fresh session would see `Pending` for a phase that already has an open PR — and start it again.
+- **Status is written to the home repo's plan branch, never inside a phase PR.** A status written inside a PR is invisible until that PR merges, so a fresh session would see `Pending` for a phase that already has an open PR, and start it again.
 - **Phase PRs never modify the plan file.** One writer means a squash merge can never conflict with its own bookkeeping, no matter how far the plan branch has moved.
 
-The **plan branch** is `plan_branch`, defaulting to the home repo's default branch. What the first invariant actually requires is a branch that no phase PR modifies and that is readable without merging one — the default branch is the usual answer, not the only one. Feature-branch work, where every phase targets `feature/x` and nothing reaches `main` until the feature is whole, puts the plan on `feature/x` and satisfies it just as well.
+The **plan branch** is `plan_branch`, defaulting to the home repo's default branch. What the first invariant actually requires is a branch that no phase PR modifies and that is readable without merging one. The default branch is the usual answer, not the only one. Feature-branch work, where every phase targets `feature/x` and nothing reaches `main` until the feature is whole, puts the plan on `feature/x` and satisfies it just as well.
 
 ---
 
@@ -72,11 +72,11 @@ Per-repo values deep-merge over `defaults`. A single-repo project lists one repo
 |---|---|---|
 | `PR` | yes | Ordinal, for humans reading the table |
 | `Branch` | yes | The phase branch, prefixed with `branch_prefix` |
-| `Repo` | yes | `owner/name`. **This is what makes multi-repo work** — each row targets exactly one repo |
+| `Repo` | yes | `owner/name`. **This is what makes multi-repo work**: each row targets exactly one repo |
 | `Scope` | yes | One line. The detail lives in Phase Details below the table |
 | `Phase` | yes | Phase id, referenced by `Depends`. `3a`/`3b` for splits |
 | `Status` | yes | The cursor. See below |
-| `Link` | no | `-` or `owner/repo#42`. A cache only — always re-derivable from GitHub |
+| `Link` | no | `-` or `owner/repo#42`. A cache only, and always re-derivable from GitHub |
 | `Depends` | no | Comma-separated phase ids. Blank means "the previous row" |
 
 ```markdown
@@ -117,11 +117,11 @@ any non-terminal ──▶ Skipped
 
 ### Transition ordering
 
-The order matters — it's what makes each crash window recoverable:
+The order matters. It's what makes each crash window recoverable:
 
 1. `Pending → In Progress` is committed **before** the branch is created. This is the claim.
 2. Branch, implement, verify, push, open the PR.
-3. `In Progress → In Review` (plus `Link`) is committed **immediately** after the PR exists — before subscribing, before any long wait.
+3. `In Progress → In Review` (plus `Link`) is committed **immediately** after the PR exists, before subscribing, before any long wait.
 4. `In Review → Merged` is committed **after** the merge is confirmed.
 
 Each status commit goes to the home repo's plan branch with the blob `sha` read at the start of the transition. A stale sha fails the write, which is a free compare-and-swap against a second driver.
@@ -136,7 +136,7 @@ chore(plan): acme phase 3 -> In Review [skip ci]
 
 Three extra commits land on the plan branch per phase. Without `[skip ci]` they burn CI minutes or, worse, trigger deploys. Adding `paths-ignore: ['docs/plans/**']` to push-triggered workflows is belt and braces.
 
-A plan branch that isn't the default branch often sidesteps this entirely, since push-triggered workflows are commonly pinned to the default branch. Check rather than assume — a deploy pipeline that runs on every branch will still fire.
+A plan branch that isn't the default branch often sidesteps this entirely, since push-triggered workflows are commonly pinned to the default branch. Check rather than assume. A deploy pipeline that runs on every branch will still fire.
 
 ---
 
@@ -159,7 +159,7 @@ A plan branch that isn't the default branch often sidesteps this entirely, since
 | Field | Meaning |
 |---|---|
 | `Driver` | `running` normally; `paused` finishes the current step and starts nothing new; `idle` when the plan is complete |
-| `YOLO` | `on` — the driver merges once gates pass. `off` — you merge; the driver does everything else. Toggled at runtime |
+| `YOLO` | `on`: the driver merges once gates pass. `off`: you merge, and the driver does everything else. Toggled at runtime |
 | `Driver-ID` | Random token identifying the driver instance holding the plan. See below |
 | `Active` | One entry per in-flight phase. A list, so several repos can be in flight at once |
 | `UAT-pending` | Phase ids whose UAT checklist hasn't reached a human yet. See [When UAT reaches a human](#when-uat-reaches-a-human) |
@@ -172,10 +172,10 @@ Two drivers acting on one plan would race. But a *single* long-lived session tha
 
 | Condition | Action |
 |---|---|
-| `Driver-ID` matches the one I hold | It's me — proceed regardless of heartbeat age |
-| Different ID, heartbeat < 90 min | Another driver is live — report and stop |
+| `Driver-ID` matches the one I hold | It's me: proceed regardless of heartbeat age |
+| Different ID, heartbeat < 90 min | Another driver is live: report and stop |
 | Different ID, heartbeat stale | Take over: mint a new ID, continue |
-| No ID | Unclaimed — claim it |
+| No ID | Unclaimed: claim it |
 
 A fresh session holds no ID, so it always takes the third or fourth branch. A resuming session holds its own, so it never blocks itself.
 
@@ -228,15 +228,15 @@ Which PR carries the checklist depends on YOLO, because YOLO determines whether 
 | YOLO | Where the checklist goes |
 |---|---|
 | **off** | Every PR carries its own phase's UAT. You're merging each one, so you get the checklist at the moment you decide |
-| **on** | Phases merge unattended, so UAT is deferred to **one comprehensive test script** covering every phase — a single runnable list, not per-phase sections — plus the end-to-end flows that only make sense once everything has landed. It lands on the **integration PR** — `target_branch` → default branch, opened when the plan completes — or on the **final phase's PR** where phases already target the default branch and no integration PR exists |
+| **on** | Phases merge unattended, so UAT is deferred to **one comprehensive test script** covering every phase: one runnable list rather than per-phase sections, plus the end-to-end flows that only make sense once everything has landed. It lands on the **integration PR**: `target_branch` → default branch, opened when the plan completes, or on the **final phase's PR** where phases already target the default branch and no integration PR exists |
 
 **`UAT-pending` in Driver State tracks what hasn't been surfaced yet.** When a phase merges under YOLO on, its id is appended. When a PR carries a UAT checklist, the ids it covered are removed. This is what makes toggling safe: turn YOLO off after three auto-merged phases and the next PR carries its own UAT *plus* the three that nobody has verified. Turn it back on and they accumulate again.
 
-Without that list, a mid-plan toggle silently loses UAT for every phase that merged while YOLO was on — the failure would be invisible, because the plan would look complete.
+Without that list, a mid-plan toggle silently loses UAT for every phase that merged while YOLO was on. The failure would be invisible, because the plan would look complete.
 
 **The final phase** is the last non-`Skipped` row in table order. Under YOLO it is merged by the driver within minutes of opening, which is why the cumulative checklist belongs on the integration PR wherever one exists: a checklist on a PR nobody had to read is a record, not a prompt.
 
-If a plan somehow finishes with `UAT-pending` non-empty and no integration PR was opened — every repo targets its default branch, and the final phase was skipped or merged before the checklist was assembled — post the cumulative checklist as a GitHub issue titled `UAT: <project>` rather than dropping it.
+If a plan somehow finishes with `UAT-pending` non-empty and no integration PR was opened, which happens when every repo targets its default branch and the final phase was skipped or merged before the checklist was assembled, post the cumulative checklist as a GitHub issue titled `UAT: <project>` rather than dropping it.
 
 Set `uat: false` in a repo's config for repos where manual testing is meaningless.
 
@@ -249,13 +249,13 @@ The rules that make phases work, carried over from cpm where they're already pro
 - **One phase = one PR = one repo.** Never split a phase across repos; use two rows and a `Depends`.
 - **Sequential within a repo, parallel across repos.** Only declared dependencies serialize anything.
 - **Every phase leaves the project working.** A phase that requires the next one to compile isn't a phase.
-- **Size each phase to one session.** Roughly two hours of work. If it's bigger, split it into `3a` and `3b` — this is the single most common planning mistake, and it produces PRs nobody wants to review.
-- **Phase 0 is foundation** — dependencies, config, base architecture.
-- **The last phase is cleanup** — remove the legacy path, drop unused deps, final polish.
+- **Size each phase to one session.** Roughly two hours of work. If it's bigger, split it into `3a` and `3b`. This is the single most common planning mistake, and it produces PRs nobody wants to review.
+- **Phase 0 is foundation.** Dependencies, config, base architecture.
+- **The last phase is cleanup.** Remove the legacy path, drop unused deps, final polish.
 
 ## Recovery
 
-What a driver does when the plan and GitHub disagree — the situation after any crash:
+What a driver does when the plan and GitHub disagree, which is the situation after any crash:
 
 | Plan says | GitHub says | What happened | Action |
 |---|---|---|---|
@@ -270,4 +270,4 @@ What a driver does when the plan and GitHub disagree — the situation after any
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
 | all rows terminal | — | Complete | With YOLO on, open the integration PR if `target_branch` is not the default branch. Then set `Driver: idle` and report |
 
-Applied **per row**, not once per plan — with several repos in flight, each recovers independently.
+Applied **per row**, not once per plan. With several repos in flight, each recovers independently.

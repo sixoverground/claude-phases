@@ -21,7 +21,7 @@ phases:
     stuck: { max_cycles: 5 }
 
   repos:
-    # Node app, Actions CI, Copilot review — inherits everything.
+    # Node app, Actions CI, Copilot review, inherits everything.
     acme/acme-web: {}
 
     # Xcode Cloud: starts on its own PR conditions, no Actions log API.
@@ -56,7 +56,7 @@ phases:
 
 # acme-signin
 
-Replace the legacy sign-in with session tokens across web, iOS, and Android. Six phases. Four repos, four different CI and review setups — this example exists to show that they coexist without special-casing.
+Replace the legacy sign-in with session tokens across web, iOS, and Android. Six phases. Four repos, four different CI and review setups. This example exists to show that they coexist without special-casing.
 
 ## PR Sequence
 
@@ -71,7 +71,7 @@ Replace the legacy sign-in with session tokens across web, iOS, and Android. Six
 
 **Phases 2, 3, and 4 all depend only on phase 1**, so they run **concurrently** in three different repos as soon as the endpoints merge. Phase 5 is the cutover and waits for all three.
 
-Note that every parallel row names its dependency explicitly. A blank `Depends` means *"the previous row"*, so leaving these blank would chain iOS behind web and Android behind iOS — the exact serialization this plan is shaped to avoid.
+Note that every parallel row names its dependency explicitly. A blank `Depends` means *"the previous row"*, so leaving these blank would chain iOS behind web and Android behind iOS. The exact serialization this plan is shaped to avoid.
 
 ## Phase Details
 
@@ -118,7 +118,7 @@ Note that every parallel row names its dependency explicitly. A blank `Depends` 
 
 **Scope.** Sign-in screen wired to `POST /sessions`, token in the keychain.
 
-**Depends on.** Phase 1 — the endpoint must exist.
+**Depends on.** Phase 1: the endpoint must exist.
 
 **Acceptance criteria.**
 - [ ] Valid credentials navigate to Home
@@ -132,7 +132,7 @@ Note that every parallel row names its dependency explicitly. A blank `Depends` 
 - [ ] Airplane mode: a network error appears rather than a spinner that never ends
 - [ ] Sign out, then confirm relaunching does not restore the session
 
-**Risks.** Keychain access on first launch needs an entitlement. `verify: ci` here — no Linux container can build this, so CI is the only verification before review.
+**Risks.** Keychain access on first launch needs an entitlement. `verify: ci` here. No Linux container can build this, so CI is the only verification before review.
 
 ---
 
@@ -140,7 +140,7 @@ Note that every parallel row names its dependency explicitly. A blank `Depends` 
 
 **Scope.** Sign-in screen wired to `POST /sessions`, token in encrypted shared preferences.
 
-**Depends on.** Phase 1. **Not** on phase 2 — the platforms are independent and run at the same time.
+**Depends on.** Phase 1. **Not** on phase 2. The platforms are independent and run at the same time.
 
 **Acceptance criteria.**
 - [ ] Valid credentials navigate to Home
@@ -154,7 +154,7 @@ Note that every parallel row names its dependency explicitly. A blank `Depends` 
 - [ ] Rotate the device mid-sign-in; confirm no lost state or duplicate request
 - [ ] Airplane mode: a network error, not a hang
 
-**Risks.** `verify: auto` — JVM unit tests run in-session, instrumented tests only in CI, so device behavior is unverified until UAT.
+**Risks.** `verify: auto`. JVM unit tests run in-session, instrumented tests only in CI, so device behavior is unverified until UAT.
 
 ---
 
@@ -171,7 +171,7 @@ Note that every parallel row names its dependency explicitly. A blank `Depends` 
 **UAT.**
 - [ ] Follow the guide start to finish as a new integrator would; confirm the examples actually work when pasted
 
-**Risks.** None. This repo is pinned `yolo: false` — docs read by customers get a human look regardless of the global toggle.
+**Risks.** None. This repo is pinned `yolo: false`. Docs read by customers get a human look regardless of the global toggle.
 
 ---
 
@@ -179,7 +179,7 @@ Note that every parallel row names its dependency explicitly. A blank `Depends` 
 
 **Scope.** Delete the legacy path, drop its dependency, remove the dual-auth branch.
 
-**Depends on.** Phases 2, 3, and 4 — every client must be on sessions before the old path disappears.
+**Depends on.** Phases 2, 3, and 4. Every client must be on sessions before the old path disappears.
 
 **Acceptance criteria.**
 - [ ] No references to the legacy module remain
@@ -191,7 +191,7 @@ Note that every parallel row names its dependency explicitly. A blank `Depends` 
 - [ ] Confirm a legacy client now fails with a clear error rather than a 500
 - [ ] Watch error rates for an hour after deploy
 
-**Risks.** This is the irreversible one. If any client is still on legacy auth, this breaks it in production — confirm real traffic on the old path is zero before merging, not just that the phases merged.
+**Risks.** This is the irreversible one. If any client is still on legacy auth, this breaks it in production. Confirm real traffic on the old path is zero before merging, not just that the phases merged.
 
 ## Driver State
 
