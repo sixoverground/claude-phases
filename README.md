@@ -164,7 +164,17 @@ The [quick start](#quick-start) route. Both skills install together and update t
 
 ### As account-level skills
 
-Upload `skills/phase-planner/` and `skills/phase-driver/` in your claude.ai skills settings. Account skills are present in every Claude Code **cloud** session automatically, including sessions started from the mobile app, with nothing added to the repo you're driving. That property is the reason to choose this route: driving a plan from your phone needs no setup in the target repo.
+Account skills are present in every Claude Code **cloud** session automatically, including sessions started from the mobile app, with nothing added to the repo you're driving. That property is the reason to choose this route: driving a plan from your phone needs no setup in the target repo.
+
+The uploader takes one zip per skill, so there are two of them. Download `phase-planner.zip` and `phase-driver.zip` from the [latest release](https://github.com/sixoverground/claude-phases/releases/latest), then in claude.ai go to **Settings → Capabilities → Skills → Upload skill** and upload each file.
+
+To build the zips yourself from a clone, or from a branch that isn't released yet:
+
+```bash
+scripts/package-skills.sh          # writes dist/phase-planner.zip and dist/phase-driver.zip
+```
+
+Uploading a skill whose name already exists replaces it, which is also how you update: download the new zips and upload them again.
 
 ### As local skills
 

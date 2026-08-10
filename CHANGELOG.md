@@ -4,6 +4,17 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [Unreleased]
+
+### Fixed
+
+* `phase-planner`'s description no longer contains `<project>`. Skill installation rejects a description containing anything that parses as an XML tag, and one bad description fails the whole upload, so neither skill could be installed at the account level.
+
+### Packaging
+
+* `scripts/package-skills.sh` builds one zip per skill, rooted at the skill directory, which is the shape the claude.ai skills uploader expects.
+* A `Package skills` workflow attaches those zips to every published release, so installing at the account level is a download rather than a clone.
+
 ## [0.1.0]
 
 First release. Everything below was built with the project's own phased plan, and the version number starts here because nothing was published before it.

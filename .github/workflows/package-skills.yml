@@ -1,0 +1,44 @@
+name: Package skills
+
+# Builds `phase-planner.zip` and `phase-driver.zip` and attaches them to the
+# release, so uploading the skills to a claude.ai account is a download and two
+# file pickers rather than a clone and a shell.
+#
+# Publishing a release is what normally runs this. `workflow_dispatch` builds
+# the same zips from any branch and leaves them as a run artifact instead,
+# which is the way to check a packaging change before tagging.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Build skill zips
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: scripts/package-skills.sh
+
+      # On dispatch there is no release to attach to, so the zips land as a run
+      # artifact you can download from the run summary.
+      - name: Upload as run artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills
+          path: dist/*.zip
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # --clobber so re-running the job replaces the assets instead of
+        # failing on names that already exist.
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/*.zip --clobber
