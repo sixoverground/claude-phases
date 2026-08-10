@@ -143,7 +143,7 @@ CI is modelled as three separable capabilities rather than a list of vendors, so
 
 Review works the same way: Copilot, a Claude review workflow, humans only, several at once, or nobody.
 
-See [docs/configuration.md](docs/configuration.md), and [profiles/](profiles/) for copy-paste starting points.
+See [the configuration reference](skills/phase-planner/references/configuration.md), and [profiles/](profiles/) for copy-paste starting points.
 
 ## Where tests run
 
@@ -164,7 +164,17 @@ The [quick start](#quick-start) route. Both skills install together and update t
 
 ### As account-level skills
 
-Upload `skills/phase-planner/` and `skills/phase-driver/` in your claude.ai skills settings. Account skills are present in every Claude Code **cloud** session automatically, including sessions started from the mobile app, with nothing added to the repo you're driving. That property is the reason to choose this route: driving a plan from your phone needs no setup in the target repo.
+Account skills are present in every Claude Code **cloud** session automatically, including sessions started from the mobile app, with nothing added to the repo you're driving. That property is the reason to choose this route: driving a plan from your phone needs no setup in the target repo.
+
+The uploader takes one zip per skill, so there are two of them. Download `phase-planner.zip` and `phase-driver.zip` from the [latest release](https://github.com/sixoverground/claude-phases/releases/latest), then in claude.ai go to **Settings → Capabilities → Skills → Upload skill** and upload each file.
+
+To build the zips yourself from a clone, or from a branch that isn't released yet:
+
+```bash
+scripts/package-skills.sh          # writes dist/phase-planner.zip and dist/phase-driver.zip
+```
+
+Uploading a skill whose name already exists replaces it, which is also how you update: download the new zips and upload them again.
 
 ### As local skills
 
@@ -207,13 +217,15 @@ Treat the first plan you drive as a test, and read [SECURITY.md](SECURITY.md) be
 
 ## Documentation
 
-- [Plan file format](docs/format.md). Structure, status vocabulary, recovery.
-- [Configuration](docs/configuration.md). Every key, its default, and its off switch.
+- [Plan file format](skills/phase-planner/references/format.md). Structure, status vocabulary, recovery.
+- [Configuration](skills/phase-planner/references/configuration.md). Every key, its default, and its off switch.
 - [Reviewer setup](docs/review-setup.md). Managed Code Review, Actions, Copilot, or none.
 - [Design notes](docs/design.md). Why the rules are what they are, and what a green check doesn't tell you.
 - [Examples](examples/). A two-phase single repo, and a four-repo cross-platform plan.
 - [Profiles](profiles/). Copy-paste config for common CI and review setups.
 - [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md).
+
+The first two are the spec, and they live inside `phase-planner` rather than in `docs/` because an installed skill is a zip of its own directory and can't read this repo. They're written to be read on their own.
 
 ## Related
 

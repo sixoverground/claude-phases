@@ -123,7 +123,7 @@ identical content to the version on the repository's default branch.
 
 This is a security control, and a sensible one. Otherwise a PR author could edit the review workflow in their own PR to weaken or disable the review of that PR. The consequence is that **the PR which introduces the workflow is never reviewed by it**, and neither is any PR that modifies it. Reviews begin with the next PR after it merges.
 
-The trap: the job still concludes **`success`** in that state, having reviewed nothing. Don't read a green check on the introducing PR as confirmation the reviewer works. It only confirms the workflow parses. Verify on the *next* PR, and see [configuration.md](configuration.md#review) for how the merge gate decides what counts as proof that a review happened.
+The trap: the job still concludes **`success`** in that state, having reviewed nothing. Don't read a green check on the introducing PR as confirmation the reviewer works. It only confirms the workflow parses. Verify on the *next* PR, and see [the configuration reference](../skills/phase-planner/references/configuration.md#review) for how the merge gate decides what counts as proof that a review happened.
 
 ### Other authentication options
 
