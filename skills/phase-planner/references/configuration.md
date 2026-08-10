@@ -184,7 +184,7 @@ All four are first-class, and they compose. Require Copilot *and* a Claude check
 | **GitHub Copilot** | `required: [{ logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"] }]` | Enable the "Review new pushes" ruleset so anchors track the head |
 | **Humans only, or nobody** | `required: []` | Gates for `CHANGES_REQUESTED` and thread resolution still apply to human reviews |
 
-See [review-setup.md](review-setup.md) for the full walkthrough of each.
+See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/docs/review-setup.md) for the full walkthrough of each.
 
 ### Stuck detection
 
@@ -286,7 +286,7 @@ phases:
 
 Every gate still runs; they just have nothing to block on. `changes_requested_blocks` and `threads_must_resolve` still apply to human reviewers.
 
-**Cross-platform, mixed everything.** See [`examples/cross-platform.md`](../examples/cross-platform.md).
+**Cross-platform, mixed everything.** See [`examples/cross-platform.md`](https://github.com/sixoverground/claude-phases/blob/main/examples/cross-platform.md).
 
 ---
 
@@ -298,4 +298,4 @@ The planner refuses to write a plan whose gates can never pass, because that's a
 - a login in `review.required` that has never reviewed in that repo
 - `ci.allow_none: false` on a repo with no CI configured at all
 
-Copy-paste starting points for common setups live in [`profiles/`](../profiles/).
+Copy-paste starting points for common setups live in [`profiles/`](https://github.com/sixoverground/claude-phases/tree/main/profiles).

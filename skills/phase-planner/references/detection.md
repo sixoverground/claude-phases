@@ -18,7 +18,7 @@ The failure is not hypothetical: a phase in this project's own first real plan w
 
 Read it from the repository. Never assume `main`: `develop`, `master`, and `trunk` are all in the wild, and getting it wrong means every phase branches from the wrong place.
 
-Ask whether phases should target the default branch at all. Work that must land as a unit, a feature nobody wants half-shipped. Targets a long-running feature branch instead. When they say yes, confirm the branch exists in every repo, set `target_branch` on each, and set `plan_branch` to match in the home repo so the plan travels with the feature. See [Where the plan lives](../../../docs/configuration.md#where-the-plan-lives).
+Ask whether phases should target the default branch at all. Work that must land as a unit, a feature nobody wants half-shipped. Targets a long-running feature branch instead. When they say yes, confirm the branch exists in every repo, set `target_branch` on each, and set `plan_branch` to match in the home repo so the plan travels with the feature. See [Where the plan lives](configuration.md#where-the-plan-lives).
 
 ## Trigger filters → whether required checks can fire at all
 

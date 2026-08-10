@@ -7,26 +7,37 @@ name: Package skills
 # Publishing a release is what normally runs this. `workflow_dispatch` builds
 # the same zips from any branch and leaves them as a run artifact instead,
 # which is the way to check a packaging change before tagging.
+#
+# It also runs on every PR, for `check-skills.sh` rather than the zips: a
+# reference that climbs out of its skill directory works in this repo and is a
+# dead link once the skill is installed from a zip, so the moment to catch it
+# is the PR that adds it, not the release three weeks later.
 
 on:
   release:
     types: [published]
+  pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  package:
+  build:
     name: Build skill zips
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # Runs inside package-skills.sh too. Named here so a PR that breaks
+      # self-containment says so in the check name rather than in a log.
+      - name: Check skills are self-contained
+        run: scripts/check-skills.sh
+
       - name: Build
         run: scripts/package-skills.sh
 
-      # On dispatch there is no release to attach to, so the zips land as a run
+      # No release to attach to on a dispatch, so the zips land as a run
       # artifact you can download from the run summary.
       - name: Upload as run artifact
         if: github.event_name == 'workflow_dispatch'
@@ -35,8 +46,22 @@ jobs:
           name: skills
           path: dist/*.zip
 
+  release:
+    name: Attach zips to release
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    # The only step here that needs more than read, kept in its own job so PR
+    # runs never hold a write token.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: scripts/package-skills.sh
+
       - name: Attach to release
-        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
         # --clobber so re-running the job replaces the assets instead of

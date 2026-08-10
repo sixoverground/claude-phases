@@ -143,7 +143,7 @@ CI is modelled as three separable capabilities rather than a list of vendors, so
 
 Review works the same way: Copilot, a Claude review workflow, humans only, several at once, or nobody.
 
-See [docs/configuration.md](docs/configuration.md), and [profiles/](profiles/) for copy-paste starting points.
+See [the configuration reference](skills/phase-planner/references/configuration.md), and [profiles/](profiles/) for copy-paste starting points.
 
 ## Where tests run
 
@@ -217,13 +217,15 @@ Treat the first plan you drive as a test, and read [SECURITY.md](SECURITY.md) be
 
 ## Documentation
 
-- [Plan file format](docs/format.md). Structure, status vocabulary, recovery.
-- [Configuration](docs/configuration.md). Every key, its default, and its off switch.
+- [Plan file format](skills/phase-planner/references/format.md). Structure, status vocabulary, recovery.
+- [Configuration](skills/phase-planner/references/configuration.md). Every key, its default, and its off switch.
 - [Reviewer setup](docs/review-setup.md). Managed Code Review, Actions, Copilot, or none.
 - [Design notes](docs/design.md). Why the rules are what they are, and what a green check doesn't tell you.
 - [Examples](examples/). A two-phase single repo, and a four-repo cross-platform plan.
 - [Profiles](profiles/). Copy-paste config for common CI and review setups.
 - [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md).
+
+The first two are the spec, and they live inside `phase-planner` rather than in `docs/` because an installed skill is a zip of its own directory and can't read this repo. They're written to be read on their own.
 
 ## Related
 

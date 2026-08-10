@@ -14,7 +14,7 @@ The predecessor to this project, [cpm](https://github.com/sixoverground/claude-p
 
 Here it would be fatal. A status written inside a PR is invisible until that PR merges. A fresh session reading the plan would see `Pending` for a phase that already has an open PR, and start it a second time. Resume becomes structurally impossible, and the failure mode is duplicate branches for a single phase, the most confusing state to unpick.
 
-So the driver commits status before the action it describes: claim before branching, record the PR before waiting on it. Every crash window in [the recovery table](format.md#recovery) closes because of that ordering. It is the thing most worth not "tidying up" later.
+So the driver commits status before the action it describes: claim before branching, record the PR before waiting on it. Every crash window in [the recovery table](../skills/phase-planner/references/format.md#recovery) closes because of that ordering. It is the thing most worth not "tidying up" later.
 
 ### The plan branch is not necessarily the default branch
 

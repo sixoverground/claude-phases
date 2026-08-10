@@ -13,9 +13,11 @@ Two consequences:
 
 ## Three files have to agree
 
-`docs/format.md` specifies the plan file. `skills/phase-driver/SKILL.md` reads and writes it. `templates/plan.md.tmpl` is what the planner starts from. A change to any one of them is usually a change to all three, and the driver's crash recovery is what breaks when they drift.
+`skills/phase-planner/references/format.md` specifies the plan file. `skills/phase-driver/SKILL.md` reads and writes it. `skills/phase-planner/references/plan-template.md` is what the planner starts from. A change to any one of them is usually a change to all three, and the driver's crash recovery is what breaks when they drift.
 
-The same applies to `docs/configuration.md` and the `profiles/`: a new key needs a default, an off switch, and a profile that shows it in use.
+The same applies to `skills/phase-planner/references/configuration.md` and the `profiles/`: a new key needs a default, an off switch, and a profile that shows it in use.
+
+The spec lives inside the skill rather than in `docs/` so that `phase-planner` is self-contained: it's uploaded to claude.ai as a zip of its own directory, and anything outside that directory isn't there to read. Keep it that way. A reference in `skills/` may link out to the repo, but only with an absolute URL and only for further reading, never for something the skill needs to do its job.
 
 ## Test against a real repository
 

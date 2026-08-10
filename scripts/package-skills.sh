@@ -15,6 +15,10 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 command -v zip >/dev/null || { echo "package-skills: 'zip' is not installed" >&2; exit 1; }
 
+# A zip that references files outside its own skill is broken on arrival, and
+# nothing about the upload will say so. Refuse to build one.
+"$repo_root/scripts/check-skills.sh"
+
 # Resolved to an absolute path before the cd below, so a relative argument
 # stays relative to where you ran the script rather than to skills/.
 mkdir -p "${1:-$repo_root/dist}"

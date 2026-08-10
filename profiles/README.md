@@ -19,4 +19,4 @@ Pick one CI profile and one review profile per repo. They compose.
 | [`review-humans-only.yml`](review-humans-only.yml) | People review; no bot gate |
 | [`review-none.yml`](review-none.yml) | Nothing reviews |
 
-See [docs/configuration.md](../docs/configuration.md) for every key, and [docs/review-setup.md](../docs/review-setup.md) for how to actually turn each reviewer on.
+See [the configuration reference](../skills/phase-planner/references/configuration.md) for every key, and [docs/review-setup.md](../docs/review-setup.md) for how to actually turn each reviewer on.

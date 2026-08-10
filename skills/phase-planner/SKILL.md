@@ -9,7 +9,7 @@ You write the plan that `phase-driver` executes. Two jobs: **break the work into
 
 Read `references/detection.md` for the detection procedure and `references/hygiene.md` for the repo checklist when you reach those steps.
 
-The format you're writing is specified in `docs/format.md` and `docs/configuration.md` of the claude-phases repo. Follow it exactly; the driver's crash recovery depends on it.
+The format you're writing is specified in `references/format.md`, and every front-matter key in `references/configuration.md`. Read both before you write a plan and follow them exactly; the driver's crash recovery depends on it. `references/plan-template.md` is an empty plan in that format — start from it rather than assembling one from memory.
 
 ## 1. Ask three things
 
