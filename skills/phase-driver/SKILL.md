@@ -143,12 +143,17 @@ However the PR merged. You, the user from their phone, or anyone else:
 2. **Commit `Merged`** to the plan branch. If YOLO was on and the PR carried no UAT checklist, append that phase's id to `UAT-pending` in the same write.
 3. Comment on the PR and tell the user.
 4. **Start whatever rows that unblocks**, in the same turn, unless `Driver: paused`.
+5. **If that was the last row** — every row now `Merged` or `Skipped` — go to §8, in this same turn.
 
 A merge always advances the plan. YOLO changes who presses the button, never whether the plan moves.
+
+Step 5 is the one that gets skipped, so it is worth saying why it exists. Every other transition here is chained: §5 sends a merge to §7, and step 4 sends an unblocked row back to §3. The last merge is the one where step 4 finds nothing to start and the list simply ends, which feels like a completed turn because the previous merges ended the same way. It is not one. Finishing is a transition like any other, and §8 is unreachable from here unless you take it.
 
 ## 8. Finishing the plan
 
 When every row is `Merged` or `Skipped`, in this order: **open the integration PR if YOLO is on**, then set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
+
+**Two actions here, and only one of them is withheld.** *Opening* the integration PR is yours and needs no permission: YOLO means nobody was watching, and this PR is the entire handoff. *Merging* it is never yours. Read "never merge it" below as the second of those, not as the PR being off-limits.
 
 **Everything in this section is YOLO-only.** With YOLO off the developer merged every phase themselves and read every checklist as they went. They know exactly where the branch stands, and opening a PR to their default branch on their behalf presumes a decision they are already positioned to make. The handoff exists because YOLO means nobody was watching.
 
@@ -159,6 +164,8 @@ Phases usually target a feature branch rather than the default one, so that noth
 So, with YOLO on: **for each repo whose `target_branch` is not its default branch and which merged at least one phase, open a PR from `target_branch` to that repo's default branch.** Title it `<project>: <n> phases`. Body: what shipped, phase by phase with links; anything the plan recorded as deliberately out of scope; and any setup the feature needs that no PR could contain.
 
 **Never merge it. YOLO opens this PR and does not merge it**, and that is not an inconsistency. YOLO is a judgement about *phase* PRs. Work the plan produced, scoped by the plan, verified by the driver, gated per phase. This one is the whole feature landing on the branch everything else builds on, and none of that reasoning reaches it. Open it, report it, go idle.
+
+**A plan that calls this "the only human merge gate" is describing the merge.** Plans say that, in those words or close to them, because it is true and worth writing down. It is not an instruction to wait for permission before opening: the gate cannot gate anything until the PR exists, and a driver that reads it that way ends the plan by telling the user about a PR that isn't there. Front matter configures you; the plan's prose describes the work. Where the two appear to disagree about *opening* this PR, this section wins.
 
 Don't wait on its CI either. Checks that were scoped to the default branch may report here for the first time. CodeQL and mobile build services commonly are, and a first red result on a check no phase ever saw is information for the user, not a gate for you to drive to green.
 

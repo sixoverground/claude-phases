@@ -146,6 +146,10 @@ Phases target a feature branch so nothing reaches the default branch until the w
 
 So completion under YOLO opens an **integration PR** from `target_branch` to the default branch, and stops. It is the one PR in the system the driver never merges, even under YOLO, and the asymmetry is the point: YOLO is a judgement that *phase* PRs are safe to land unattended, because the driver wrote them against a scope, verified them, and drove their gates. None of that reasoning transfers to a diff spanning every phase landing on the branch everything else builds on.
 
+**Observed, on a six-phase plan: the driver merged the last phase and went idle without opening it.** Worth recording because the skill already said to, plainly, and the driver had read it. Two things caused it. Completion was the only transition in the skill with no inbound pointer, where every other one is chained, and the "after a merge" steps ended with *start whatever rows that unblocks*, which on the last merge finds nothing to start and terminates like a finished turn. And the plan's own prose called it "the only human merge gate", which the driver read as *don't open without permission* rather than *don't merge*. It then wrote that reading into the plan file and into its own scheduled check-ins, so every later wake re-read the mistake as settled fact.
+
+That second half is the more interesting one. A driver that records a wrong rule has made it permanent, which is the cost of the plan file being durable memory, and it is an argument for transitions in the skill being explicit rather than inferable from context that a compaction can drop.
+
 It is also where checks scoped to the default branch report for the first time. CodeQL default setup and hosted mobile build services are usually configured for the default branch only, so they never fire on a feature base. A plan can be entirely green and still meet those checks here for the first time. That is information for the user, not a gate for the driver to drive green.
 
 ### Why the cumulative UAT moved off the final phase PR
