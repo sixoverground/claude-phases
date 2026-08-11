@@ -36,7 +36,9 @@ Pin previews to the default branch, or accept that the pin needs moving when the
 
 ## Prevents clutter and confusion
 
-**Auto-delete merged branches** (Settings → General). The driver creates one branch per phase and does not clean them up after merging, so a twelve-phase plan leaves twelve stale branches. Turning this on makes GitHub do it for you.
+**Auto-delete merged branches** (Settings → General). The driver deletes each phase branch as it merges, but only when it is the one merging — with YOLO off it never merges, so it never deletes, and a twelve-phase plan a human merged from the UI leaves twelve stale branches unless GitHub is cleaning up.
+
+Turn it on regardless of how you plan to run. It also covers the case the driver cannot: some sandboxed environments permit pushes and PR operations while refusing ref deletion outright, at both the git and API layers. There the driver's delete fails every time and this setting is the only thing that cleans up, because GitHub performs it server-side on merge with nothing routed through the session.
 
 **Branch protection.** If the plan branch rejects direct pushes, the driver can't write plan status normally. Either allow the driver's identity to push, or set `plan_writes: plan-pr` so each status change becomes a small auto-merging PR. Detect this before the first phase rather than discovering it mid-run. A feature branch used as `plan_branch` is usually unprotected, which sidesteps this even when the default branch is locked down.
 
