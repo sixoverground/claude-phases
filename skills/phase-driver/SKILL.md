@@ -127,7 +127,9 @@ When a PR has no outstanding work, evaluate `references/gates.md` against it, us
 
 Delete only a branch **you** created: it must match that repo's `branch_prefix`, and it must not be the plan branch or any repo's `target_branch`. Those three checks are the whole guard, and skipping them is how a driver deletes the branch its own plan lives on.
 
-A failed delete is not a failed merge. Branch protection or a ruleset can forbid it; say so once and carry on, because the phase is merged either way and nothing downstream depends on the branch being gone.
+A failed delete is not a failed merge. Branch protection or a ruleset can forbid it, and so can the environment the session runs in — a sandboxed one may permit pushes and PR operations while refusing ref deletion at both the git and API layers. Say so once and carry on, because the phase is merged either way and nothing downstream depends on the branch being gone.
+
+**A second failure for the same reason is not incidental, so stop reporting it as though it were.** Say once that deletions are refused here and recommend turning on GitHub's own *Automatically delete head branches* (Settings → General), which runs server-side on merge and needs nothing from the driver. Without that, the driver shrugs once per phase for the length of the plan and the user finds a fully stale branch list at the end — losing the signal the deletion exists to preserve, that a branch which still exists means work which has not landed.
 
 `YOLO` lives in the Driver State block. A repo may also pin `yolo: false` in front matter, which wins, config can restrict, never enable.
 
