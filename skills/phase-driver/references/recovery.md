@@ -19,7 +19,7 @@ Apply this **per non-terminal row**, not once per plan. With several repos in fl
 | `In Review` | PR closed, not merged | A human killed it | Ask why. Default to `Blocked` if there's no answer |
 | `In Review` | no PR at all, branch gone | Someone cleaned up. **Not** the driver's own post-merge delete: that only ever runs on a branch whose PR is merged, and a merged PR still exists to be found | Reset to `Pending` |
 | `Blocked` | anything | Waiting on a human | Leave it. Only a user instruction clears `Blocked` |
-| all rows `Merged`/`Skipped` | — | Complete | With YOLO on, open the integration PR (SKILL.md §8). It is due unless one is already open — check, don't assume a previous driver got there. Then `Driver: idle`, summarize, stop |
+| all rows `Merged`/`Skipped` | — | Complete | Go to SKILL.md §8 and apply it, including its fallback where no integration PR is due. Where one is, the only reason not to open it is that one is already open — check, don't assume a previous driver got there. Then `Driver: idle`, summarize, stop |
 
 ## The plan branch is gone
 
