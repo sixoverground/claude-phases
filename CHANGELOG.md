@@ -4,9 +4,23 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
-## [Unreleased]
+## [0.3.0]
+
+### Reviewers that decide per push
+
+Some reviewers review a PR once and then judge, per push, whether another look is warranted. OpenAI's Codex calls this **smart detect**. Gate 6 anchors proof to the head commit, so the driver would push a CI fix, the reviewer would sensibly stay quiet, and the gate would wait forever for proof that was never coming.
+
+* `rereview: optional` on a `review.required` entry accepts a review of an earlier commit **on the same PR** once `rereview_grace` (default `15m`) has passed since the head was pushed. The default stays `required`, which is stricter and is still the right setting for a reviewer that reviews every push.
+* **A PR with no review at all never times out.** Smart detect reviews every PR once, so zero reviews means a broken integration rather than a decline. Without that precondition the option would decay into "wait fifteen minutes, then merge unreviewed", which is the silent false pass the rest of gate 6 exists to prevent.
+* The grace runs from the head commit's committer date, stamped at push, not from when the driver started waiting. Otherwise a driver waking an hour later times out on its first look.
+* A pass earned by a decline says so, in the gate report and on the PR. A decline recorded nowhere is indistinguishable from a review that happened.
+* Codex is documented as a reviewer setup, and `phase-planner` detects the case and asks whether the reviewer can be set to review every push before reaching for the weaker gate.
 
 ### Fixed
+
+* `.claude-plugin/plugin.json` reports the version it actually is. It read `0.1.0` at v0.2.0, v0.2.1 and v0.2.2, and since the install path is derived from that field, all three releases installed into a directory named `0.1.0` and the plugin manager could not tell them apart. Installations silently stayed several releases behind with nothing reporting a problem.
+
+> The three 0.2.x tags shipped without changelog entries or a version bump. Their notes are the ones below, previously sitting under `[Unreleased]`, and they are subsumed here rather than being backdated into releases that never carried them.
 
 * `phase-planner`'s description no longer contains `<project>`. Skill installation rejects a description containing anything that parses as an XML tag, and one bad description fails the whole upload, so neither skill could be installed at the account level.
 

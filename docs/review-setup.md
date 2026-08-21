@@ -2,13 +2,14 @@
 
 A code reviewer is optional. Nothing here is required to run a plan, but if you want the merge gate to mean something beyond "CI is green", you want one.
 
-Four setups are supported, they compose, and none of them is more "correct" than the others. Pick by what your plan and organization allow.
+Five setups are supported, they compose, and none of them is more "correct" than the others. Pick by what your plan and organization allow.
 
 | Setup | Cost | Plan required | Configured where | Can the planner set it up? |
 |---|---|---|---|---|
 | [Claude via GitHub Actions](#claude-via-github-actions) | Your subscription, or metered API + Actions minutes | **Any**, incl. Pro and Max | A workflow file in your repo | **Yes** |
 | [Managed Claude Code Review](#managed-claude-code-review) | ~$15–25 per review | Team or Enterprise | claude.ai admin settings | No, prints steps |
 | [GitHub Copilot](#github-copilot) | Per your Copilot plan | Any with Copilot | GitHub repo settings | No, prints steps |
+| [OpenAI Codex](#openai-codex) | Per your ChatGPT plan | Any with Codex | ChatGPT / GitHub app settings | No, prints steps |
 | [Humans only, or nobody](#humans-only-or-nobody) | Free | Any | Nothing to configure | N/A |
 
 On Pro or Max, start with the Actions setup. It authenticates against your existing subscription and needs no admin access.
@@ -175,6 +176,34 @@ Three logins because the reporting identity has varied; matching is case-insensi
 
 ---
 
+## OpenAI Codex
+
+**Setup**, in ChatGPT's Codex settings: connect the GitHub organization and enable code review for the repositories you want. Codex reviews as a GitHub App and posts inline comments, so thread resolution works without extra configuration.
+
+```yaml
+review:
+  required:
+    - logins: ["chatgpt-codex-connector"]
+      rereview: optional
+```
+
+**Read the login off a real review before trusting it.** Open the first PR Codex reviews and check the author, rather than copying the value above on faith. App logins change, and a wrong one blocks every phase.
+
+### Smart detect is why `rereview` exists
+
+Codex's review trigger has a **smart detect** mode, often the default, where it reviews a PR once and then decides per push whether another look is warranted. That is good behaviour from a reviewer and bad news for a head-anchored gate: the driver pushes a CI fix, Codex sensibly stays quiet, and gate 6 waits forever for proof that was never coming.
+
+Two ways out, in order of preference:
+
+1. **Set Codex to review every push**, and leave `rereview` at its default. The gate then holds real proof for every commit it merges. Always prefer this when the setting is available to you.
+2. **Set `rereview: optional`.** The entry is then also satisfied by a review of an earlier commit on the same PR, once `rereview_grace` (default `15m`) has passed since the head was pushed.
+
+Be clear-eyed about what option 2 costs: the driver can merge a commit Codex never read. What keeps it honest is that **a PR with no Codex review at all never times out**. Smart detect always reviews once, so zero reviews means the integration is broken, not that it declined, and the gate blocks accordingly.
+
+If Codex never reviews your first phase PR, that is the integration failing, and `rereview: optional` will correctly refuse to paper over it. Fix the connection rather than lowering the gate further.
+
+---
+
 ## Humans only, or nobody
 
 ```yaml
@@ -212,3 +241,5 @@ Open a throwaway PR and check three things:
 3. **Comments are inline**, attached to diff lines, not a single top-level comment. Only diff-anchored comments create resolvable threads, so a top-level-only reviewer makes `threads_must_resolve` meaningless.
 
 Then push a second commit and confirm the reviewer re-runs. If it doesn't, the merge gate will stall the first time the driver pushes a fix, which looks like waiting for CI, not like a misconfiguration, so it's worth catching now.
+
+If it doesn't re-run **by design**, because the reviewer decides per push whether another look is warranted, that is a `rereview: optional` case rather than a broken setup. See [Smart detect is why `rereview` exists](#smart-detect-is-why-rereview-exists).
