@@ -128,6 +128,8 @@ Each entry is satisfied when **any** of these is true for the current head commi
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
 
+Two per-entry settings adjust what counts, and they apply to different halves of that list. `proof` tunes how much a `check` has to show. `rereview` tunes whether a `logins` reviewer is allowed to skip a commit.
+
 #### `proof`: how much a check run has to show
 
 | Value | A check run counts when | Use when |
@@ -173,15 +175,52 @@ The failure this prevents is the worst kind: the gate reports satisfied while me
 
 Only diff-anchored comments create resolvable threads, so a reviewer must post **inline** comments for `threads_must_resolve` to mean anything.
 
+#### `rereview`: when a reviewer may decline to look again
+
+Some reviewers review a PR once and then judge, per push, whether another look is warranted. OpenAI's Codex calls this **smart detect**. It always reviews a PR once; it may decline to review a later push it considers uninteresting.
+
+That collides with a head-anchored gate. The driver pushes a CI fix, the reviewer reasonably says nothing, and the gate waits forever for proof that was never coming.
+
+| Value | An entry is satisfied when |
+|---|---|
+| `required` *(default)* | One of its `logins` reviewed **this head commit** |
+| `optional` | That, **or** one of them reviewed an earlier commit **on this PR** and `rereview_grace` has passed since the head was pushed |
+
+| Key | Default | Meaning |
+|---|---|---|
+| `rereview` | `required` | `optional` permits a reviewer to skip a commit |
+| `rereview_grace` | `15m` | How long to wait before reading silence as a decline. Only read when `rereview: optional` |
+
+```yaml
+review:
+  required:
+    - logins: ["chatgpt-codex-connector"]
+      rereview: optional
+      rereview_grace: 15m
+```
+
+**A PR with no review at all never times out.** This is the whole reason `optional` is safe, and it is not a detail to trim.
+
+At a head commit with no review, three realities produce the identical signal: the reviewer declined, the reviewer has not got to it yet, or the reviewer is broken. A timer alone separates the second from the other two and **cannot** separate a decline from a dead integration.
+
+What separates them is the reviewer's own contract. Smart detect reviews every PR once, so a PR carrying zero reviews is a broken integration, never a decline. The gate therefore keys on the PR having been reviewed at least once, and the timer only ever resolves latency. Without that precondition, `optional` degrades into "wait fifteen minutes, then merge unreviewed," which is precisely the silent false pass the `proof` discussion above exists to prevent.
+
+**The grace period runs from the head commit's push**, not from when the driver started waiting. A driver that wakes half an hour after a push would otherwise time out instantly and never give the reviewer a chance. Read the head commit's committer date, which is stamped at push time.
+
+**Set `rereview: optional` only for a reviewer you know behaves this way.** For a reviewer that reviews every push, the default is strictly better: it is the difference between proof and an assumption, and it costs nothing when the proof always arrives.
+
+**Considered and rejected: making the decline conditional on diff size**, so a large push could not be waved through. It sounds prudent and is not. The reviewer saw that push and declined; a line count is a strictly worse signal than the judgment it would be overriding, and encoding it would mean the gate second-guessing the reviewer it is configured to trust.
+
 ### Reviewer setups
 
-All four are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
+All five are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
 
 | Setup | Config | Notes |
 |---|---|---|
 | **Managed Claude Code Review** | `required: [{ check: "Claude Code Review" }]` | Enabled by an org Owner at [claude.ai/admin-settings/claude-code](https://claude.ai/admin-settings/claude-code), not by a file in this repo. Team/Enterprise, research preview. Set Review Behavior to **After every push** so re-reviews track the head and threads auto-resolve when you fix what was flagged |
 | **Claude via GitHub Actions** | `required: [{ check: "<job name>" }]` | A workflow using `anthropics/claude-code-action@v1` with the `code-review` plugin on `[opened, synchronize]`. Any plan; runs in your own CI; needs an `ANTHROPIC_API_KEY` repo secret |
 | **GitHub Copilot** | `required: [{ logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"] }]` | Enable the "Review new pushes" ruleset so anchors track the head |
+| **OpenAI Codex** | `required: [{ logins: ["chatgpt-codex-connector"], rereview: optional }]` | Reviews as a GitHub App with inline comments. On **smart detect** it reviews once and may skip later pushes, which is what `rereview: optional` is for. If it is set to review every push, drop the key and take the stronger default |
 | **Humans only, or nobody** | `required: []` | Gates for `CHANGES_REQUESTED` and thread resolution still apply to human reviews |
 
 See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/docs/review-setup.md) for the full walkthrough of each.

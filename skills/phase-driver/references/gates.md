@@ -11,7 +11,7 @@ Use the row's repo's resolved config (its entry deep-merged over `defaults`).
 | 3 | Checks green | Every counted check concluded `success`, `skipped`, or `neutral` | `ci.allow_none: true` covers the zero-checks case |
 | 4 | No changes requested | For each reviewer, their *latest* review is not `CHANGES_REQUESTED` | `review.changes_requested_blocks: false` |
 | 5 | Threads resolved | Every review thread has `isResolved == true` | `review.threads_must_resolve: false` |
-| 6 | Reviewer saw this commit | Every entry in `review.required` is satisfied at the head SHA | `review.required: []` (the default) |
+| 6 | Reviewer saw this commit | Every entry in `review.required` is satisfied at the head SHA, or declined it under `rereview: optional` | `review.required: []` (the default) |
 
 ## Gate 3: checks
 
@@ -60,6 +60,31 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
   - **`completed`.** `status == completed`, conclusion not `skipped` or `cancelled`.
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
+
+### `rereview: optional`
+
+An entry carrying `rereview: optional` has a second way to be satisfied, for reviewers that review a PR once and then decide per push whether to look again (OpenAI's Codex **smart detect**).
+
+| State at the head sha | Verdict |
+|---|---|
+| A `logins` review or inline comment at `head.sha` | **PASS** |
+| None at head, **at least one review by a `logins` entry anywhere on this PR**, and `rereview_grace` has elapsed since the head was pushed | **PASS**, as a decline |
+| None at head, at least one earlier review, grace not yet elapsed | **BLOCK.** Keep waiting |
+| **No review by that entry anywhere on this PR** | **BLOCK. Never times out** |
+
+That last row is load-bearing. Smart detect reviews every PR once, so a PR with zero reviews is a broken integration, not a decline, and it must never age into a pass. Drop the precondition and `optional` becomes "wait fifteen minutes, then merge unreviewed."
+
+**Measure the grace from the head commit's committer date**, which GitHub stamps at push. Measuring from when you started waiting means a driver that wakes an hour after the push times out on its first look, before the reviewer has had any chance at all.
+
+`rereview_grace` defaults to `15m`.
+
+**Say so when a pass came from a decline.** Under YOLO this is a merge with no fresh review, and it has to be legible afterward:
+
+```
+6 reviewer     PASS (codex @ a1b2c3d, declined re-review of 2 later commits, 18m elapsed)
+```
+
+Post the same line on the PR before merging. A decline recorded nowhere is indistinguishable from a review that happened, which is the exact failure the rest of this gate is built to avoid.
 
 ### Why gate 6 is written so carefully
 

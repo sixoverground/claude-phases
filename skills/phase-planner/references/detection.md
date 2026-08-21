@@ -63,14 +63,25 @@ From the same recent PRs, collect review authors and inline-comment authors.
 | Observed | Set |
 |---|---|
 | `copilot-pull-request-reviewer` / `github-copilot` / `copilot` | `required: [{ logins: [all three] }]` |
+| `chatgpt-codex-connector` | `required: [{ logins: ["chatgpt-codex-connector"] }]`, plus `rereview: optional` if it runs on smart detect |
 | A `Claude Code Review` check run | `required: [{ check: "Claude Code Review" }]` |
 | A Claude review workflow job | `required: [{ check: "<job name>" }]` |
 | Only humans | `required: []`, and mention that gates 4 and 5 still apply to them |
 | Nobody reviews | `required: []`, and say plainly that nothing will be checking the driver's work |
 
+**Read the login off a real review.** Reviewer app logins are not guessable and they change. If the reviewer has never reviewed in this repo, say so and either ask or list every plausible login in the entry: an entry is satisfied by *any* of its `logins`, so extra candidates cost nothing, and a wrong set blocks loudly rather than passing silently.
+
 **Check whether the reviewer's comments are inline.** Only diff-anchored comments create resolvable threads. A reviewer that posts one top-level summary makes `threads_must_resolve` meaningless. Warn rather than silently configure a gate that measures nothing.
 
 **Check whether it re-reviews on push.** Proof-of-review is anchored to the head commit, so a reviewer that only reviews on PR open goes stale the first time the driver pushes a fix, and the gate stalls. If you can't tell, say so. It's better surfaced now than discovered as a mysterious hang.
+
+### Reviewers that decide per push → `rereview`
+
+Some reviewers review a PR once, then judge each later push on its merits. Codex calls this **smart detect**, and it is often the default. The reviewer is working correctly and the gate still hangs, because a CI fix is exactly the kind of push it declines to re-read.
+
+Look for a PR where the head moved after the first review and no second review followed, then check the reviewer's own settings. If it can be set to review every push, prefer that and keep `rereview: required`. If it cannot, set `rereview: optional` and say what it buys and what it costs: the entry is then satisfied by a review of an earlier commit on the same PR once the grace period passes, so the driver can merge a commit that reviewer never read.
+
+Never set it for a reviewer that reviews every push. It trades proof for an assumption and gains nothing.
 
 ### `proof`
 
