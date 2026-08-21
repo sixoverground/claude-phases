@@ -1,0 +1,56 @@
+name: Release
+
+# Two halves of one policy, which is why they share a file.
+#
+# On a PR: fail if the plugin changed and its version didn't. The marketplace
+# serves plugin.json on the default branch, so an unbumped version means every
+# existing install already believes it has the change and no update is ever
+# offered. v0.2.0, v0.2.1 and v0.2.2 all shipped that way.
+#
+# On merge: create the tag and release for whatever version plugin.json now
+# declares. Deriving the tag from the manifest is what makes the two incapable
+# of disagreeing, and it retires the hand-run `gh release create`.
+#
+# Publishing the release is what fires package-skills.yml to attach the zips.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    # Only the manifest. Every other push to main is not a release, and a job
+    # that starts only to discover it has nothing to do is noise in the log.
+    paths: ['.claude-plugin/plugin.json']
+
+permissions:
+  contents: read
+
+jobs:
+  version-bumped:
+    name: Version bumped
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The check diffs against the merge base, which a shallow clone
+          # doesn't have.
+          fetch-depth: 0
+
+      - name: Check the version was bumped
+        run: scripts/check-version-bump.sh "${{ github.event.pull_request.base.sha }}"
+
+  release:
+    name: Tag and release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # The only job here that needs to write, kept narrow. PR runs never hold a
+    # write token because they never reach this job.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/release.sh
