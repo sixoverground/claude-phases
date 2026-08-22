@@ -198,9 +198,17 @@ Two ways out, in order of preference:
 1. **Set Codex to review every push**, and leave `rereview` at its default. The gate then holds real proof for every commit it merges. Always prefer this when the setting is available to you.
 2. **Set `rereview: optional`.** The entry is then also satisfied by a review of an earlier commit on the same PR, once `rereview_grace` (default `15m`) has passed since the head was pushed.
 
-Be clear-eyed about what option 2 costs: the driver can merge a commit Codex never read. What keeps it honest is that **a PR with no Codex review at all never times out**. Smart detect always reviews once, so zero reviews means the integration is broken, not that it declined, and the gate blocks accordingly.
+Be clear-eyed about what option 2 costs: the driver can merge a commit Codex never read. What keeps it honest is that **a PR with no sign of Codex at all never times out**. The gate blocks on a reviewer that has said nothing, on the grounds that the integration is broken rather than declining.
 
-If Codex never reviews your first phase PR, that is the integration failing, and `rereview: optional` will correctly refuse to paper over it. Fix the connection rather than lowering the gate further.
+### The thumbs up is a verdict
+
+Smart detect can also decide that an entire PR needs no review. When it does, it leaves a 👍 on the PR — the timeline reads `chatgpt-codex-connector[bot] reacted with thumbs up emoji` — and posts nothing else.
+
+The driver counts that reaction. Left after the current head was pushed, it satisfies the gate outright: Codex evaluated this commit and said so. Left earlier, it still counts as a sign that Codex has the PR, which is the precondition `rereview: optional` needs before a decline can be inferred from silence.
+
+Without that, a small PR could be reviewed correctly by Codex and still wedge the driver forever, because "reviewed it and found nothing to say" and "never connected" produce the same empty review list. The reaction is the only thing that separates them, and it was found the way most of this file was: a phase stuck behind a reviewer that had already answered.
+
+So if Codex leaves neither a review nor a reaction on your first phase PR, that is the integration failing, and `rereview: optional` will correctly refuse to paper over it. Fix the connection rather than lowering the gate further.
 
 ---
 
