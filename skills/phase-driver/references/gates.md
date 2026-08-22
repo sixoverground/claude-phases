@@ -55,11 +55,28 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 
 - a review by one of its `logins` with `commit_id == head.sha`, or
 - an inline review-thread comment by one of them at that sha, or
+- a **👍 reaction on the PR by one of its `logins`**, created at or after the head commit's committer date. See [The decline reaction](#the-decline-reaction), or
 - a check run named by its `check` at that sha, judged by the entry's `proof`:
   - **`output`** (default). `status == completed`, conclusion not `skipped` or `cancelled`, **and** a non-empty `output.title` or `output.summary`.
   - **`completed`.** `status == completed`, conclusion not `skipped` or `cancelled`.
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
+
+### The decline reaction
+
+Some reviewers answer "this PR doesn't need a review" with a reaction rather than a review. Codex on **smart detect** leaves a 👍 on the PR and posts nothing else. It has evaluated the PR; it is telling you the verdict in the only place it writes.
+
+A 👍 by one of the entry's `logins` **created at or after the head commit's committer date** is proof it evaluated this head, and gate 6 asks nothing more than that. An older one is not: GitHub allows one reaction per login per content, so the 👍 left at PR open cannot be left again for the commit you're about to merge, and its timestamp still points at the first evaluation. A stale 👍 proves only that the integration is alive, which is what [`rereview: optional`](#rereview-optional) does with it.
+
+**Read it attributed, or not at all:**
+
+```
+gh api repos/{owner}/{repo}/issues/{number}/reactions --jq '.[] | {login: .user.login, content, created_at}'
+```
+
+PR body reactions live on the *issues* endpoint; that is not a typo. If the reviewer put its 👍 on one of its own comments instead, the same fields come from that comment's `reactions` endpoint.
+
+**The trap: `issue_read` reports reaction counts, not who reacted.** A `"+1": 1` in that payload looks like the answer and isn't — a teammate giving the PR a thumbs up produces the identical field. Counting reactions instead of attributing them turns any human's 👍 into a merge, which is the silent false pass this gate exists to prevent. If you cannot reach the reactions endpoint, say so and fall back to the other rules. Never infer a reviewer's verdict from a count.
 
 ### `rereview: optional`
 
@@ -67,12 +84,16 @@ An entry carrying `rereview: optional` has a second way to be satisfied, for rev
 
 | State at the head sha | Verdict |
 |---|---|
-| A `logins` review or inline comment at `head.sha` | **PASS** |
-| None at head, **at least one review by a `logins` entry anywhere on this PR**, and `rereview_grace` has elapsed since the head was pushed | **PASS**, as a decline |
-| None at head, at least one earlier review, grace not yet elapsed | **BLOCK.** Keep waiting |
-| **No review by that entry anywhere on this PR** | **BLOCK. Never times out** |
+| A `logins` review, inline comment, or 👍 at `head.sha` | **PASS**, by the rules above |
+| None at head, **at least one sign of that reviewer anywhere on this PR**, and `rereview_grace` has elapsed since the head was pushed | **PASS**, as a decline |
+| None at head, at least one earlier sign, grace not yet elapsed | **BLOCK.** Keep waiting |
+| **No sign of that reviewer anywhere on this PR** | **BLOCK. Never times out** |
 
-That last row is load-bearing. Smart detect reviews every PR once, so a PR with zero reviews is a broken integration, not a decline, and it must never age into a pass. Drop the precondition and `optional` becomes "wait fifteen minutes, then merge unreviewed."
+A **sign** is a review, an inline comment, or a 👍 by one of the entry's `logins`, at any commit on this PR. Any one of them proves the integration is alive and that this reviewer has this PR.
+
+That last row is load-bearing. Smart detect always evaluates a PR once, so a PR carrying no sign at all is a broken integration, not a decline, and it must never age into a pass. Drop the precondition and `optional` becomes "wait fifteen minutes, then merge unreviewed."
+
+**Counting the 👍 as a sign is what fixes the case where smart detect declines from the very first commit.** Its evaluation of a small PR can be "nothing here worth reviewing", and then the reaction is the only thing it ever writes. Reading signs as reviews-only, that PR looks identical to a dead integration and blocks forever, which is the state this rule was found in: a real project, YOLO on, a phase wedged behind a reviewer that had already answered.
 
 **Measure the grace from the head commit's committer date**, which GitHub stamps at push. Measuring from when you started waiting means a driver that wakes an hour after the push times out on its first look, before the reviewer has had any chance at all.
 
@@ -85,6 +106,13 @@ That last row is load-bearing. Smart detect reviews every PR once, so a PR with 
 ```
 
 Post the same line on the PR before merging. A decline recorded nowhere is indistinguishable from a review that happened, which is the exact failure the rest of this gate is built to avoid.
+
+A pass carried by a 👍 says which one it was, because the two mean different things. A fresh reaction is the reviewer's verdict on this commit; a stale one is a decline inferred from silence:
+
+```
+6 reviewer     PASS (codex 👍 on the PR, 4m after this head was pushed)
+6 reviewer     PASS (codex 👍 at PR open, no review of 3 commits since, 22m elapsed)
+```
 
 ### Why gate 6 is written so carefully
 

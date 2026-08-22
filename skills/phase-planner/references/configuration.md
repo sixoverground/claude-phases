@@ -124,9 +124,12 @@ Each entry is satisfied when **any** of these is true for the current head commi
 
 - a review by one of its `logins` at that commit, or
 - an inline review-thread comment by one of them at that commit, or
+- a 👍 reaction on the PR by one of its `logins`, left at or after that commit was pushed, or
 - a check run named by its `check` at that commit, judged by that entry's `proof` setting.
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
+
+The 👍 is there because some reviewers answer "this needs no review" with a reaction and nothing else — Codex on smart detect does. It counts only from a login you configured, and only when it postdates the push, so a teammate's thumbs up and the reviewer's reaction from three commits ago both fail to satisfy anything. There is no key to turn it off: a reviewer that says "I looked and it's fine" has answered the only question this gate asks, and refusing to hear it just re-creates the hang.
 
 Two per-entry settings adjust what counts, and they apply to different halves of that list. `proof` tunes how much a `check` has to show. `rereview` tunes whether a `logins` reviewer is allowed to skip a commit.
 
@@ -183,8 +186,10 @@ That collides with a head-anchored gate. The driver pushes a CI fix, the reviewe
 
 | Value | An entry is satisfied when |
 |---|---|
-| `required` *(default)* | One of its `logins` reviewed **this head commit** |
-| `optional` | That, **or** one of them reviewed an earlier commit **on this PR** and `rereview_grace` has passed since the head was pushed |
+| `required` *(default)* | One of its `logins` reviewed **this head commit**, or 👍'd it after it was pushed |
+| `optional` | That, **or** one of them left a review, an inline comment, or a 👍 **anywhere on this PR** and `rereview_grace` has passed since the head was pushed |
+
+Under `optional`, that earlier sign is a precondition rather than a formality: **a PR with no sign of the reviewer at all never times out.** A reviewer that has said nothing whatsoever about a PR is a broken integration, not a decline, and the gate blocks until someone fixes it.
 
 | Key | Default | Meaning |
 |---|---|---|

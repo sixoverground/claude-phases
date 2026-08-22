@@ -4,6 +4,18 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.4.0]
+
+### A reviewer's thumbs up counts as a review
+
+Found driving a real project with YOLO on. Codex on smart detect can decide a PR needs no review at all, and when it does it leaves a 👍 on the PR and writes nothing else. 0.3.0 read that PR as having no review, which under `rereview: optional` is the one state that never times out, so the phase sat blocked behind a reviewer that had already answered.
+
+* A 👍 by one of an entry's `review.required` `logins`, left at or after the head commit was pushed, satisfies gate 6 on its own. It is the reviewer's verdict on that commit, which is the only thing the gate asks about.
+* An older 👍 counts as a **sign** the reviewer has the PR, alongside a review or an inline comment. `rereview: optional` needs one of those before it will read silence as a decline, and a PR carrying none of them still never times out.
+* The gate report distinguishes a pass carried by a fresh reaction from one inferred from silence, since they are different claims.
+* Reactions must be read **attributed**, via `gh api repos/{owner}/{repo}/issues/{number}/reactions`. The reaction counts in an issue payload are unattributed, and treating one as the reviewer's verdict would turn any teammate's thumbs up into a merge.
+* `phase-planner` looks for a 👍-only PR when detecting smart detect. It confirms the mode more directly than an absent second review does.
+
 ## [0.3.0]
 
 ### Reviewers that decide per push

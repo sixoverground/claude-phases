@@ -79,7 +79,9 @@ From the same recent PRs, collect review authors and inline-comment authors.
 
 Some reviewers review a PR once, then judge each later push on its merits. Codex calls this **smart detect**, and it is often the default. The reviewer is working correctly and the gate still hangs, because a CI fix is exactly the kind of push it declines to re-read.
 
-Look for a PR where the head moved after the first review and no second review followed, then check the reviewer's own settings. If it can be set to review every push, prefer that and keep `rereview: required`. If it cannot, set `rereview: optional` and say what it buys and what it costs: the entry is then satisfied by a review of an earlier commit on the same PR once the grace period passes, so the driver can merge a commit that reviewer never read.
+Look for a PR where the head moved after the first review and no second review followed, then check the reviewer's own settings.
+
+**Also look for a PR the reviewer never reviewed but 👍'd.** Smart detect can decide a whole PR needs no review, and then the reaction is the only thing it writes. `gh api repos/{owner}/{repo}/issues/{number}/reactions` shows who reacted; the PR page shows it as "reacted with thumbs up emoji". Finding one confirms smart detect more directly than an absent second review does, and it's worth saying in the handoff that those PRs pass the gate on the reaction. If it can be set to review every push, prefer that and keep `rereview: required`. If it cannot, set `rereview: optional` and say what it buys and what it costs: the entry is then satisfied by a review of an earlier commit on the same PR once the grace period passes, so the driver can merge a commit that reviewer never read.
 
 Never set it for a reviewer that reviews every push. It trades proof for an assumption and gains nothing.
 
