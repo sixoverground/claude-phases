@@ -5,7 +5,7 @@
 ci:
   required: []
   ignore_checks: []
-  allow_none: false        # zero checks blocks — a CI that stopped reporting
+  allow_none: false        # zero checks blocks. A CI that stopped reporting
                            # looks identical to a repo with no CI
   dispatch: auto           # uses workflow_dispatch when a workflow declares it
   logs: actions            # real failure text, so the driver can fix it itself

@@ -190,8 +190,8 @@ Optional, and written only by the driver. It goes after Driver State, and it exi
 ```markdown
 ## Carried findings
 
-- [ ] Retry/backoff is duplicated in three clients, should be one helper — raised on acme/acme-web#42 (review thread), out of scope for phase 3, which only touched the billing client
-- [x] Drop the unused `legacy_sync` flag — raised on acme/acme-web#44, folded into phase 7
+- [ ] Retry/backoff is duplicated in three clients, should be one helper. Raised on acme/acme-web#42 (review thread), out of scope for phase 3, which only touched the billing client
+- [x] Drop the unused `legacy_sync` flag. Raised on acme/acme-web#44, folded into phase 7
 ```
 
 One line per finding: **what**, **where it was raised**, and **why it wasn't done there**. A checked box means a phase now covers it, with that phase named.
@@ -285,13 +285,13 @@ What a driver does when the plan and GitHub disagree, which is the situation aft
 |---|---|---|---|
 | `Pending`, stale heartbeat | no branch, no PR | Never started | Start it |
 | `Pending` | open PR on the branch | Died before recording the PR | Adopt the PR, write `In Review` |
-| `In Progress`, foreign ID, heartbeat < 90 min | — | Another driver is live | Refuse, report |
+| `In Progress`, foreign ID, heartbeat < 90 min | - | Another driver is live | Refuse, report |
 | `In Progress`, stale | no branch | Claimed, died before any work | Reset to `Pending`, restart |
 | `In Progress`, stale | branch, no PR | Died mid-implementation | Inspect the diff against the scope; finish and open the PR, or reset |
 | `In Progress` | open PR | Died before recording the PR | Write `In Review`, adopt |
 | `In Review` | PR open | Normal | Re-subscribe, re-evaluate gates |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, advance |
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
-| all rows terminal | — | Complete | With YOLO on, open the integration PR if `target_branch` is not the default branch. Then set `Driver: idle` and report |
+| all rows terminal | - | Complete | With YOLO on, open the integration PR if `target_branch` is not the default branch. Then set `Driver: idle` and report |
 
 Applied **per row**, not once per plan. With several repos in flight, each recovers independently.

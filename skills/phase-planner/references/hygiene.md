@@ -36,7 +36,7 @@ Pin previews to the default branch, or accept that the pin needs moving when the
 
 ## Prevents clutter and confusion
 
-**Auto-delete merged branches** (Settings → General). The driver deletes each phase branch as it merges, but only when it is the one merging — with YOLO off it never merges, so it never deletes, and a twelve-phase plan a human merged from the UI leaves twelve stale branches unless GitHub is cleaning up.
+**Auto-delete merged branches** (Settings → General). The driver deletes each phase branch as it merges, but only when it is the one merging. With YOLO off it never merges, so it never deletes, and a twelve-phase plan a human merged from the UI leaves twelve stale branches unless GitHub is cleaning up.
 
 Turn it on regardless of how you plan to run. It also covers the case the driver cannot: some sandboxed environments permit pushes and PR operations while refusing ref deletion outright, at both the git and API layers. There the driver's delete fails every time and this setting is the only thing that cleans up, because GitHub performs it server-side on merge with nothing routed through the session.
 

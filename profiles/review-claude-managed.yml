@@ -1,5 +1,5 @@
 # Anthropic's managed Code Review (Team/Enterprise, research preview).
-# Enabled by an org Owner at claude.ai/admin-settings/claude-code — not by
+# Enabled by an org Owner at claude.ai/admin-settings/claude-code, not by
 # anything in this repo. Set Review Behavior to "After every push".
 review:
   required:

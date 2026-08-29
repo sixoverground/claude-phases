@@ -1,4 +1,4 @@
-# CircleCI, Buildkite, Jenkins, Bitrise — anything that posts check runs or
+# CircleCI, Buildkite, Jenkins, Bitrise: anything that posts check runs or
 # commit statuses to GitHub without a workflow file in the repo.
 ci:
   required: []
