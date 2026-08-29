@@ -165,6 +165,26 @@ Scope-declining resolves the thread, and disagreement does not. That difference 
 
 **Widening a phase because a reviewer suggested it is still widening it.** The scope came from a plan someone agreed to; a comment is a suggestion from a tool that has read this diff and nothing else.
 
+#### Stop when the rounds stop converging
+
+**Count the review rounds on this PR, and stop at `stuck.max_review_rounds`** (default `3`, `null` to disable).
+
+**Derive the count; never remember it.** It is the number of reviews submitted on this PR by any `review.required` entry, read from GitHub on the wake you are in. A session that keeps the tally in its head loses it to compaction and then sees round one again, which is how a PR reaches twenty-eight rounds with nobody able to say it had.
+
+`stuck.max_cycles` does not cover this. That one counts a gate failing with an **unmoved head**, and a review round moves the head every time by construction, so this loop reads as progress on every pass.
+
+At the threshold, **do not push again.** Mark the row `Blocked`, record the round count in `Note`, and post one comment on the PR containing:
+
+1. What you changed in each round so far, one line each.
+2. What is still flagged on the current head.
+3. **Whether the newest findings are new ground or the same class resurfacing in new places.**
+
+Line 3 is the one that earns the stop. "Round four, and the last three findings are the same retry-logic issue in three more files" says the phase needs reworking rather than another patch. "Round four, three unrelated real bugs" says carry on. Same count, opposite answers, and only the report tells them apart.
+
+**Do not ask "shall I continue?"** A bare question gets a yes, because nothing in it gives anyone grounds to say no. That is the observed failure: a stop at four rounds was approved and ran twenty-eight more. Report the evidence and let the answer follow from it.
+
+The user resumes with `continue`, which clears the stop and starts the budget again.
+
 When a PR has no outstanding work, evaluate `references/gates.md` against it, using that repo's resolved config. Then:
 
 - **YOLO on.** Re-read the head SHA as your *last* read before merging, with no other calls in between, and merge with that repo's `merge.method`. Then **delete the phase branch**, unless the repo sets `merge.delete_branch: false`.
@@ -181,6 +201,8 @@ A failed delete is not a failed merge. Branch protection or a ruleset can forbid
 `YOLO` lives in the Driver State block. A repo may also pin `yolo: false` in front matter, which wins, config can restrict, never enable.
 
 **If a gate fails for the same reason on consecutive wakes with an unmoved head**, count it. At `stuck.max_cycles` (default 5), mark that row `Blocked` with the reason and tell the user. Count per row: one stuck platform must not stall the others.
+
+The unmoved head is what this rule turns on, so it says nothing about a phase that is moving and getting nowhere. `stuck.max_review_rounds` in §5 covers that case.
 
 ## 7. After a merge
 

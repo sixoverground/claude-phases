@@ -17,6 +17,7 @@ Reconcile before answering anything. A stale answer from memory is worse than a 
 | `resume` | `Driver: running`. Reconcile and carry on |
 | `skip`, `skip phase 4: reason` | Mark `Skipped`, record the reason in Phase Details, advance |
 | `block <reason>` | Mark `Blocked` with the reason, stop working that row |
+| `continue`, "keep going" | Clear a review-round stop on that row and start the round budget again. Only meaningful on a row `Blocked` by `stuck.max_review_rounds` |
 | `smaller` | Split the current phase into `Na`/`Nb` in the plan, on the plan branch |
 | `replan <instruction>` | Edit the plan on the plan branch |
 | `abandon` | Close the PR, delete the branch, reset the row to `Pending` |

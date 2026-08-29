@@ -4,6 +4,18 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.6.0]
+
+### A stop for review rounds that keep going
+
+0.5.0 attacked the causes of a runaway review loop. This is the backstop for the causes nobody has found yet.
+
+* **`stuck.max_review_rounds`**, default `3`, `null` to disable. Counts reviews on one phase PR by any `review.required` entry. At the threshold the driver stops answering, marks the row `Blocked`, and reports.
+* **The count is derived from the PR, never remembered.** A session that tracks it loses the tally to compaction and then sees round one again, which is most of why a PR could reach thirty-two rounds with no session able to say it had.
+* **`stuck.max_cycles` could never have caught this.** It counts a gate failing against an unmoved head, and a review round moves the head every time, so the loop read as progress on every pass. The two counters cover genuinely different failures: stuck and waiting, versus moving and getting nowhere.
+* **The stop reports rather than asks.** It lists what changed each round, what is still flagged, and whether the newest findings are new ground or the same class resurfacing in new places. A bare "shall I continue?" collects a yes, which is exactly what happened at four rounds before it ran twenty-eight more.
+* `continue` clears the stop and restarts the budget.
+
 ## [0.5.1]
 
 ### Fixed

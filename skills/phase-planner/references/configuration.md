@@ -235,6 +235,13 @@ See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/d
 | Key | Default | Meaning |
 |---|---|---|
 | `stuck.max_cycles` | `5` | Consecutive wakes where a gate fails for the same reason, with an unmoved head, before the phase is marked `Blocked` |
+| `stuck.max_review_rounds` | `3` | Reviews on one phase PR, by any `review.required` entry, before the driver stops answering and reports. `null` disables it |
+
+**Why both.** `max_cycles` counts a gate stuck against an **unmoved head**. A review loop moves the head on every round, so it reads as progress and that counter never trips, which is how a single PR ran thirty-two review rounds. `max_review_rounds` is the guard for a phase that is moving and getting nowhere.
+
+The count is derived from the PR each time rather than tracked, so it survives a session dying mid-phase. A driver that remembered it would forget on compaction and start again from one.
+
+Raise it for a repo whose reviewer is genuinely thorough on large diffs. Lower it to `1` to have every phase report after a single round, which is a reasonable way to watch a new reviewer's behaviour before trusting it unattended.
 
 Counted per row, so one wedged platform never stalls the others.
 
