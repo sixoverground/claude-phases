@@ -28,6 +28,7 @@ Observed on a real phase: four review rounds, then twenty-eight more after the u
 
 ### Fixed
 
+* **Only 👍 is a verdict.** 0.4.0 said a reaction from a configured reviewer proves it evaluated the head, which is true of 👍 and false of the others. Codex answers `@codex review this pr` with 👀 within seconds to say it has picked the job up — observed here ten seconds after the request, with no review for minutes after. A rule matching on any reaction would merge on "I have started reading", which is worse than the silence it replaced because it arrives fast and looks like an answer. Gate 6 now matches on the reaction's content.
 * **v0.4.0 shipped with no skill zips.** GitHub raises no workflow-triggering event for a release created with the repository's `GITHUB_TOKEN`, so once `release.sh` took over publishing, the `release: published` run that attached the assets simply stopped happening. Every release through v0.3.0 was published by hand and got its zips; v0.4.0 was the first cut by the script and got none, silently.
 
   `release.sh` now attaches them in the same job that creates the release, and attaches them to an existing release when re-run, so a release missing its assets is repaired by dispatching the workflow rather than by burning a version. `package-skills.yml` keeps the PR check and the dispatch build, and no longer claims to handle releases.

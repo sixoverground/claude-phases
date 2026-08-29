@@ -129,7 +129,7 @@ Each entry is satisfied when **any** of these is true for the current head commi
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
 
-The 👍 is there because some reviewers answer "this needs no review" with a reaction and nothing else — Codex on smart detect does. It counts only from a login you configured, and only when it postdates the push, so a teammate's thumbs up and the reviewer's reaction from three commits ago both fail to satisfy anything. There is no key to turn it off: a reviewer that says "I looked and it's fine" has answered the only question this gate asks, and refusing to hear it just re-creates the hang.
+The 👍 is there because some reviewers answer "this needs no review" with a reaction and nothing else — Codex on smart detect does. It counts only from a login you configured, and only when it postdates the push, so a teammate's thumbs up and the reviewer's reaction from three commits ago both fail to satisfy anything. **Only 👍 counts**: the same reviewer uses 👀 to mean "picked it up, working", and treating that as a verdict would merge on an acknowledgement. There is no key to turn it off: a reviewer that says "I looked and it's fine" has answered the only question this gate asks, and refusing to hear it just re-creates the hang.
 
 Two per-entry settings adjust what counts, and they apply to different halves of that list. `proof` tunes how much a `check` has to show. `rereview` tunes whether a `logins` reviewer is allowed to skip a commit.
 
