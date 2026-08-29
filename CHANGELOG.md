@@ -14,7 +14,7 @@ Because the skills are prose read by a model, a "patch" here can still change be
 
 House style. Every em-dash in prose is gone, recast as a comma, a colon, or a separate sentence rather than swapped for an en-dash, which would be the same habit in disguise. Both skills, the docs, the profiles, and this file.
 
-The ones that remain are not prose: phase headings (`### Phase 2 — Sign-in screen`), Driver State `Active` entries, and the gate report that mirrors them. Those are separators in the format the driver reads and writes, and plans already in flight contain them, so changing them is a format change rather than a copy edit.
+The ones that remain are not prose: the separator in phase headings, the one in Driver State `Active` entries, and the gate report that mirrors them. Those are separators in the format the driver reads and writes, and plans already in flight contain them, so changing them is a format change rather than a copy edit.
 
 No rule changed. The version moves because the skills are what a model reads and their text is not inert.
 
