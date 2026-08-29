@@ -154,6 +154,7 @@ A plan branch that isn't the default branch often sidesteps this entirely, since
   - Phase 2 — acme/acme-ios#17 — In Review (gate: awaiting reviewer)
   - Phase 3 — acme/acme-android#9 — In Review (gate: CI pending)
 - UAT-pending: 0,1
+- Review-baselines: 2:4
 - Heartbeat: 2026-07-26T14:03:00Z
 - Note: -
 ```
@@ -165,6 +166,7 @@ A plan branch that isn't the default branch often sidesteps this entirely, since
 | `Driver-ID` | Random token identifying the driver instance holding the plan. See below |
 | `Active` | One entry per in-flight phase. A list, so several repos can be in flight at once |
 | `UAT-pending` | Phase ids whose UAT checklist hasn't reached a human yet. See [When UAT reaches a human](#when-uat-reaches-a-human) |
+| `Review-baselines` | `<phase id>:<count>` pairs, written when a user clears a review-round stop with `continue`. The driver subtracts a phase's baseline from its derived reviewed-head count. Per phase, because concurrent phases can each be stopped |
 | `Heartbeat` | UTC timestamp, rewritten on every turn that touches the plan |
 | `Note` | Free text for the current situation; the place a `Blocked` reason goes |
 

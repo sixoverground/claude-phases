@@ -169,7 +169,9 @@ Scope-declining resolves the thread, and disagreement does not. That difference 
 
 **Count the review rounds on this PR, and stop at `stuck.max_review_rounds`** (default `3`, `null` to disable).
 
-**Count reviewed heads, not reviews.** A round is one head commit that a required reviewer evaluated, so the count is the number of distinct shas on this PR for which **any** `review.required` entry is satisfied by gate 6's own test: a review or inline comment at that sha by one of its `logins`, a 👍 left at or after that head was pushed, or a check run named by its `check` at that sha passing the entry's `proof`.
+**Count reviewed heads, not reviews.** A round is one head commit that a required reviewer evaluated, so the count is the number of distinct shas on this PR for which **any** `review.required` entry is satisfied by gate 6's own test: a review or inline comment at that sha by one of its `logins`, a check run named by its `check` at that sha passing the entry's `proof`, or a 👍 that belongs to that head.
+
+**A reaction belongs to exactly one head.** It carries no sha, so bound it: a 👍 belongs to the head that was current when it was created, at or after that head's push and before the next head's push. Gate 6 asks only about the current head, where "at or after this head was pushed" is the whole test. Counting heads asks about all of them, and the same clause unbounded makes one reaction on the third head satisfy the first two as well, producing a count of three from a single 👍 and stopping the phase before one finding has been answered.
 
 Counting submissions instead breaks in both directions. Three required reviewers all reviewing the opening head would exhaust a budget of three before the driver had answered anything once, though answering all three costs a single push and is plainly one round. And a `check:` entry posts no review at all, so a submission count sits at zero forever for managed Claude review and for review workflows, and the stop never fires for the setups most able to loop.
 
@@ -187,9 +189,11 @@ Line 3 is the one that earns the stop. "Round four, and the last three findings 
 
 **Do not ask "shall I continue?"** A bare question gets a yes, because nothing in it gives anyone grounds to say no. That is the observed failure: a stop at four rounds was approved and ran twenty-eight more. Report the evidence and let the answer follow from it.
 
-The user resumes with `continue`. Starting the budget again means **writing down where it restarted**: put the current reviewed-head count in the row's `Note` as `review-baseline: N`, and subtract that baseline from every later count.
+The user resumes with `continue`. Starting the budget again means **writing down where it restarted**: add this phase's current reviewed-head count to `Review-baselines` in Driver State, as `<phase id>:<count>`, and subtract that phase's baseline from every later count.
 
 Without the baseline the stop is a trap rather than a checkpoint. The count is derived, so the next wake re-derives a number still at or above the threshold, blocks the row again, and no amount of saying `continue` moves it. The baseline is the one piece of this that has to be written down, for the same reason everything else in the plan file is: the session that agreed to continue will not be the session that carries on.
+
+**It is keyed by phase, and it is not the `Note`.** Phases run concurrently across repos, so two rows can be stopped at once, and an unqualified baseline would be overwritten by whichever row was continued last, then subtracted from the wrong phase. `Note` is one plan-wide free-text field and cannot hold per-phase state that anything reads back. `Review-baselines` sits beside `UAT-pending`, which is per-phase runtime state for the same reason.
 
 When a PR has no outstanding work, evaluate `references/gates.md` against it, using that repo's resolved config. Then:
 

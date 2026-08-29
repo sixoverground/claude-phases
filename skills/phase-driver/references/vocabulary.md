@@ -17,7 +17,7 @@ Reconcile before answering anything. A stale answer from memory is worse than a 
 | `resume` | `Driver: running`. Reconcile and carry on |
 | `skip`, `skip phase 4: reason` | Mark `Skipped`, record the reason in Phase Details, advance |
 | `block <reason>` | Mark `Blocked` with the reason, stop working that row |
-| `continue`, "keep going" | Clear a review-round stop: write the current reviewed-head count to the row's `Note` as `review-baseline: N`, set the row back to `In Review`, and carry on. Without that baseline the next wake re-derives the same count and blocks again |
+| `continue`, "keep going" | Clear a review-round stop: add `<phase id>:<count>` to `Review-baselines` in Driver State with that phase's current reviewed-head count, set the row back to `In Review`, and carry on. Without that baseline the next wake re-derives the same count and blocks again. Name the phase if more than one is stopped |
 | `smaller` | Split the current phase into `Na`/`Nb` in the plan, on the plan branch |
 | `replan <instruction>` | Edit the plan on the plan branch |
 | `abandon` | Close the PR, delete the branch, reset the row to `Pending` |
