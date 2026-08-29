@@ -9,10 +9,16 @@
 #
 # Idempotent. A plugin.json edit that doesn't touch the version (a description,
 # a keyword) finds its tag already present and exits quietly, so this is safe to
-# re-run and safe to fire on any push that touches the manifest.
+# re-run and safe to fire on any push that touches the manifest. Re-running it
+# still ensures the skill zips are attached, which is how a release that missed
+# them gets them without cutting a new version.
 #
-# Publishing the release is what triggers package-skills.yml to attach the zips,
-# so this deliberately creates a real release and not just a tag.
+# It attaches the zips itself rather than leaving that to package-skills.yml.
+# GitHub does not start a workflow from an event raised with the repository's
+# GITHUB_TOKEN, so a release created here fires no `release: published` run at
+# all. That is not a subtlety anyone should have to hold: v0.2.0 through v0.3.0
+# were published by hand and got their zips, v0.4.0 was the first cut by this
+# script and shipped with none, and nothing failed to say so.
 #
 # Usage: scripts/release.sh [--dry-run]
 
@@ -31,8 +37,23 @@ version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .cl
 
 tag="v$version"
 
+# Attaching is separate from creating so that re-running against an existing
+# release repairs its assets instead of exiting on the first check.
+attach_zips() {
+  local out
+  out="$(mktemp -d)"
+  "$repo_root/scripts/package-skills.sh" "$out" >/dev/null
+  # --clobber so a re-run replaces the assets rather than failing on names that
+  # are already there.
+  gh release upload "$tag" "$out"/*.zip --clobber
+  rm -rf "$out"
+  echo "release: attached skill zips to $tag"
+}
+
 if gh release view "$tag" >/dev/null 2>&1; then
-  echo "release: $tag already released, nothing to do"
+  echo "release: $tag already released"
+  [ -n "$dry_run" ] && { echo "release: would ensure skill zips are attached"; exit 0; }
+  attach_zips
   exit 0
 fi
 
@@ -68,3 +89,5 @@ else
 fi
 
 echo "release: created $tag"
+
+attach_zips

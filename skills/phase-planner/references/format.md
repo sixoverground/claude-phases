@@ -12,6 +12,8 @@ Three parts:
 
 No value ever appears in two of those places. Config is config, per-phase status is the table, runtime state is Driver State.
 
+A fourth section, **Carried findings**, appears only once something has been recorded in it. It holds work the driver was told about and deliberately did not do. It is not state, and nothing reads it to decide what to run.
+
 ---
 
 ## Why the plan file holds the state
@@ -178,6 +180,28 @@ Two drivers acting on one plan would race. But a *single* long-lived session tha
 | No ID | Unclaimed: claim it |
 
 A fresh session holds no ID, so it always takes the third or fourth branch. A resuming session holds its own, so it never blocks itself.
+
+---
+
+## Carried findings
+
+Optional, and written only by the driver. It goes after Driver State, and it exists so that a finding the driver was right not to act on doesn't have to be either implemented or forgotten.
+
+```markdown
+## Carried findings
+
+- [ ] Retry/backoff is duplicated in three clients, should be one helper — raised on acme/acme-web#42 (review thread), out of scope for phase 3, which only touched the billing client
+- [x] Drop the unused `legacy_sync` flag — raised on acme/acme-web#44, folded into phase 7
+```
+
+One line per finding: **what**, **where it was raised**, and **why it wasn't done there**. A checked box means a phase now covers it, with that phase named.
+
+The rules that keep it useful:
+
+- **The driver appends; it never writes phases.** Recording a finding is execution. Turning one into a phase is planning, with scope, acceptance criteria, UAT and dependencies to write, and it belongs to `phase-planner` and the person whose plan it is. A driver that adds phases is re-planning a project mid-flight on a reviewer's suggestion.
+- **Nothing schedules off this list.** It is not status, no gate reads it, and an open entry never blocks a phase. Its only readers are people and the planner.
+- **It is not a bug tracker.** A defect that stands on its own, unrelated to what the plan is delivering, belongs in an issue. This is for work that makes sense *for this plan* but not *for the phase it was raised on*.
+- **It gets read out.** The driver names any open entries when the plan finishes, in the same breath as outstanding UAT, so a plan cannot quietly complete with a list nobody looked at.
 
 ---
 

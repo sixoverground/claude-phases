@@ -69,6 +69,8 @@ From the same recent PRs, collect review authors and inline-comment authors.
 | Only humans | `required: []`, and mention that gates 4 and 5 still apply to them |
 | Nobody reviews | `required: []`, and say plainly that nothing will be checking the driver's work |
 
+**Check who opened the PRs it reviewed.** Reviewer integrations attach to an account, so a reviewer may only look at PRs opened by the user who connected it. If every PR it reviewed was opened by one person, say so in the handoff: phase PRs have to be opened by that account or they are never reviewed at all, and the gate then waits on a review nobody requested.
+
 **Read the login off a real review.** Reviewer app logins are not guessable and they change. If the reviewer has never reviewed in this repo, say so and either ask or list every plausible login in the entry: an entry is satisfied by *any* of its `logins`, so extra candidates cost nothing, and a wrong set blocks loudly rather than passing silently.
 
 **Check whether the reviewer's comments are inline.** Only diff-anchored comments create resolvable threads. A reviewer that posts one top-level summary makes `threads_must_resolve` meaningless. Warn rather than silently configure a gate that measures nothing.

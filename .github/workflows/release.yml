@@ -11,7 +11,14 @@ name: Release
 # declares. Deriving the tag from the manifest is what makes the two incapable
 # of disagreeing, and it retires the hand-run `gh release create`.
 #
-# Publishing the release is what fires package-skills.yml to attach the zips.
+# The release job attaches the skill zips itself. It cannot delegate that to
+# package-skills.yml: GitHub starts no workflow from an event raised with the
+# repository's GITHUB_TOKEN, so a release created here publishes without firing
+# anything. v0.4.0 shipped with no assets for exactly that reason.
+#
+# `workflow_dispatch` re-runs the same job by hand, which is how a release that
+# is missing its zips gets them without a version bump: release.sh finds the tag
+# present and attaches the assets anyway.
 
 on:
   pull_request:
@@ -20,6 +27,7 @@ on:
     # Only the manifest. Every other push to main is not a release, and a job
     # that starts only to discover it has nothing to do is noise in the log.
     paths: ['.claude-plugin/plugin.json']
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -41,14 +49,21 @@ jobs:
 
   release:
     name: Tag and release
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     # The only job here that needs to write, kept narrow. PR runs never hold a
     # write token because they never reach this job.
     permissions:
       contents: write
     steps:
+      # Pinned to main, not to the ref this ran on. A dispatch can name any
+      # branch, and an unpinned checkout would read that branch's plugin.json,
+      # build its zips, and hand them to `gh release create --target main` —
+      # publishing a tag that points at main's code with a feature branch's
+      # assets attached. The marketplace serves main, so main is what ships.
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Tag and release
         env:

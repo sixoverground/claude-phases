@@ -66,6 +66,23 @@ For each, in order:
    - `none`. Skip verification.
 6. **Push and open the PR**, titled `Phase N: <scope>`. Body: the acceptance criteria as a checklist, **which verification path actually ran**, the UAT checklist per the rules below, anything out of scope you noticed, and `Driven by phase-driver, do not edit the plan file in this PR`.
 7. **Commit `In Review`** and the `Link`, immediately, before subscribing, before any wait. A PR that exists but isn't recorded is the most expensive state to recover from.
+8. **Read back who opened it**, from the PR's own `user.login`. See below.
+
+### Who opens the PR decides whether it gets reviewed
+
+Some reviewer integrations attach to an account. Codex reviews pull requests opened by the user who connected it and ignores everyone else's. So for those, the identity that *opens* the PR is a functional part of the merge gate, not a cosmetic detail: open a phase PR as a bot or app identity and no review is ever requested, gate 6 waits on proof that was never coming, and YOLO stops with nothing red to look at.
+
+**Not every reviewer works that way**, and saying so matters because the wrong diagnosis here recommends closing a healthy PR. A review workflow triggered by `pull_request` reviews whatever lands in the repo whoever opened it, and a `check:` entry has no connected user to compare against at all. The opener matters for a `logins` entry backed by an account-scoped integration; elsewhere an unexpected opener is worth a sentence, not an alarm.
+
+**Open the PR with the GitHub MCP tools, not `gh pr create`.** This is the whole rule, and it is not a style preference. In a cloud session `gh` is authenticated as the integration rather than as you, so `gh pr create` opens the PR as that app identity; the MCP tools act with the user's own authorization and open it as them. Both succeed, both print a PR URL, and only one of them gets reviewed. Push with git as usual — it is the PR-opening call that decides the author.
+
+This is about the opener only. Commit authorship and `Co-Authored-By` trailers change nothing here, and no trailer will make a reviewer look at a PR opened by an account it doesn't watch.
+
+**Then check, against the account your GitHub tools authenticate as** — `get_me`, read once per session. That is the identity the MCP tools open PRs with, so a PR whose `user.login` differs was opened by some other path, which is the failure this catches. Nothing needs to be configured for this: the comparison is between two things you can read, and a plan carries no field naming the expected opener.
+
+If they differ, say so in the phase report and on the PR before waiting on anything. Name the login that opened it, and name the affected `review.required` entries — the account-scoped ones — rather than asserting that review is broken in general. The fix is usually to close it and reopen from the right account, which is cheap now and expensive after five gate cycles.
+
+Do not let this become a silent wait. A reviewer that was never asked looks exactly like a reviewer that is slow.
 
 ### UAT checklists
 
@@ -109,14 +126,44 @@ Message the user what you started and where. Then **end your turn.** Sleeping is
 Reconcile first. Then handle what woke you, against the row it belongs to:
 
 - **A check failed.** Read `references/gates.md` for how to get the failure text for that repo's `ci.logs` setting. Fix it and push. One re-run per head commit is allowed for a suspected flake, and say in the PR that you re-ran it. Beyond that, treat it as a real failure.
-- **A review comment or thread.** Address it in code, push, then resolve the thread. Never resolve a thread you disagree with: reply explaining why, and leave it open for a human.
+- **A review comment or thread.** See [Answering a review](#answering-a-review) below. Never resolve a thread you disagree with on the merits: reply explaining why, and leave it open for a human.
 - **A merge conflict.** Update the branch from base; if that fails, resolve it in the working tree and push. After two failed attempts, mark `Blocked`.
 - **The head moved.** Discard that row's gate result and re-evaluate from scratch. A gate result is only ever valid for the commit it was computed against.
 - **The PR was merged by anyone.** Go to step 7. This is expected, not an anomaly.
 - **A message from the user**, see `references/vocabulary.md`.
 - **Nothing actionable**, re-arm the check-in and end the turn.
 
-## 6. Evaluate the gate
+### Answering a review
+
+A review round costs a push, a CI run, and another review. Observed on a real phase: four rounds, then twenty-eight more after the user approved continuing, on a PR that was never going to converge because each round was answering comments one at a time and taking every one of them as an order.
+
+**Fix the whole shape, not the flagged line.** A reviewer comments where it happened to look. Before you change anything, read the surrounding code and ask what the finding actually is: the same mistake is usually in three other places in the same diff, and fixing only the line that was pointed at guarantees the next round finds its siblings. Fix the general case once, then say in the reply that you applied it everywhere rather than only where it was raised. This is the difference between one round and five.
+
+**Answer every open thread in one push.** Read all of them first, work out which are the same underlying finding, then push once. A push per comment is a review round per comment.
+
+**A review comment is evidence, not an order.** Judge each one against this phase's scope, exactly as you would a problem you noticed yourself:
+
+- **In scope, and right.** Fix it, generally, per the rule above. Then reply saying what you changed and **resolve the thread**. Gate 5 wants every thread resolved, so a fix pushed without resolving leaves the phase blocked on a thread that no longer says anything true.
+- **In scope, and wrong.** Reply with your reasoning and leave the thread open. This is a disagreement on the merits and a human settles it.
+- **Out of scope.** Do not implement it. This is the same rule as §3: a phase does what its Phase Details say and notes the rest. Record it, reply naming why it falls outside this phase and where it went, and resolve the thread.
+
+Out of scope is not the same as unimportant, so where it gets recorded depends on what it is:
+
+| The finding | Goes to |
+|---|---|
+| Work that makes sense **for this plan**, just not for this phase | **Carried findings** in the plan file |
+| A real defect that stands on its own, unrelated to what the plan delivers | A GitHub issue in that repo |
+| A remark about this PR that changes nothing | The reply, and nothing else |
+
+**Carried findings** is a section of the plan file, described in the plan format. Append one line — what it is, the PR and thread that raised it, and why it was out of scope — with the same write rules as any plan write: plan branch, the `sha` you just read, `[skip ci]`.
+
+A plan starts without that section, so the first finding creates it, immediately **after Driver State**. Look for an existing one before you write: two `## Carried findings` headings in a file split the list in half and make the end-of-plan readout miss whichever one it doesn't reach.
+
+**Append to it; never add a phase.** Recording is execution and belongs to you. Deciding that a finding is worth a phase means writing scope, acceptance criteria, UAT and dependencies for it, which is planning: it belongs to `phase-planner` and to the person whose plan it is. Tell the user what you recorded and let them ask for a phase. A driver that adds phases because a reviewer suggested something is re-planning a project mid-flight on the say-so of a tool that has read one diff.
+
+Scope-declining resolves the thread, and disagreement does not. That difference is deliberate. An out-of-scope finding is not a claim that the PR is wrong, so holding gate 5 open for it would stall a phase over work that was never in it — while a thread that says the code is broken should block until a person agrees it isn't.
+
+**Widening a phase because a reviewer suggested it is still widening it.** The scope came from a plan someone agreed to; a comment is a suggestion from a tool that has read this diff and nothing else.
 
 When a PR has no outstanding work, evaluate `references/gates.md` against it, using that repo's resolved config. Then:
 
@@ -152,6 +199,8 @@ Step 5 is the one that gets skipped, so it is worth saying why it exists. Every 
 ## 8. Finishing the plan
 
 When every row is `Merged` or `Skipped`, in this order: **open the integration PR if YOLO is on**, then set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
+
+**The summary names every open entry in Carried findings**, alongside outstanding UAT. Those are the things a reviewer raised that no phase did, and the end of the plan is the last moment anyone is looking. A plan that completes with a list nobody read is the same failure as UAT that reaches no one.
 
 **Two actions here, and only one of them is withheld.** *Opening* the integration PR is yours and needs no permission: YOLO means nobody was watching, and this PR is the entire handoff. *Merging* it is never yours. Read "never merge it" below as the second of those, not as the PR being off-limits.
 

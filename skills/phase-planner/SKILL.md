@@ -107,6 +107,7 @@ Tell them:
 
 When asked to change a plan already in flight:
 
+- **Read Carried findings first.** The driver appends there when a reviewer raised something that belonged to the plan but not to the phase it came up on. It is the one part of the plan written by execution rather than planning, and it is where the answer to "what else should this plan do" usually already is. Propose phases for what deserves them, say plainly what you would leave, and tick an entry with the phase that now covers it. Never delete one silently.
 - **Never renumber phases.** Append, or subdivide into `3a`/`3b`.
 - **Never edit a `Merged` row.** It's a record of what shipped; editing it makes the plan disagree with history.
 - **Don't touch Driver State** beyond what you were asked to change. A driver may be live, and `Driver-ID`/`Heartbeat` are its lock.
