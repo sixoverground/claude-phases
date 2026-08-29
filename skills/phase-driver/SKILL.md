@@ -141,7 +141,19 @@ A review round costs a push, a CI run, and another review. Observed on a real ph
 
 - **In scope, and right.** Fix it, generally, per the rule above.
 - **In scope, and wrong.** Reply with your reasoning and leave the thread open. This is a disagreement on the merits and a human settles it.
-- **Out of scope.** Do not implement it. This is the same rule as §3: a phase does what its Phase Details say and notes the rest. Reply naming why it falls outside this phase, record it where it will survive — the PR body's out-of-scope list, or a follow-up issue when it is a real defect — say in the reply where it went, and resolve the thread.
+- **Out of scope.** Do not implement it. This is the same rule as §3: a phase does what its Phase Details say and notes the rest. Record it, reply naming why it falls outside this phase and where it went, and resolve the thread.
+
+Out of scope is not the same as unimportant, so where it gets recorded depends on what it is:
+
+| The finding | Goes to |
+|---|---|
+| Work that makes sense **for this plan**, just not for this phase | **Carried findings** in the plan file |
+| A real defect that stands on its own, unrelated to what the plan delivers | A GitHub issue in that repo |
+| A remark about this PR that changes nothing | The reply, and nothing else |
+
+**Carried findings** is a section of the plan file, described in the plan format. Append one line — what it is, the PR and thread that raised it, and why it was out of scope — with the same write rules as any plan write: plan branch, the `sha` you just read, `[skip ci]`.
+
+**Append to it; never add a phase.** Recording is execution and belongs to you. Deciding that a finding is worth a phase means writing scope, acceptance criteria, UAT and dependencies for it, which is planning: it belongs to `phase-planner` and to the person whose plan it is. Tell the user what you recorded and let them ask for a phase. A driver that adds phases because a reviewer suggested something is re-planning a project mid-flight on the say-so of a tool that has read one diff.
 
 Scope-declining resolves the thread, and disagreement does not. That difference is deliberate. An out-of-scope finding is not a claim that the PR is wrong, so holding gate 5 open for it would stall a phase over work that was never in it — while a thread that says the code is broken should block until a person agrees it isn't.
 
@@ -181,6 +193,8 @@ Step 5 is the one that gets skipped, so it is worth saying why it exists. Every 
 ## 8. Finishing the plan
 
 When every row is `Merged` or `Skipped`, in this order: **open the integration PR if YOLO is on**, then set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
+
+**The summary names every open entry in Carried findings**, alongside outstanding UAT. Those are the things a reviewer raised that no phase did, and the end of the plan is the last moment anyone is looking. A plan that completes with a list nobody read is the same failure as UAT that reaches no one.
 
 **Two actions here, and only one of them is withheld.** *Opening* the integration PR is yours and needs no permission: YOLO means nobody was watching, and this PR is the entire handoff. *Merging* it is never yours. Read "never merge it" below as the second of those, not as the PR being off-limits.
 
