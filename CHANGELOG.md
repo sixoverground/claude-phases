@@ -11,7 +11,8 @@ Because the skills are prose read by a model, a "patch" here can still change be
 Found on a real run. The session opened a phase PR with `gh pr create` instead of the GitHub MCP tools. In a cloud session `gh` is authenticated as the integration rather than as the user, so the PR was opened by that app — and Codex, which reviews the PRs of the account that connected it and nobody else's, was never asked. No review, no check, no error. Gate 6 waited on proof that had never been requested and YOLO stopped with nothing red to look at.
 
 * `phase-driver` opens PRs with the GitHub MCP tools, never `gh pr create`. Both succeed and print a URL; only one of them gets reviewed.
-* It reads back the PR's `user.login` afterwards, and reports immediately if it isn't the human whose plan this is, naming the login and the reviewer that won't fire.
+* It reads back the PR's `user.login` afterwards and compares it to the account its own GitHub tools authenticate as, which is the identity the MCP tools open PRs with. Nothing has to be configured for that, and no plan field records an expected opener.
+* The check applies to account-scoped reviewers. A workflow-triggered reviewer runs whoever opened the PR, and a `check:` entry has no connected user, so reporting those as broken would recommend closing a healthy PR.
 * Gate 6 checks the opener before calling a signless PR a broken integration. The two look identical and have very different fixes.
 * `phase-planner` checks who opened the PRs a reviewer has reviewed, and says in the handoff when a reviewer only watches one account.
 * This is about the opener alone. Commit authorship and `Co-Authored-By` trailers have no bearing on whether a reviewer runs, and adding one would not have prevented this.
@@ -24,6 +25,7 @@ Observed on a real phase: four review rounds, then twenty-eight more after the u
 * **Carried findings**, a new optional section of the plan file, is where an out-of-scope finding goes when it makes sense for the plan but not for the phase that raised it. A defect that stands on its own still goes to an issue. The driver appends and **never adds a phase**: writing scope, acceptance criteria and dependencies is planning, and a driver that does it is re-planning a project mid-flight on a reviewer's suggestion. `phase-planner` reads the section when revising a plan, and the driver reads out any open entries when the plan finishes, so nothing completes with a list nobody looked at.
 * **It fixed the flagged line instead of the finding.** A reviewer comments where it happened to look; the same mistake is usually in several places in the same diff. Fixing only what was pointed at guarantees the next round finds the siblings. The driver now reads the surrounding code, fixes the general case once, and says so in the reply.
 * **One push per round, not one push per comment.** Every push is another review round.
+* An accepted finding is replied to and its thread resolved after the round's push. Gate 5 wants every thread resolved, so a fix pushed without resolving blocks the phase on a thread that no longer says anything true.
 * Scope-declining resolves the thread; disagreeing on the merits does not. Holding gate 5 open for work that was never in the phase would stall it, while a thread claiming the code is broken should block until a person agrees it isn't.
 
 ### Fixed
@@ -32,6 +34,8 @@ Observed on a real phase: four review rounds, then twenty-eight more after the u
 * **v0.4.0 shipped with no skill zips.** GitHub raises no workflow-triggering event for a release created with the repository's `GITHUB_TOKEN`, so once `release.sh` took over publishing, the `release: published` run that attached the assets simply stopped happening. Every release through v0.3.0 was published by hand and got its zips; v0.4.0 was the first cut by the script and got none, silently.
 
   `release.sh` now attaches them in the same job that creates the release, and attaches them to an existing release when re-run, so a release missing its assets is repaired by dispatching the workflow rather than by burning a version. `package-skills.yml` keeps the PR check and the dispatch build, and no longer claims to handle releases.
+
+  The release job checks out `main` explicitly rather than the ref it ran on. A dispatch can name any branch, and an unpinned checkout would read that branch's `plugin.json` and build its zips while `gh release create --target main` tagged main's code — a release whose tag and assets came from different places.
 
 ## [0.4.0]
 

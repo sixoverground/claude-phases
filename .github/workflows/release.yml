@@ -56,7 +56,14 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Pinned to main, not to the ref this ran on. A dispatch can name any
+      # branch, and an unpinned checkout would read that branch's plugin.json,
+      # build its zips, and hand them to `gh release create --target main` —
+      # publishing a tag that points at main's code with a feature branch's
+      # assets attached. The marketplace serves main, so main is what ships.
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Tag and release
         env:

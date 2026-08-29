@@ -90,12 +90,6 @@ One paragraph: what this plan delivers, and how many phases it takes to get ther
 
 **Risks.** None known.
 
-## Carried findings
-
-<!-- Appended by the driver when a review raises something that belongs to this
-     plan but not to the phase it came up on. Delete this section if you'd
-     rather it appear only once there's something in it. -->
-
 ## Driver State
 
 - Driver: idle

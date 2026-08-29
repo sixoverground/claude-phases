@@ -70,13 +70,17 @@ For each, in order:
 
 ### Who opens the PR decides whether it gets reviewed
 
-Reviewer integrations attach to an account. Codex reviews pull requests opened by the user who connected it and ignores everyone else's, and other reviewers are scoped the same way. So the identity that *opens* the PR is a functional part of the merge gate, not a cosmetic detail: open a phase PR as a bot or app identity and no review is ever requested, gate 6 waits on proof that was never coming, and YOLO stops with nothing red to look at.
+Some reviewer integrations attach to an account. Codex reviews pull requests opened by the user who connected it and ignores everyone else's. So for those, the identity that *opens* the PR is a functional part of the merge gate, not a cosmetic detail: open a phase PR as a bot or app identity and no review is ever requested, gate 6 waits on proof that was never coming, and YOLO stops with nothing red to look at.
+
+**Not every reviewer works that way**, and saying so matters because the wrong diagnosis here recommends closing a healthy PR. A review workflow triggered by `pull_request` reviews whatever lands in the repo whoever opened it, and a `check:` entry has no connected user to compare against at all. The opener matters for a `logins` entry backed by an account-scoped integration; elsewhere an unexpected opener is worth a sentence, not an alarm.
 
 **Open the PR with the GitHub MCP tools, not `gh pr create`.** This is the whole rule, and it is not a style preference. In a cloud session `gh` is authenticated as the integration rather than as you, so `gh pr create` opens the PR as that app identity; the MCP tools act with the user's own authorization and open it as them. Both succeed, both print a PR URL, and only one of them gets reviewed. Push with git as usual — it is the PR-opening call that decides the author.
 
 This is about the opener only. Commit authorship and `Co-Authored-By` trailers change nothing here, and no trailer will make a reviewer look at a PR opened by an account it doesn't watch.
 
-**Then check.** If `user.login` is not that account, say so in the phase report and on the PR, before waiting on anything. Name the login that opened it and the reviewer that won't fire. The fix is usually to close it and reopen from the right account, which is cheap now and expensive after five gate cycles.
+**Then check, against the account your GitHub tools authenticate as** — `get_me`, read once per session. That is the identity the MCP tools open PRs with, so a PR whose `user.login` differs was opened by some other path, which is the failure this catches. Nothing needs to be configured for this: the comparison is between two things you can read, and a plan carries no field naming the expected opener.
+
+If they differ, say so in the phase report and on the PR before waiting on anything. Name the login that opened it, and name the affected `review.required` entries — the account-scoped ones — rather than asserting that review is broken in general. The fix is usually to close it and reopen from the right account, which is cheap now and expensive after five gate cycles.
 
 Do not let this become a silent wait. A reviewer that was never asked looks exactly like a reviewer that is slow.
 
@@ -139,7 +143,7 @@ A review round costs a push, a CI run, and another review. Observed on a real ph
 
 **A review comment is evidence, not an order.** Judge each one against this phase's scope, exactly as you would a problem you noticed yourself:
 
-- **In scope, and right.** Fix it, generally, per the rule above.
+- **In scope, and right.** Fix it, generally, per the rule above. Then reply saying what you changed and **resolve the thread**. Gate 5 wants every thread resolved, so a fix pushed without resolving leaves the phase blocked on a thread that no longer says anything true.
 - **In scope, and wrong.** Reply with your reasoning and leave the thread open. This is a disagreement on the merits and a human settles it.
 - **Out of scope.** Do not implement it. This is the same rule as §3: a phase does what its Phase Details say and notes the rest. Record it, reply naming why it falls outside this phase and where it went, and resolve the thread.
 
@@ -152,6 +156,8 @@ Out of scope is not the same as unimportant, so where it gets recorded depends o
 | A remark about this PR that changes nothing | The reply, and nothing else |
 
 **Carried findings** is a section of the plan file, described in the plan format. Append one line — what it is, the PR and thread that raised it, and why it was out of scope — with the same write rules as any plan write: plan branch, the `sha` you just read, `[skip ci]`.
+
+A plan starts without that section, so the first finding creates it, immediately **after Driver State**. Look for an existing one before you write: two `## Carried findings` headings in a file split the list in half and make the end-of-plan readout miss whichever one it doesn't reach.
 
 **Append to it; never add a phase.** Recording is execution and belongs to you. Deciding that a finding is worth a phase means writing scope, acceptance criteria, UAT and dependencies for it, which is planning: it belongs to `phase-planner` and to the person whose plan it is. Tell the user what you recorded and let them ask for a phase. A driver that adds phases because a reviewer suggested something is re-planning a project mid-flight on the say-so of a tool that has read one diff.
 
