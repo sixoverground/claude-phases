@@ -122,14 +122,30 @@ Message the user what you started and where. Then **end your turn.** Sleeping is
 Reconcile first. Then handle what woke you, against the row it belongs to:
 
 - **A check failed.** Read `references/gates.md` for how to get the failure text for that repo's `ci.logs` setting. Fix it and push. One re-run per head commit is allowed for a suspected flake, and say in the PR that you re-ran it. Beyond that, treat it as a real failure.
-- **A review comment or thread.** Address it in code, push, then resolve the thread. Never resolve a thread you disagree with: reply explaining why, and leave it open for a human.
+- **A review comment or thread.** See [Answering a review](#answering-a-review) below. Never resolve a thread you disagree with on the merits: reply explaining why, and leave it open for a human.
 - **A merge conflict.** Update the branch from base; if that fails, resolve it in the working tree and push. After two failed attempts, mark `Blocked`.
 - **The head moved.** Discard that row's gate result and re-evaluate from scratch. A gate result is only ever valid for the commit it was computed against.
 - **The PR was merged by anyone.** Go to step 7. This is expected, not an anomaly.
 - **A message from the user**, see `references/vocabulary.md`.
 - **Nothing actionable**, re-arm the check-in and end the turn.
 
-## 6. Evaluate the gate
+### Answering a review
+
+A review round costs a push, a CI run, and another review. Observed on a real phase: four rounds, then twenty-eight more after the user approved continuing, on a PR that was never going to converge because each round was answering comments one at a time and taking every one of them as an order.
+
+**Fix the whole shape, not the flagged line.** A reviewer comments where it happened to look. Before you change anything, read the surrounding code and ask what the finding actually is: the same mistake is usually in three other places in the same diff, and fixing only the line that was pointed at guarantees the next round finds its siblings. Fix the general case once, then say in the reply that you applied it everywhere rather than only where it was raised. This is the difference between one round and five.
+
+**Answer every open thread in one push.** Read all of them first, work out which are the same underlying finding, then push once. A push per comment is a review round per comment.
+
+**A review comment is evidence, not an order.** Judge each one against this phase's scope, exactly as you would a problem you noticed yourself:
+
+- **In scope, and right.** Fix it, generally, per the rule above.
+- **In scope, and wrong.** Reply with your reasoning and leave the thread open. This is a disagreement on the merits and a human settles it.
+- **Out of scope.** Do not implement it. This is the same rule as §3: a phase does what its Phase Details say and notes the rest. Reply naming why it falls outside this phase, record it where it will survive — the PR body's out-of-scope list, or a follow-up issue when it is a real defect — say in the reply where it went, and resolve the thread.
+
+Scope-declining resolves the thread, and disagreement does not. That difference is deliberate. An out-of-scope finding is not a claim that the PR is wrong, so holding gate 5 open for it would stall a phase over work that was never in it — while a thread that says the code is broken should block until a person agrees it isn't.
+
+**Widening a phase because a reviewer suggested it is still widening it.** The scope came from a plan someone agreed to; a comment is a suggestion from a tool that has read this diff and nothing else.
 
 When a PR has no outstanding work, evaluate `references/gates.md` against it, using that repo's resolved config. Then:
 

@@ -16,6 +16,15 @@ Found on a real run. The session opened a phase PR with `gh pr create` instead o
 * `phase-planner` checks who opened the PRs a reviewer has reviewed, and says in the handoff when a reviewer only watches one account.
 * This is about the opener alone. Commit authorship and `Co-Authored-By` trailers have no bearing on whether a reviewer runs, and adding one would not have prevented this.
 
+### Review rounds that don't converge
+
+Observed on a real phase: four review rounds, then twenty-eight more after the user approved continuing. Two causes, both in how the driver answered a review.
+
+* **A review comment is evidence, not an order.** The driver judged every comment as work to do, including findings outside the phase's scope — the same widening §3 already forbids when it notices a problem itself. Out-of-scope findings are now declined with reasoning and recorded where they survive, rather than implemented.
+* **It fixed the flagged line instead of the finding.** A reviewer comments where it happened to look; the same mistake is usually in several places in the same diff. Fixing only what was pointed at guarantees the next round finds the siblings. The driver now reads the surrounding code, fixes the general case once, and says so in the reply.
+* **One push per round, not one push per comment.** Every push is another review round.
+* Scope-declining resolves the thread; disagreeing on the merits does not. Holding gate 5 open for work that was never in the phase would stall it, while a thread claiming the code is broken should block until a person agrees it isn't.
+
 ### Fixed
 
 * **v0.4.0 shipped with no skill zips.** GitHub raises no workflow-triggering event for a release created with the repository's `GITHUB_TOKEN`, so once `release.sh` took over publishing, the `release: published` run that attached the assets simply stopped happening. Every release through v0.3.0 was published by hand and got its zips; v0.4.0 was the first cut by the script and got none, silently.
