@@ -204,7 +204,11 @@ Be clear-eyed about what option 2 costs: the driver can merge a commit Codex nev
 
 The integration attaches to the account that connected it. A pull request opened by anyone else — including a bot or app identity the driver might be authenticating as — gets no review, no check, and no reaction. Nothing reports an error, because from Codex's side nothing was ever asked.
 
-That makes the opener identity part of your merge gate. If phase PRs arrive under a bot login, gate 6 waits forever on a review that was never requested, and YOLO stops with nothing red to look at. It is the commit *author* that does not matter here: a `Co-Authored-By` trailer has no bearing on whether the reviewer runs.
+That makes the opener identity part of your merge gate. If phase PRs arrive under a bot login, gate 6 waits forever on a review that was never requested, and YOLO stops with nothing red to look at.
+
+The way it actually happens: a cloud session opens the PR with `gh pr create` rather than the GitHub MCP tools. `gh` there is authenticated as the integration, not as you, so the PR is opened by that app. The driver is told to use the MCP tools for exactly this reason. If you find a phase PR authored by something other than your account, that is the thing to check.
+
+It is the commit *author* that does not matter here: a `Co-Authored-By` trailer has no bearing on whether the reviewer runs.
 
 ### The thumbs up is a verdict
 

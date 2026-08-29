@@ -72,7 +72,9 @@ For each, in order:
 
 Reviewer integrations attach to an account. Codex reviews pull requests opened by the user who connected it and ignores everyone else's, and other reviewers are scoped the same way. So the identity that *opens* the PR is a functional part of the merge gate, not a cosmetic detail: open a phase PR as a bot or app identity and no review is ever requested, gate 6 waits on proof that was never coming, and YOLO stops with nothing red to look at.
 
-**Open PRs as the human whose plan this is.** Where the session offers more than one path to open one, take the path that authenticates as that account. This is about the opener only — commit authorship and `Co-Authored-By` trailers change nothing here, and no trailer will make a reviewer look at a PR opened by someone it doesn't watch.
+**Open the PR with the GitHub MCP tools, not `gh pr create`.** This is the whole rule, and it is not a style preference. In a cloud session `gh` is authenticated as the integration rather than as you, so `gh pr create` opens the PR as that app identity; the MCP tools act with the user's own authorization and open it as them. Both succeed, both print a PR URL, and only one of them gets reviewed. Push with git as usual — it is the PR-opening call that decides the author.
+
+This is about the opener only. Commit authorship and `Co-Authored-By` trailers change nothing here, and no trailer will make a reviewer look at a PR opened by an account it doesn't watch.
 
 **Then check.** If `user.login` is not that account, say so in the phase report and on the PR, before waiting on anything. Name the login that opened it and the reviewer that won't fire. The fix is usually to close it and reopen from the right account, which is cheap now and expensive after five gate cycles.
 

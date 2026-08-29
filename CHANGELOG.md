@@ -8,9 +8,10 @@ Because the skills are prose read by a model, a "patch" here can still change be
 
 ### Who opens the PR is part of the merge gate
 
-Found on a real run. A phase PR was opened under a bot identity rather than the user's, so Codex — which reviews the PRs of the account that connected it and nobody else's — was never asked. No review, no check, no error. Gate 6 waited on proof that had never been requested and YOLO stopped with nothing red to look at.
+Found on a real run. The session opened a phase PR with `gh pr create` instead of the GitHub MCP tools. In a cloud session `gh` is authenticated as the integration rather than as the user, so the PR was opened by that app — and Codex, which reviews the PRs of the account that connected it and nobody else's, was never asked. No review, no check, no error. Gate 6 waited on proof that had never been requested and YOLO stopped with nothing red to look at.
 
-* `phase-driver` reads back the PR's `user.login` after opening it, and reports immediately if it isn't the human whose plan this is, naming the login and the reviewer that won't fire.
+* `phase-driver` opens PRs with the GitHub MCP tools, never `gh pr create`. Both succeed and print a URL; only one of them gets reviewed.
+* It reads back the PR's `user.login` afterwards, and reports immediately if it isn't the human whose plan this is, naming the login and the reviewer that won't fire.
 * Gate 6 checks the opener before calling a signless PR a broken integration. The two look identical and have very different fixes.
 * `phase-planner` checks who opened the PRs a reviewer has reviewed, and says in the handoff when a reviewer only watches one account.
 * This is about the opener alone. Commit authorship and `Co-Authored-By` trailers have no bearing on whether a reviewer runs, and adding one would not have prevented this.
