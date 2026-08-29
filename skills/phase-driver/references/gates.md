@@ -91,6 +91,8 @@ An entry carrying `rereview: optional` has a second way to be satisfied, for rev
 
 A **sign** is a review, an inline comment, or a 👍 by one of the entry's `logins`, at any commit on this PR. Any one of them proves the integration is alive and that this reviewer has this PR.
 
+**When a PR carries no sign at all, check who opened it before you call the integration broken.** Reviewer integrations attach to an account — Codex reviews the connected user's PRs and ignores a bot's — so a phase PR opened under the wrong identity is never reviewed by design. It presents identically to a dead integration and has a different, one-minute fix: reopen it from the right account. Read the PR's `user.login`, and if it isn't the human whose plan this is, report that as the cause instead of reporting a wait.
+
 That last row is load-bearing. Smart detect always evaluates a PR once, so a PR carrying no sign at all is a broken integration, not a decline, and it must never age into a pass. Drop the precondition and `optional` becomes "wait fifteen minutes, then merge unreviewed."
 
 **Counting the 👍 as a sign is what fixes the case where smart detect declines from the very first commit.** Its evaluation of a small PR can be "nothing here worth reviewing", and then the reaction is the only thing it ever writes. Reading signs as reviews-only, that PR looks identical to a dead integration and blocks forever, which is the state this rule was found in: a real project, YOLO on, a phase wedged behind a reviewer that had already answered.

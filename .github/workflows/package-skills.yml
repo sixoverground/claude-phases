@@ -1,21 +1,23 @@
 name: Package skills
 
-# Builds `phase-planner.zip` and `phase-driver.zip` and attaches them to the
-# release, so uploading the skills to a claude.ai account is a download and two
-# file pickers rather than a clone and a shell.
+# Builds `phase-planner.zip` and `phase-driver.zip` so a packaging change can be
+# checked before it ships, and runs `check-skills.sh` on every PR: a reference
+# that climbs out of its skill directory works in this repo and is a dead link
+# once the skill is installed from a zip, so the moment to catch it is the PR
+# that adds it, not the release three weeks later.
 #
-# Publishing a release is what normally runs this. `workflow_dispatch` builds
-# the same zips from any branch and leaves them as a run artifact instead,
-# which is the way to check a packaging change before tagging.
+# Attaching the zips to a release is NOT done here. It used to be, on
+# `release: published`, which worked only while releases were published by hand.
+# GitHub raises no workflow-triggering event for a release created with the
+# repository's GITHUB_TOKEN, so the moment release.sh took over publishing, this
+# workflow stopped running and v0.4.0 shipped with no assets and no error.
+# release.sh attaches them in the same job that creates the release, which
+# cannot fall out of step with itself.
 #
-# It also runs on every PR, for `check-skills.sh` rather than the zips: a
-# reference that climbs out of its skill directory works in this repo and is a
-# dead link once the skill is installed from a zip, so the moment to catch it
-# is the PR that adds it, not the release three weeks later.
+# `workflow_dispatch` builds the zips from any branch and leaves them as a run
+# artifact.
 
 on:
-  release:
-    types: [published]
   pull_request:
   workflow_dispatch:
 
@@ -37,33 +39,11 @@ jobs:
       - name: Build
         run: scripts/package-skills.sh
 
-      # No release to attach to on a dispatch, so the zips land as a run
-      # artifact you can download from the run summary.
+      # On a dispatch the zips land as a run artifact you can download from the
+      # run summary. Release assets come from release.sh, not from here.
       - name: Upload as run artifact
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: skills
           path: dist/*.zip
-
-  release:
-    name: Attach zips to release
-    if: github.event_name == 'release'
-    needs: build
-    runs-on: ubuntu-latest
-    # The only step here that needs more than read, kept in its own job so PR
-    # runs never hold a write token.
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build
-        run: scripts/package-skills.sh
-
-      - name: Attach to release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        # --clobber so re-running the job replaces the assets instead of
-        # failing on names that already exist.
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/*.zip --clobber

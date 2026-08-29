@@ -66,6 +66,17 @@ For each, in order:
    - `none`. Skip verification.
 6. **Push and open the PR**, titled `Phase N: <scope>`. Body: the acceptance criteria as a checklist, **which verification path actually ran**, the UAT checklist per the rules below, anything out of scope you noticed, and `Driven by phase-driver, do not edit the plan file in this PR`.
 7. **Commit `In Review`** and the `Link`, immediately, before subscribing, before any wait. A PR that exists but isn't recorded is the most expensive state to recover from.
+8. **Read back who opened it**, from the PR's own `user.login`. See below.
+
+### Who opens the PR decides whether it gets reviewed
+
+Reviewer integrations attach to an account. Codex reviews pull requests opened by the user who connected it and ignores everyone else's, and other reviewers are scoped the same way. So the identity that *opens* the PR is a functional part of the merge gate, not a cosmetic detail: open a phase PR as a bot or app identity and no review is ever requested, gate 6 waits on proof that was never coming, and YOLO stops with nothing red to look at.
+
+**Open PRs as the human whose plan this is.** Where the session offers more than one path to open one, take the path that authenticates as that account. This is about the opener only — commit authorship and `Co-Authored-By` trailers change nothing here, and no trailer will make a reviewer look at a PR opened by someone it doesn't watch.
+
+**Then check.** If `user.login` is not that account, say so in the phase report and on the PR, before waiting on anything. Name the login that opened it and the reviewer that won't fire. The fix is usually to close it and reopen from the right account, which is cheap now and expensive after five gate cycles.
+
+Do not let this become a silent wait. A reviewer that was never asked looks exactly like a reviewer that is slow.
 
 ### UAT checklists
 

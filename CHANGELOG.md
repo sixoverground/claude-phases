@@ -4,6 +4,23 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.5.0]
+
+### Who opens the PR is part of the merge gate
+
+Found on a real run. A phase PR was opened under a bot identity rather than the user's, so Codex — which reviews the PRs of the account that connected it and nobody else's — was never asked. No review, no check, no error. Gate 6 waited on proof that had never been requested and YOLO stopped with nothing red to look at.
+
+* `phase-driver` reads back the PR's `user.login` after opening it, and reports immediately if it isn't the human whose plan this is, naming the login and the reviewer that won't fire.
+* Gate 6 checks the opener before calling a signless PR a broken integration. The two look identical and have very different fixes.
+* `phase-planner` checks who opened the PRs a reviewer has reviewed, and says in the handoff when a reviewer only watches one account.
+* This is about the opener alone. Commit authorship and `Co-Authored-By` trailers have no bearing on whether a reviewer runs, and adding one would not have prevented this.
+
+### Fixed
+
+* **v0.4.0 shipped with no skill zips.** GitHub raises no workflow-triggering event for a release created with the repository's `GITHUB_TOKEN`, so once `release.sh` took over publishing, the `release: published` run that attached the assets simply stopped happening. Every release through v0.3.0 was published by hand and got its zips; v0.4.0 was the first cut by the script and got none, silently.
+
+  `release.sh` now attaches them in the same job that creates the release, and attaches them to an existing release when re-run, so a release missing its assets is repaired by dispatching the workflow rather than by burning a version. `package-skills.yml` keeps the PR check and the dispatch build, and no longer claims to handle releases.
+
 ## [0.4.0]
 
 ### A reviewer's thumbs up counts as a review

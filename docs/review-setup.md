@@ -200,6 +200,12 @@ Two ways out, in order of preference:
 
 Be clear-eyed about what option 2 costs: the driver can merge a commit Codex never read. What keeps it honest is that **a PR with no sign of Codex at all never times out**. The gate blocks on a reviewer that has said nothing, on the grounds that the integration is broken rather than declining.
 
+### Codex only reviews the connected user's PRs
+
+The integration attaches to the account that connected it. A pull request opened by anyone else — including a bot or app identity the driver might be authenticating as — gets no review, no check, and no reaction. Nothing reports an error, because from Codex's side nothing was ever asked.
+
+That makes the opener identity part of your merge gate. If phase PRs arrive under a bot login, gate 6 waits forever on a review that was never requested, and YOLO stops with nothing red to look at. It is the commit *author* that does not matter here: a `Co-Authored-By` trailer has no bearing on whether the reviewer runs.
+
 ### The thumbs up is a verdict
 
 Smart detect can also decide that an entire PR needs no review. When it does, it leaves a 👍 on the PR — the timeline reads `chatgpt-codex-connector[bot] reacted with thumbs up emoji` — and posts nothing else.
