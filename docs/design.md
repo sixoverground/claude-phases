@@ -51,16 +51,16 @@ Breaking a feature into issues is the obvious alternative, and for a lot of work
 The plan file exists because the driver is not a team. It is an ephemeral session with no memory that has to reconstruct the world and then act on it unattended, and that requirement asks for things issues do not offer:
 
 - **Order and dependencies as data.** `Depends` plus a `Status` column that *is* the execution cursor makes "what is startable now" a property of one file. In an issue tracker that ordering lives in a board, or in prose, or in someone's head.
-- **A home for state that belongs to no single item.** `Driver-ID`, `Heartbeat`, `YOLO`, `UAT-pending`, and the per-repo CI and review config are all cross-cutting. Issues have nowhere to put them, so a plan built on issues still needs a config file — and then there are two sources of truth, which is the failure this project avoids everywhere else.
+- **A home for state that belongs to no single item.** `Driver-ID`, `Heartbeat`, `YOLO`, `UAT-pending`, and the per-repo CI and review config are all cross-cutting. Issues have nowhere to put them, so a plan built on issues still needs a config file, and then there are two sources of truth, which is the failure this project avoids everywhere else.
 - **Multi-repo.** An issue lives in one repository. A feature spanning a backend and two apps has no natural single tracker, while one plan in a home repo coordinates all three.
 - **A lock and a compare-and-swap.** `Driver-ID` with a heartbeat is a real lock, and passing the blob `sha` on every write makes plan updates fail rather than clobber. Assignees are a much cruder lock and issue edits have no equivalent guard.
 - **One read, not a fan-out.** Reconcile runs on every wake. Against a file it is one read; against issues it is N API calls into the same rate limit the reviewer is already consuming.
 
-The line is roughly that **issues scale with people and the plan file scales with autonomy.** Single repo, human watching every step, several contributors picking work up — issues are the better tool and this project is heavier than the job deserves.
+The line is roughly that **issues scale with people and the plan file scales with autonomy.** Single repo, human watching every step, several contributors picking work up: issues are the better tool there, and this project is heavier than the job deserves.
 
 Worth being clear about what this choice is *not*. The plan file versus issues is a storage decision. The merge gate, proof-of-review, crash recovery and the rules for answering a review are the substance, and all of it would survive a port to issues unchanged. Nobody should read this section as an argument that the gate needs a markdown file.
 
-And running both — the plan file for the driver, issues for visibility — is the one combination to avoid. It is dual-write, it drifts, and the reason is the same one that keeps a machine-readable status block out of the file: two sources of truth for one value diverge. If both are wanted, generate one from the other.
+And running both, the plan file for the driver and issues for visibility, is the one combination to avoid. It is dual-write, it drifts, and the reason is the same one that keeps a machine-readable status block out of the file: two sources of truth for one value diverge. If both are wanted, generate one from the other.
 
 ## The merge gate
 
@@ -139,7 +139,7 @@ The reviewer has read one diff. The phase's scope came from a plan a person agre
 
 ### Fixing the flagged line is what makes it take five rounds
 
-A reviewer comments where it happened to be looking. The finding underneath is usually present in three other places in the same diff, so a fix applied only at the comment's anchor guarantees the next round turns up its siblings — and the round after that, theirs. Rounds multiply because each one is answered narrowly, not because reviewers are thorough.
+A reviewer comments where it happened to be looking. The finding underneath is usually present in three other places in the same diff, so a fix applied only at the comment's anchor guarantees the next round turns up its siblings, and the round after that, theirs. Rounds multiply because each one is answered narrowly, not because reviewers are thorough.
 
 The same arithmetic makes a push per comment a round per comment. Read every open thread, group the ones that are the same finding, push once.
 
@@ -147,11 +147,11 @@ The same arithmetic makes a push per comment a round per comment. Read every ope
 
 "Out of scope" with nowhere to put the finding means forgotten, and a driver that senses that will implement things rather than lose them. So each outcome has a home: work that belongs to this plan but not this phase goes to **Carried findings** in the plan file, a standalone defect goes to an issue, and a remark that changes nothing goes in the reply.
 
-**The driver appends to that list and never adds a phase.** Turning a finding into a phase means writing scope, acceptance criteria, UAT and dependencies — that is planning, and it belongs to `phase-planner` and the person whose plan it is. A driver that adds phases because a reviewer suggested something is the same runaway that produced twenty-eight rounds, moved up a level where it costs more and is noticed later.
+**The driver appends to that list and never adds a phase.** Turning a finding into a phase means writing scope, acceptance criteria, UAT and dependencies. That is planning, and it belongs to `phase-planner` and the person whose plan it is. A driver that adds phases because a reviewer suggested something is the same runaway that produced twenty-eight rounds, moved up a level where it costs more and is noticed later.
 
 ### Why a scope decline resolves the thread and a disagreement does not
 
-The two look similar and are not. Gate 5 holds the merge until every thread resolves, so leaving a declined thread open would stall a phase over work that was never in it — trading a runaway loop for a deadlock. But a thread that says the code is *wrong* is exactly what gate 5 exists to hold for, and resolving it on the driver's own judgment would let it overrule a reviewer by fiat.
+The two look similar and are not. Gate 5 holds the merge until every thread resolves, so leaving a declined thread open would stall a phase over work that was never in it, trading a runaway loop for a deadlock. But a thread that says the code is *wrong* is exactly what gate 5 exists to hold for, and resolving it on the driver's own judgment would let it overrule a reviewer by fiat.
 
 So the split follows what the thread claims, not how inconvenient it is: disagreement on the merits stays open for a person, scope goes to the list and the thread closes with a note saying where it went.
 
