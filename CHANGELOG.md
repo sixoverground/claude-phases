@@ -6,6 +6,10 @@ Because the skills are prose read by a model, a "patch" here can still change be
 
 ## [0.5.1]
 
+### Fixed
+
+* **Losing the claim race no longer overwrites the winner.** On a stale-sha conflict the driver was told to re-read, re-apply its change, and retry. For a claim write that means putting its own `Driver-ID` back over the one that just beat it, so two fresh drivers reading the same unclaimed plan could both end up believing they held it and start the same phase. The retry now re-runs the Driver-ID decision on what it just read, and a foreign ID with a live heartbeat ends the attempt instead of being overwritten. Found by review on #18, against a design note claiming the pair was already a lock.
+
 ### No em-dashes
 
 House style. Every em-dash in prose is gone, recast as a comma, a colon, or a separate sentence rather than swapped for an en-dash, which would be the same habit in disguise. Both skills, the docs, the profiles, and this file.

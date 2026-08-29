@@ -126,7 +126,7 @@ The order matters. It's what makes each crash window recoverable:
 3. `In Progress → In Review` (plus `Link`) is committed **immediately** after the PR exists, before subscribing, before any long wait.
 4. `In Review → Merged` is committed **after** the merge is confirmed.
 
-Each status commit goes to the home repo's plan branch with the blob `sha` read at the start of the transition. A stale sha fails the write, which is a free compare-and-swap against a second driver.
+Each status commit goes to the home repo's plan branch with the blob `sha` read at the start of the transition. A stale sha fails the write, which is a free compare-and-swap against a second driver. The loser of that race re-reads and re-runs the Driver-ID decision before retrying, since re-applying its own claim over the winner's would leave two drivers each believing they hold the plan.
 
 Read that sha at the start of every transition rather than caching it. When the plan branch is also a `target_branch`, merging a phase PR moves the branch the plan sits on, so a sha from before the merge is stale by construction.
 

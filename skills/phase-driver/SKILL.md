@@ -13,7 +13,7 @@ Read `references/recovery.md`, `references/gates.md`, and `references/vocabulary
 
 1. **Never modify the plan file from a phase branch.** Plan writes go to `home_repo`'s **plan branch**, always.
 2. **Write status before the action it describes**, not after. Claim before branching; record the PR before waiting on it.
-3. **Pass the `sha` you just read** on every plan write. A stale sha means another driver moved: re-read, retry, and don't overwrite.
+3. **Pass the `sha` you just read** on every plan write. A stale sha means another driver moved: re-read, re-check whose claim it is now, and don't overwrite.
 4. **Every plan commit message ends `[skip ci]`.**
 5. **One phase = one PR = one repo.**
 6. **Re-read the head SHA immediately before anything irreversible** and re-check the gate against it.
@@ -234,6 +234,8 @@ If the plan completes with `UAT-pending` non-empty and no integration PR was ope
 
 Re-read that `sha` at the start of **every** transition. When the plan branch is also a `target_branch`, merging a phase PR moves it, and a sha cached from before the merge is already stale.
 
-On a sha conflict: re-read, re-apply your change, retry. Three failures means another driver is active, stop and report rather than forcing it.
+On a sha conflict: re-read, **re-run the Driver-ID decision on what you just read**, and only then re-apply your change and retry. Three failures means another driver is active, so stop and report rather than forcing it.
+
+Re-running that decision is what makes the sha a lock rather than a speed bump. A stale sha means someone else wrote between your read and your write, and the write that beat you may have been another driver claiming this plan. Re-applying your change blindly puts your own `Driver-ID` back over theirs, and now two drivers each believe they hold the claim and start the same phase. So if the re-read shows a foreign ID with a live heartbeat, you lost the race: report and stop, and do not retry.
 
 If the plan branch rejects direct commits, switch to `plan_writes: plan-pr`. Each transition becomes a single-file PR with auto-merge, targeting the plan branch, and tell the user once that you've done so.
