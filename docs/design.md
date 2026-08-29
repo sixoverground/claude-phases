@@ -149,6 +149,18 @@ The same arithmetic makes a push per comment a round per comment. Read every ope
 
 **The driver appends to that list and never adds a phase.** Turning a finding into a phase means writing scope, acceptance criteria, UAT and dependencies. That is planning, and it belongs to `phase-planner` and the person whose plan it is. A driver that adds phases because a reviewer suggested something is the same runaway that produced twenty-eight rounds, moved up a level where it costs more and is noticed later.
 
+### Two stuck counters, because a moving head is not progress
+
+`stuck.max_cycles` counts a gate failing for the same reason with an **unmoved head**. That is the right shape for a phase waiting on something that never arrives, and it is the wrong shape for the runaway above, which pushed a commit every round. By that counter the phase was making progress thirty-two times in a row.
+
+So `stuck.max_review_rounds` counts the other failure: a phase that moves and gets nowhere. Two counters rather than one generalized counter, because the two states are genuinely different and a rule that tried to cover both would have to define progress, which is the thing in dispute.
+
+**The count is derived, never remembered.** It is the number of distinct head commits a required reviewer has evaluated, re-read every wake, using the same test gate 6 already applies to decide whether a reviewer looked at a commit. Heads rather than review submissions, because answering two reviewers on one commit is one round and costs one push, and because a `check:` entry never submits a review at all, so a submission count would sit at zero for exactly the setups most able to loop. This is not an implementation detail; it is most of why the runaway was invisible. A session that tracks the tally loses it to compaction, and the next session sees one review comment, a rule telling it to answer, and no evidence that twelve rounds came before. Every wake honestly looks like the first one. Anything the driver must not lose has to be re-derivable or written down, and a round count is cheap to re-derive.
+
+The exception proves the rule. Clearing the stop needs a baseline, because a derived count still reads above the threshold the moment after a person says carry on, and the row would block again forever. That baseline is the one number here that cannot be re-derived, so it goes in the plan, which is where everything the driver must not lose already lives.
+
+**The stop is a report, not a question.** The observed failure was approved at four rounds by a person who had no basis to refuse: "shall I continue?" carries no information, so it collects a yes. The threshold therefore produces evidence, and the load-bearing line of it is whether the newest findings are new ground or the same class of finding resurfacing somewhere new. Four rounds of unrelated real bugs and four rounds of one problem in four files are the same number and opposite decisions.
+
 ### Why a scope decline resolves the thread and a disagreement does not
 
 The two look similar and are not. Gate 5 holds the merge until every thread resolves, so leaving a declined thread open would stall a phase over work that was never in it, trading a runaway loop for a deadlock. But a thread that says the code is *wrong* is exactly what gate 5 exists to hold for, and resolving it on the driver's own judgment would let it overrule a reviewer by fiat.

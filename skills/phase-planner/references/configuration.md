@@ -235,6 +235,15 @@ See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/d
 | Key | Default | Meaning |
 |---|---|---|
 | `stuck.max_cycles` | `5` | Consecutive wakes where a gate fails for the same reason, with an unmoved head, before the phase is marked `Blocked` |
+| `stuck.max_review_rounds` | `3` | Head commits on one phase PR that a `review.required` entry has evaluated, before the driver stops answering and reports. `null` disables it |
+
+**Why both.** `max_cycles` counts a gate stuck against an **unmoved head**. A review loop moves the head on every round, so it reads as progress and that counter never trips, which is how a single PR ran thirty-two review rounds. `max_review_rounds` is the guard for a phase that is moving and getting nowhere.
+
+**It counts reviewed heads, not reviews.** Two required reviewers looking at the same commit is one round, because answering both costs one push. Summing submissions would let three configured reviewers exhaust a budget of three on the opening head, and would sit at zero forever for a `check:` entry, which posts a check run rather than a review.
+
+The count is derived from the PR each time rather than tracked, so it survives a session dying mid-phase. A driver that remembered it would forget on compaction and start again from one. The one durable part is the baseline written when a user says `continue`, without which the stop could never be cleared.
+
+Raise it for a repo whose reviewer is genuinely thorough on large diffs. Lower it to `1` to have every phase report after a single round, which is a reasonable way to watch a new reviewer's behaviour before trusting it unattended.
 
 Counted per row, so one wedged platform never stalls the others.
 

@@ -4,6 +4,21 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.6.0]
+
+### A stop for review rounds that keep going
+
+0.5.0 attacked the causes of a runaway review loop. This is the backstop for the causes nobody has found yet.
+
+* **`stuck.max_review_rounds`**, default `3`, `null` to disable. Counts the head commits on one phase PR that a `review.required` entry has evaluated, by the same test gate 6 uses. At the threshold the driver stops answering, marks the row `Blocked`, and reports.
+* **Heads, not review submissions.** Two reviewers on one commit is one round, since answering both costs one push; summing submissions would let three configured reviewers exhaust a budget of three on the opening head. It also keeps the rule working for a `check:` entry, which posts a check run and never a review, so a submission count would sit at zero for managed Claude review and review workflows.
+* **A reaction belongs to one head.** A 👍 carries no sha, so it counts for the head that was current when it was created and not for the ones before it. Gate 6 only ever asks about the current head, where the unbounded test is right; reused across every head it would turn a single reaction on the third head into a count of three.
+* **`continue` writes a baseline**, into a new `Review-baselines` field in Driver State, keyed by phase. Later counts subtract that phase's baseline. A derived count still reads above the threshold the moment after someone says carry on, so without the baseline the stop could never be cleared. Keyed by phase because concurrent phases can each be stopped, and because `Note` is one plan-wide free-text field rather than per-row state anything reads back.
+* **The count is derived from the PR, never remembered.** A session that tracks it loses the tally to compaction and then sees round one again, which is most of why a PR could reach thirty-two rounds with no session able to say it had.
+* **`stuck.max_cycles` could never have caught this.** It counts a gate failing against an unmoved head, and a review round moves the head every time, so the loop read as progress on every pass. The two counters cover genuinely different failures: stuck and waiting, versus moving and getting nowhere.
+* **The stop reports rather than asks.** It lists what changed each round, what is still flagged, and whether the newest findings are new ground or the same class resurfacing in new places. A bare "shall I continue?" collects a yes, which is exactly what happened at four rounds before it ran twenty-eight more.
+* `continue` clears the stop and restarts the budget.
+
 ## [0.5.1]
 
 ### Fixed

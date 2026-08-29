@@ -20,7 +20,7 @@ phases:
       required: []
       changes_requested_blocks: true
       threads_must_resolve: true
-    stuck: { max_cycles: 5 }
+    stuck: { max_cycles: 5, max_review_rounds: 3 }
 
   repos:
     OWNER/REPO: {}
@@ -97,5 +97,6 @@ One paragraph: what this plan delivers, and how many phases it takes to get ther
 - Driver-ID: -
 - Active: -
 - UAT-pending: -
+- Review-baselines: -
 - Heartbeat: -
 - Note: -
