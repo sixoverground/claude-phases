@@ -4,11 +4,25 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.5.1]
+
+### Fixed
+
+* **Losing the claim race no longer overwrites the winner.** On a stale-sha conflict the driver was told to re-read, re-apply its change, and retry. For a claim write that means putting its own `Driver-ID` back over the one that just beat it, so two fresh drivers reading the same unclaimed plan could both end up believing they held it and start the same phase. The retry now re-runs the Driver-ID decision on what it just read, and a foreign ID with a live heartbeat ends the attempt instead of being overwritten. Found by review on #18, against a design note claiming the pair was already a lock.
+
+### No em-dashes
+
+House style. Every em-dash in prose is gone, recast as a comma, a colon, or a separate sentence rather than swapped for an en-dash, which would be the same habit in disguise. Both skills, the docs, the profiles, and this file.
+
+The ones that remain are not prose: the separator in phase headings, the one in Driver State `Active` entries, and the gate report that mirrors them. Those are separators in the format the driver reads and writes, and plans already in flight contain them, so changing them is a format change rather than a copy edit.
+
+No rule changed. The version moves because the skills are what a model reads and their text is not inert.
+
 ## [0.5.0]
 
 ### Who opens the PR is part of the merge gate
 
-Found on a real run. The session opened a phase PR with `gh pr create` instead of the GitHub MCP tools. In a cloud session `gh` is authenticated as the integration rather than as the user, so the PR was opened by that app — and Codex, which reviews the PRs of the account that connected it and nobody else's, was never asked. No review, no check, no error. Gate 6 waited on proof that had never been requested and YOLO stopped with nothing red to look at.
+Found on a real run. The session opened a phase PR with `gh pr create` instead of the GitHub MCP tools. In a cloud session `gh` is authenticated as the integration rather than as the user, so the PR was opened by that app, and Codex, which reviews the PRs of the account that connected it and nobody else's, was never asked. No review, no check, no error. Gate 6 waited on proof that had never been requested and YOLO stopped with nothing red to look at.
 
 * `phase-driver` opens PRs with the GitHub MCP tools, never `gh pr create`. Both succeed and print a URL; only one of them gets reviewed.
 * It reads back the PR's `user.login` afterwards and compares it to the account its own GitHub tools authenticate as, which is the identity the MCP tools open PRs with. Nothing has to be configured for that, and no plan field records an expected opener.
@@ -21,7 +35,7 @@ Found on a real run. The session opened a phase PR with `gh pr create` instead o
 
 Observed on a real phase: four review rounds, then twenty-eight more after the user approved continuing. Two causes, both in how the driver answered a review.
 
-* **A review comment is evidence, not an order.** The driver judged every comment as work to do, including findings outside the phase's scope — the same widening §3 already forbids when it notices a problem itself. Out-of-scope findings are now declined with reasoning and recorded where they survive, rather than implemented.
+* **A review comment is evidence, not an order.** The driver judged every comment as work to do, including findings outside the phase's scope, which is the same widening §3 already forbids when it notices a problem itself. Out-of-scope findings are now declined with reasoning and recorded where they survive, rather than implemented.
 * **Carried findings**, a new optional section of the plan file, is where an out-of-scope finding goes when it makes sense for the plan but not for the phase that raised it. A defect that stands on its own still goes to an issue. The driver appends and **never adds a phase**: writing scope, acceptance criteria and dependencies is planning, and a driver that does it is re-planning a project mid-flight on a reviewer's suggestion. `phase-planner` reads the section when revising a plan, and the driver reads out any open entries when the plan finishes, so nothing completes with a list nobody looked at.
 * **It fixed the flagged line instead of the finding.** A reviewer comments where it happened to look; the same mistake is usually in several places in the same diff. Fixing only what was pointed at guarantees the next round finds the siblings. The driver now reads the surrounding code, fixes the general case once, and says so in the reply.
 * **One push per round, not one push per comment.** Every push is another review round.
@@ -30,12 +44,12 @@ Observed on a real phase: four review rounds, then twenty-eight more after the u
 
 ### Fixed
 
-* **Only 👍 is a verdict.** 0.4.0 said a reaction from a configured reviewer proves it evaluated the head, which is true of 👍 and false of the others. Codex answers `@codex review this pr` with 👀 within seconds to say it has picked the job up — observed here ten seconds after the request, with no review for minutes after. A rule matching on any reaction would merge on "I have started reading", which is worse than the silence it replaced because it arrives fast and looks like an answer. Gate 6 now matches on the reaction's content.
+* **Only 👍 is a verdict.** 0.4.0 said a reaction from a configured reviewer proves it evaluated the head, which is true of 👍 and false of the others. Codex answers `@codex review this pr` with 👀 within seconds to say it has picked the job up, observed here ten seconds after the request with no review for minutes after. A rule matching on any reaction would merge on "I have started reading", which is worse than the silence it replaced because it arrives fast and looks like an answer. Gate 6 now matches on the reaction's content.
 * **v0.4.0 shipped with no skill zips.** GitHub raises no workflow-triggering event for a release created with the repository's `GITHUB_TOKEN`, so once `release.sh` took over publishing, the `release: published` run that attached the assets simply stopped happening. Every release through v0.3.0 was published by hand and got its zips; v0.4.0 was the first cut by the script and got none, silently.
 
   `release.sh` now attaches them in the same job that creates the release, and attaches them to an existing release when re-run, so a release missing its assets is repaired by dispatching the workflow rather than by burning a version. `package-skills.yml` keeps the PR check and the dispatch build, and no longer claims to handle releases.
 
-  The release job checks out `main` explicitly rather than the ref it ran on. A dispatch can name any branch, and an unpinned checkout would read that branch's `plugin.json` and build its zips while `gh release create --target main` tagged main's code — a release whose tag and assets came from different places.
+  The release job checks out `main` explicitly rather than the ref it ran on. A dispatch can name any branch, and an unpinned checkout would read that branch's `plugin.json` and build its zips while `gh release create --target main` tagged main's code, producing a release whose tag and assets came from different places.
 
 ## [0.4.0]
 

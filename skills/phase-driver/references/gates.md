@@ -76,7 +76,7 @@ gh api repos/{owner}/{repo}/issues/{number}/reactions --jq '.[] | {login: .user.
 
 PR body reactions live on the *issues* endpoint; that is not a typo. A reaction can also sit on a comment rather than the PR body, and those come from that comment's own `reactions` endpoint.
 
-**Only 👍 is a verdict. The same reviewer uses other reactions to mean other things.** Codex answers a `@codex review this pr` comment with 👀 within seconds, meaning it has picked the job up — observed on this repository, ten seconds after the request and with no review for minutes afterwards. Reading any reaction from a configured login as proof would merge on "I have started reading", which is worse than the silence it replaced because it arrives fast and looks like an answer. Match on the content, not on the presence of a reaction.
+**Only 👍 is a verdict. The same reviewer uses other reactions to mean other things.** Codex answers a `@codex review this pr` comment with 👀 within seconds, meaning it has picked the job up. Observed on this repository, ten seconds after the request and with no review for minutes afterwards. Reading any reaction from a configured login as proof would merge on "I have started reading", which is worse than the silence it replaced because it arrives fast and looks like an answer. Match on the content, not on the presence of a reaction.
 
 | Reaction from a `logins` entry | Means |
 |---|---|
@@ -84,7 +84,7 @@ PR body reactions live on the *issues* endpoint; that is not a typo. A reaction 
 | 👀 `eyes` | Picked it up, working. **Not** a verdict, and not a sign the PR was evaluated |
 | Anything else | Nothing you can act on |
 
-**The trap: `issue_read` reports reaction counts, not who reacted.** A `"+1": 1` in that payload looks like the answer and isn't — a teammate giving the PR a thumbs up produces the identical field. Counting reactions instead of attributing them turns any human's 👍 into a merge, which is the silent false pass this gate exists to prevent. If you cannot reach the reactions endpoint, say so and fall back to the other rules. Never infer a reviewer's verdict from a count.
+**The trap: `issue_read` reports reaction counts, not who reacted.** A `"+1": 1` in that payload looks like the answer and isn't, because a teammate giving the PR a thumbs up produces the identical field. Counting reactions instead of attributing them turns any human's 👍 into a merge, which is the silent false pass this gate exists to prevent. If you cannot reach the reactions endpoint, say so and fall back to the other rules. Never infer a reviewer's verdict from a count.
 
 ### `rereview: optional`
 
@@ -99,7 +99,7 @@ An entry carrying `rereview: optional` has a second way to be satisfied, for rev
 
 A **sign** is a review, an inline comment, or a 👍 by one of the entry's `logins`, at any commit on this PR. Any one of them proves the integration is alive and that this reviewer has this PR.
 
-**When a PR carries no sign at all, check who opened it before you call the integration broken.** Some reviewer integrations attach to an account — Codex reviews the connected user's PRs and ignores a bot's — so a phase PR opened under the wrong identity is never reviewed by design. This applies to an account-scoped `logins` entry; a `check:` entry has no connected user, and a workflow-triggered reviewer runs whoever opened the PR. It presents identically to a dead integration and has a different, one-minute fix: reopen it from the right account. The usual cause is a PR opened with `gh pr create` in a cloud session, which authenticates as the integration rather than as the user. Read the PR's `user.login`, and if it isn't the human whose plan this is, report that as the cause instead of reporting a wait.
+**When a PR carries no sign at all, check who opened it before you call the integration broken.** Some reviewer integrations attach to an account. Codex reviews the connected user's PRs and ignores a bot's, so a phase PR opened under the wrong identity is never reviewed by design. This applies to an account-scoped `logins` entry; a `check:` entry has no connected user, and a workflow-triggered reviewer runs whoever opened the PR. It presents identically to a dead integration and has a different, one-minute fix: reopen it from the right account. The usual cause is a PR opened with `gh pr create` in a cloud session, which authenticates as the integration rather than as the user. Read the PR's `user.login`, and if it isn't the human whose plan this is, report that as the cause instead of reporting a wait.
 
 That last row is load-bearing. Smart detect always evaluates a PR once, so a PR carrying no sign at all is a broken integration, not a decline, and it must never age into a pass. Drop the precondition and `optional` becomes "wait fifteen minutes, then merge unreviewed."
 

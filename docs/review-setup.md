@@ -89,7 +89,7 @@ jobs:
           plugins: "code-review@claude-code-plugins"
           # --comment makes the review POST its findings. Without it the
           # review runs, finds real issues, and reports them only to the job
-          # log — the PR gets nothing.
+          # log, and the PR gets nothing.
           prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
           # And this lets the posting actually succeed. Without it the gh
           # calls are denied by the tool-permission layer, the job still
@@ -202,7 +202,7 @@ Be clear-eyed about what option 2 costs: the driver can merge a commit Codex nev
 
 ### Codex only reviews the connected user's PRs
 
-The integration attaches to the account that connected it. A pull request opened by anyone else — including a bot or app identity the driver might be authenticating as — gets no review, no check, and no reaction. Nothing reports an error, because from Codex's side nothing was ever asked.
+The integration attaches to the account that connected it. A pull request opened by anyone else, including a bot or app identity the driver might be authenticating as, gets no review, no check, and no reaction. Nothing reports an error, because from Codex's side nothing was ever asked.
 
 That makes the opener identity part of your merge gate. If phase PRs arrive under a bot login, gate 6 waits forever on a review that was never requested, and YOLO stops with nothing red to look at.
 
@@ -212,7 +212,7 @@ It is the commit *author* that does not matter here: a `Co-Authored-By` trailer 
 
 ### The thumbs up is a verdict
 
-Smart detect can also decide that an entire PR needs no review. When it does, it leaves a 👍 on the PR — the timeline reads `chatgpt-codex-connector[bot] reacted with thumbs up emoji` — and posts nothing else.
+Smart detect can also decide that an entire PR needs no review. When it does, it leaves a 👍 on the PR, the timeline reads `chatgpt-codex-connector[bot] reacted with thumbs up emoji`, and it posts nothing else.
 
 The driver counts that reaction. Left after the current head was pushed, it satisfies the gate outright: Codex evaluated this commit and said so. Left earlier, it still counts as a sign that Codex has the PR, which is the precondition `rereview: optional` needs before a decline can be inferred from silence.
 

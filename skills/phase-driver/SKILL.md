@@ -13,7 +13,7 @@ Read `references/recovery.md`, `references/gates.md`, and `references/vocabulary
 
 1. **Never modify the plan file from a phase branch.** Plan writes go to `home_repo`'s **plan branch**, always.
 2. **Write status before the action it describes**, not after. Claim before branching; record the PR before waiting on it.
-3. **Pass the `sha` you just read** on every plan write. A stale sha means another driver moved: re-read, retry, and don't overwrite.
+3. **Pass the `sha` you just read** on every plan write. A stale sha means another driver moved: re-read, re-check whose claim it is now, and don't overwrite.
 4. **Every plan commit message ends `[skip ci]`.**
 5. **One phase = one PR = one repo.**
 6. **Re-read the head SHA immediately before anything irreversible** and re-check the gate against it.
@@ -74,13 +74,13 @@ Some reviewer integrations attach to an account. Codex reviews pull requests ope
 
 **Not every reviewer works that way**, and saying so matters because the wrong diagnosis here recommends closing a healthy PR. A review workflow triggered by `pull_request` reviews whatever lands in the repo whoever opened it, and a `check:` entry has no connected user to compare against at all. The opener matters for a `logins` entry backed by an account-scoped integration; elsewhere an unexpected opener is worth a sentence, not an alarm.
 
-**Open the PR with the GitHub MCP tools, not `gh pr create`.** This is the whole rule, and it is not a style preference. In a cloud session `gh` is authenticated as the integration rather than as you, so `gh pr create` opens the PR as that app identity; the MCP tools act with the user's own authorization and open it as them. Both succeed, both print a PR URL, and only one of them gets reviewed. Push with git as usual — it is the PR-opening call that decides the author.
+**Open the PR with the GitHub MCP tools, not `gh pr create`.** This is the whole rule, and it is not a style preference. In a cloud session `gh` is authenticated as the integration rather than as you, so `gh pr create` opens the PR as that app identity; the MCP tools act with the user's own authorization and open it as them. Both succeed, both print a PR URL, and only one of them gets reviewed. Push with git as usual; it is the PR-opening call that decides the author.
 
 This is about the opener only. Commit authorship and `Co-Authored-By` trailers change nothing here, and no trailer will make a reviewer look at a PR opened by an account it doesn't watch.
 
-**Then check, against the account your GitHub tools authenticate as** — `get_me`, read once per session. That is the identity the MCP tools open PRs with, so a PR whose `user.login` differs was opened by some other path, which is the failure this catches. Nothing needs to be configured for this: the comparison is between two things you can read, and a plan carries no field naming the expected opener.
+**Then check, against the account your GitHub tools authenticate as**, which is `get_me`, read once per session. That is the identity the MCP tools open PRs with, so a PR whose `user.login` differs was opened by some other path, which is the failure this catches. Nothing needs to be configured for this: the comparison is between two things you can read, and a plan carries no field naming the expected opener.
 
-If they differ, say so in the phase report and on the PR before waiting on anything. Name the login that opened it, and name the affected `review.required` entries — the account-scoped ones — rather than asserting that review is broken in general. The fix is usually to close it and reopen from the right account, which is cheap now and expensive after five gate cycles.
+If they differ, say so in the phase report and on the PR before waiting on anything. Name the login that opened it, and name the affected `review.required` entries, the account-scoped ones, rather than asserting that review is broken in general. The fix is usually to close it and reopen from the right account, which is cheap now and expensive after five gate cycles.
 
 Do not let this become a silent wait. A reviewer that was never asked looks exactly like a reviewer that is slow.
 
@@ -155,13 +155,13 @@ Out of scope is not the same as unimportant, so where it gets recorded depends o
 | A real defect that stands on its own, unrelated to what the plan delivers | A GitHub issue in that repo |
 | A remark about this PR that changes nothing | The reply, and nothing else |
 
-**Carried findings** is a section of the plan file, described in the plan format. Append one line — what it is, the PR and thread that raised it, and why it was out of scope — with the same write rules as any plan write: plan branch, the `sha` you just read, `[skip ci]`.
+**Carried findings** is a section of the plan file, described in the plan format. Append one line saying what it is, the PR and thread that raised it, and why it was out of scope. Same write rules as any plan write: plan branch, the `sha` you just read, `[skip ci]`.
 
 A plan starts without that section, so the first finding creates it, immediately **after Driver State**. Look for an existing one before you write: two `## Carried findings` headings in a file split the list in half and make the end-of-plan readout miss whichever one it doesn't reach.
 
 **Append to it; never add a phase.** Recording is execution and belongs to you. Deciding that a finding is worth a phase means writing scope, acceptance criteria, UAT and dependencies for it, which is planning: it belongs to `phase-planner` and to the person whose plan it is. Tell the user what you recorded and let them ask for a phase. A driver that adds phases because a reviewer suggested something is re-planning a project mid-flight on the say-so of a tool that has read one diff.
 
-Scope-declining resolves the thread, and disagreement does not. That difference is deliberate. An out-of-scope finding is not a claim that the PR is wrong, so holding gate 5 open for it would stall a phase over work that was never in it — while a thread that says the code is broken should block until a person agrees it isn't.
+Scope-declining resolves the thread, and disagreement does not. That difference is deliberate. An out-of-scope finding is not a claim that the PR is wrong, so holding gate 5 open for it would stall a phase over work that was never in it, while a thread that says the code is broken should block until a person agrees it isn't.
 
 **Widening a phase because a reviewer suggested it is still widening it.** The scope came from a plan someone agreed to; a comment is a suggestion from a tool that has read this diff and nothing else.
 
@@ -174,9 +174,9 @@ When a PR has no outstanding work, evaluate `references/gates.md` against it, us
 
 Delete only a branch **you** created: it must match that repo's `branch_prefix`, and it must not be the plan branch or any repo's `target_branch`. Those three checks are the whole guard, and skipping them is how a driver deletes the branch its own plan lives on.
 
-A failed delete is not a failed merge. Branch protection or a ruleset can forbid it, and so can the environment the session runs in — a sandboxed one may permit pushes and PR operations while refusing ref deletion at both the git and API layers. Say so once and carry on, because the phase is merged either way and nothing downstream depends on the branch being gone.
+A failed delete is not a failed merge. Branch protection or a ruleset can forbid it, and so can the environment the session runs in: a sandboxed one may permit pushes and PR operations while refusing ref deletion at both the git and API layers. Say so once and carry on, because the phase is merged either way and nothing downstream depends on the branch being gone.
 
-**A second failure for the same reason is not incidental, so stop reporting it as though it were.** Say once that deletions are refused here and recommend turning on GitHub's own *Automatically delete head branches* (Settings → General), which runs server-side on merge and needs nothing from the driver. Without that, the driver shrugs once per phase for the length of the plan and the user finds a fully stale branch list at the end — losing the signal the deletion exists to preserve, that a branch which still exists means work which has not landed.
+**A second failure for the same reason is not incidental, so stop reporting it as though it were.** Say once that deletions are refused here and recommend turning on GitHub's own *Automatically delete head branches* (Settings → General), which runs server-side on merge and needs nothing from the driver. Without that, the driver shrugs once per phase for the length of the plan and the user finds a fully stale branch list at the end, losing the signal the deletion exists to preserve: that a branch which still exists means work which has not landed.
 
 `YOLO` lives in the Driver State block. A repo may also pin `yolo: false` in front matter, which wins, config can restrict, never enable.
 
@@ -190,7 +190,7 @@ However the PR merged. You, the user from their phone, or anyone else:
 2. **Commit `Merged`** to the plan branch. If YOLO was on and the PR carried no UAT checklist, append that phase's id to `UAT-pending` in the same write.
 3. Comment on the PR and tell the user.
 4. **Start whatever rows that unblocks**, in the same turn, unless `Driver: paused`.
-5. **If that was the last row** — every row now `Merged` or `Skipped` — go to §8, in this same turn.
+5. **If that was the last row**, meaning every row is now `Merged` or `Skipped`, go to §8, in this same turn.
 
 A merge always advances the plan. YOLO changes who presses the button, never whether the plan moves.
 
@@ -234,6 +234,8 @@ If the plan completes with `UAT-pending` non-empty and no integration PR was ope
 
 Re-read that `sha` at the start of **every** transition. When the plan branch is also a `target_branch`, merging a phase PR moves it, and a sha cached from before the merge is already stale.
 
-On a sha conflict: re-read, re-apply your change, retry. Three failures means another driver is active, stop and report rather than forcing it.
+On a sha conflict: re-read, **re-run the Driver-ID decision on what you just read**, and only then re-apply your change and retry. Three failures means another driver is active, so stop and report rather than forcing it.
+
+Re-running that decision is what makes the sha a lock rather than a speed bump. A stale sha means someone else wrote between your read and your write, and the write that beat you may have been another driver claiming this plan. Re-applying your change blindly puts your own `Driver-ID` back over theirs, and now two drivers each believe they hold the claim and start the same phase. So if the re-read shows a foreign ID with a live heartbeat, you lost the race: report and stop, and do not retry.
 
 If the plan branch rejects direct commits, switch to `plan_writes: plan-pr`. Each transition becomes a single-file PR with auto-merge, targeting the plan branch, and tell the user once that you've done so.

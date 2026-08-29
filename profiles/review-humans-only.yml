@@ -8,5 +8,5 @@ review:
   threads_must_resolve: true        # every inline thread must be resolved
 
 # If you want a human approval to be strictly required before anything merges,
-# use GitHub branch protection — or turn YOLO off, which stops the driver at a
+# use GitHub branch protection, or turn YOLO off, which stops the driver at a
 # ready-to-merge ping and leaves the merge to you.

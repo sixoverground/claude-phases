@@ -1,7 +1,7 @@
 {
   "name": "claude-phases",
   "description": "Break work into phases and let a Claude Code session build them one PR at a time, steered from anywhere.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "author": {
     "name": "Craig Phares",
     "url": "https://github.com/sixoverground"

@@ -1,7 +1,7 @@
 # Claude review running in your own GitHub Actions workflow.
 # Works on any plan, including Pro and Max.
 #
-# `check` is your job's `name:`. Confirm it on a real PR — get it wrong and
+# `check` is your job's `name:`. Confirm it on a real PR, because get it wrong and
 # the gate waits forever for a check that never appears under that name.
 review:
   required:
