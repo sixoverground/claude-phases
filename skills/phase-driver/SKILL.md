@@ -169,7 +169,11 @@ Scope-declining resolves the thread, and disagreement does not. That difference 
 
 **Count the review rounds on this PR, and stop at `stuck.max_review_rounds`** (default `3`, `null` to disable).
 
-**Derive the count; never remember it.** It is the number of reviews submitted on this PR by any `review.required` entry, read from GitHub on the wake you are in. A session that keeps the tally in its head loses it to compaction and then sees round one again, which is how a PR reaches twenty-eight rounds with nobody able to say it had.
+**Count reviewed heads, not reviews.** A round is one head commit that a required reviewer evaluated, so the count is the number of distinct shas on this PR for which **any** `review.required` entry is satisfied by gate 6's own test: a review or inline comment at that sha by one of its `logins`, a 👍 left at or after that head was pushed, or a check run named by its `check` at that sha passing the entry's `proof`.
+
+Counting submissions instead breaks in both directions. Three required reviewers all reviewing the opening head would exhaust a budget of three before the driver had answered anything once, though answering all three costs a single push and is plainly one round. And a `check:` entry posts no review at all, so a submission count sits at zero forever for managed Claude review and for review workflows, and the stop never fires for the setups most able to loop.
+
+**Derive the count; never remember it.** Read it from the PR on the wake you are in. A session that keeps the tally in its head loses it to compaction and then sees round one again, which is how a PR reaches twenty-eight rounds with nobody able to say it had.
 
 `stuck.max_cycles` does not cover this. That one counts a gate failing with an **unmoved head**, and a review round moves the head every time by construction, so this loop reads as progress on every pass.
 
@@ -183,7 +187,9 @@ Line 3 is the one that earns the stop. "Round four, and the last three findings 
 
 **Do not ask "shall I continue?"** A bare question gets a yes, because nothing in it gives anyone grounds to say no. That is the observed failure: a stop at four rounds was approved and ran twenty-eight more. Report the evidence and let the answer follow from it.
 
-The user resumes with `continue`, which clears the stop and starts the budget again.
+The user resumes with `continue`. Starting the budget again means **writing down where it restarted**: put the current reviewed-head count in the row's `Note` as `review-baseline: N`, and subtract that baseline from every later count.
+
+Without the baseline the stop is a trap rather than a checkpoint. The count is derived, so the next wake re-derives a number still at or above the threshold, blocks the row again, and no amount of saying `continue` moves it. The baseline is the one piece of this that has to be written down, for the same reason everything else in the plan file is: the session that agreed to continue will not be the session that carries on.
 
 When a PR has no outstanding work, evaluate `references/gates.md` against it, using that repo's resolved config. Then:
 
