@@ -28,7 +28,7 @@ phases:
 
 # two-phase-demo
 
-The smallest plan worth writing: add rate limiting to an existing API, in two phases. Use this as the shape to copy for a single-repo project, or as an end-to-end test of a fresh install.
+This is the smallest useful example: one repository, two sequential phases, local verification, CI, and Copilot review. Copy its structure for a simple project or use it to test a fresh installation end to end.
 
 ## PR Sequence
 
