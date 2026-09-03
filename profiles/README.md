@@ -1,6 +1,8 @@
-# Config profiles
+# Configuration profiles
 
-Copy-paste fragments for common setups. Each drops into a plan's front matter, under `defaults:` or under a specific repo in `repos:`.
+These files are copy-and-paste starting points for common CI and review setups. Place one CI profile and one review profile in a plan's YAML front matter, either under `defaults:` or under a repository in `repos:`.
+
+Treat the values as examples, especially check names. Confirm them against a real pull request before relying on the merge gate.
 
 Pick one CI profile and one review profile per repo. They compose.
 

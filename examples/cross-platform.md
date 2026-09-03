@@ -56,7 +56,7 @@ phases:
 
 # acme-signin
 
-Replace the legacy sign-in with session tokens across web, iOS, and Android. Six phases. Four repos, four different CI and review setups. This example exists to show that they coexist without special-casing.
+This example replaces legacy sign-in with session tokens across web, iOS, and Android. Its six phases span four repositories with different CI, verification, review, and merge settings. It shows how those configurations coexist in one plan without provider-specific orchestration.
 
 ## PR Sequence
 
@@ -71,7 +71,7 @@ Replace the legacy sign-in with session tokens across web, iOS, and Android. Six
 
 **Phases 2, 3, and 4 all depend only on phase 1**, so they run **concurrently** in three different repos as soon as the endpoints merge. Phase 5 is the cutover and waits for all three.
 
-Note that every parallel row names its dependency explicitly. A blank `Depends` means *"the previous row"*, so leaving these blank would chain iOS behind web and Android behind iOS. The exact serialization this plan is shaped to avoid.
+Every parallel row names its dependency explicitly. A blank `Depends` means *"the previous row"*, so leaving these blank would chain iOS behind web and Android behind iOS, creating exactly the serialization this plan is designed to avoid.
 
 ## Phase Details
 

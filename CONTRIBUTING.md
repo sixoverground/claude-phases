@@ -1,17 +1,17 @@
 # Contributing
 
-Thanks for looking. A few things about this repo are unusual, and knowing them first will save you a wasted PR.
+Thanks for contributing. Start with the two constraints below: prose changes can change runtime behavior, and several files jointly define the plan format.
 
 ## The skills are prose, so edits are behaviour changes
 
 `skills/phase-driver/SKILL.md` and `skills/phase-planner/SKILL.md` are instructions read by a model, not code read by an interpreter. Rewording a sentence can change what the driver does. Tightening a paragraph for style can quietly drop a rule.
 
-Two consequences:
+When editing a skill:
 
 * Say what behaviour you intend to change, even when the diff looks editorial.
 * Prefer adding a named rule over rephrasing an existing one. The driver follows specifics far better than it follows tone.
 
-## Three files have to agree
+## Keep the contract files in sync
 
 `skills/phase-planner/references/format.md` specifies the plan file. `skills/phase-driver/SKILL.md` reads and writes it. `skills/phase-planner/references/plan-template.md` is what the planner starts from. A change to any one of them is usually a change to all three, and the driver's crash recovery is what breaks when they drift.
 
@@ -21,7 +21,7 @@ The spec lives inside the skill rather than in `docs/` so that `phase-planner` i
 
 ## Test against a real repository
 
-There is no unit test suite, and a skill that reads correctly can still behave badly. Before opening a PR:
+There is no unit test suite, and a skill that reads correctly can still behave badly. Before opening a PR that changes skill behavior:
 
 1. Point the skills at a scratch repository with CI on it. A two-phase plan is enough.
 2. Run a phase to a merge, with YOLO off.

@@ -6,11 +6,9 @@ Report a vulnerability through [GitHub's private advisory form](https://github.c
 
 Expect a first reply within a week.
 
-## What these skills can do
+## Understand the risk before installing
 
-Worth understanding before you install them, because the blast radius is larger than most skills.
-
-A session running `phase-driver` writes code, pushes branches, and with YOLO on it merges pull requests without asking. It holds whatever repository permissions the session it runs in holds. There is no separate credential and no sandbox: the skill is instructions, and the authority is your session's.
+A session running `phase-driver` can write code, push branches, and, with YOLO on, merge pull requests without asking. It uses the repository permissions of the session in which it runs. The skill is a set of instructions rather than a separate sandboxed service, so it has no independent credential or permission boundary.
 
 ## The trust boundary
 
@@ -22,12 +20,12 @@ The driver reads content that people other than you can write:
 
 On a public repository, anyone who can comment can put text in front of it. Treat that text as data, never as instructions. The skills say so explicitly, and the plan file records it as a standing rule, but prompt injection is not a solved problem and no wording makes it one.
 
-Two things reduce the exposure:
+Reduce the exposure in two ways:
 
 * **YOLO off** puts a human between every phase and its merge.
 * **A private repository** limits who can write into the driver's input in the first place.
 
-If you run this on a public repository with YOLO on, you are trusting the reviewer's output and every commenter with the merge button.
+Running a public repository with YOLO on means trusting the driver's handling of content written by reviewers and commenters. Begin with YOLO off, verify the behavior in your repository, and grant only the permissions the session needs.
 
 ## The merge gate is not a security control
 

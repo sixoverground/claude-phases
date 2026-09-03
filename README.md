@@ -1,6 +1,6 @@
 # claude-phases
 
-Break work into phases. Let a Claude Code session build them one PR at a time, and steer the whole thing from your phone.
+Plan a large change as a series of small pull requests, then let a Claude Code session build and drive them one at a time. You can monitor, pause, or redirect the work from any Claude client, including your phone.
 
 ```
    docs/plans/my-app.md              a Claude Code cloud session              GitHub
@@ -20,6 +20,8 @@ Break work into phases. Let a Claude Code session build them one PR at a time, a
 
 ## Quick start
 
+You need a GitHub repository and a Claude Code session with permission to create branches and pull requests.
+
 **1. Install the plugin.**
 
 ```
@@ -33,33 +35,42 @@ Both skills arrive together, and `/plugin marketplace update` picks up new versi
 
 > plan a project
 
-It asks what you're building, inspects the repo to work out your CI and review setup, and writes `docs/plans/<project>.md`.
+It asks what you're building, inspects the repository to understand its CI and review setup, and writes `docs/plans/<project>.md`.
 
 **3. Build it.** Say:
 
 > run the next phase
 
-It implements the first phase, opens a PR, and waits. Fixes CI if it breaks. Answers review comments. Merges when the gates pass, then starts the next phase.
+It implements the first phase, opens a PR, and waits. When CI fails or a reviewer comments, the session wakes, responds, and pushes a fix. Once the merge gates pass, it merges or asks you to merge, then starts the next phase.
 
 **4. Steer it from anywhere.** `status`, `why`, `pause`, `yolo off`, `skip phase 3`, `merge now`.
 
-That is the loop. The rest of this README explains why it is built the way it is.
+That is the loop. Start with YOLO off while you learn how the driver behaves in your repository. Read [Security](SECURITY.md) before allowing unattended merges.
 
 ---
 
-## The problem
+## What this project is
 
-Long-running agent work needs somewhere durable to keep its place. A cloud session's container gets reclaimed, its context compacts, and it can die between opening a PR and recording that it did.
+`claude-phases` is a plugin containing two skills. It is not a background service or a separate workflow engine.
 
-So the plan file *is* the state. A session that remembers nothing can read `docs/plans/my-app.md`, look at GitHub, work out exactly what happened, and carry on. Everything else in the design follows from that.
+- **`phase-planner`** turns a project into a dependency-aware sequence of PR-sized phases.
+- **`phase-driver`** implements those phases and coordinates their branches, checks, reviews, and merges.
 
-The second problem is control. Scheduled routines aren't visible in the Claude mobile app, so if a phase wedges while you're away from your desk, you wait. A regular cloud session is visible. You can message it, and it can message you.
+The plugin uses a Markdown plan in your repository as its durable state and GitHub as its view of the outside world. The skills themselves are instructions for Claude Code, so the session acts with the same repository permissions you gave it.
+
+## Why the plan is the state
+
+Long-running agent work needs somewhere durable to keep its place. A cloud session's container can be reclaimed, its context can compact, and the session can stop between opening a PR and recording that it did.
+
+So the plan file *is* the state. A new session can read `docs/plans/my-app.md`, compare it with GitHub, reconstruct what happened, and continue without relying on memory. Everything else in the design follows from that.
+
+A regular cloud session also remains conversational. You can ask what it is waiting for, pause it, change merge authority, or resolve a blocker without being at the machine where the run began.
 
 ## How it works
 
-1. **Plan.** `phase-planner` inspects your repos, proposes configuration from what it finds, and writes `docs/plans/<project>.md`: a table of phases, one PR each.
+1. **Plan.** `phase-planner` inspects your repositories, proposes configuration from the evidence it finds, and writes `docs/plans/<project>.md`: a table with one PR-sized row per phase.
 2. **Run.** Tell a Claude Code session "run the next phase". `phase-driver` picks the first `Pending` phase, branches, implements it, verifies it, and opens a PR.
-3. **Watch.** It subscribes to the PR and sleeps. CI failures and review comments wake it; it fixes them and pushes.
+3. **Watch.** It subscribes to the PR and ends its turn. CI failures and review comments wake it; it fixes them and pushes.
 4. **Merge.** With YOLO on, it squash-merges once the gates pass and deletes the branch. With YOLO off it pings you and waits while you merge from your phone, merging nothing and deleting nothing itself.
 5. **Continue.** Either way, the merge advances the plan and the next phase starts. Repeat until done.
 
@@ -67,7 +78,7 @@ At any point, from anywhere: `status`, `why`, `pause`, `yolo off`, `skip phase 4
 
 ## The merge gate
 
-Nothing merges until every gate passes. Each one is configurable and each has an explicit off switch, so "no CI" and "no bot reviewer" are supported setups rather than degraded ones.
+The driver merges a phase PR only after every configured gate passes. Each gate has an explicit off switch, so repositories without CI or an automated reviewer can state that deliberately.
 
 | Gate | Passes when |
 |---|---|
@@ -78,16 +89,22 @@ Nothing merges until every gate passes. Each one is configurable and each has an
 | Threads resolved | Every review thread is resolved |
 | Reviewer saw *this* commit | Required reviewers evaluated the current head, not an older push |
 
-The last one is the subtle gate. A reviewer's approval of an earlier commit says nothing about the code you're about to merge, so proof is anchored to the head SHA, and it asks only whether the reviewer *looked*. Whether the findings were addressed is the threads gate. Whether the review check itself must be green is the checks gate. Keeping those three apart is what lets one set of rules work for reviewers that signal findings by failing and for reviewers that never fail by design.
+The final gate is the subtle one. Approval of an earlier commit does not cover code pushed later, so reviewer proof is anchored to the current head SHA. Three separate gates answer three separate questions:
+
+- Did the reviewer evaluate this commit?
+- Were its findings addressed?
+- Must the review check itself be green?
+
+That separation supports reviewers that report findings in different ways.
 
 ## YOLO
 
-One switch, and it decides who presses merge.
+YOLO controls who presses the merge button. It does not disable CI or review gates.
 
 - **On.** The driver merges once the gates pass, then starts the next phase.
 - **Off.** The driver does everything else, then pings you with the PR link and waits.
 
-The next phase continues after a merge either way. Merge from the GitHub app with YOLO off and the driver notices and moves on. Turning it off gives you a review checkpoint rather than a manual pipeline.
+The next phase continues after a merge either way. If you merge from GitHub with YOLO off, the driver notices and moves on. Turning YOLO off adds a human merge checkpoint without making you operate the rest of the pipeline.
 
 Flip it any time with `yolo on` / `yolo off`, including with a PR already open.
 
@@ -95,7 +112,12 @@ It also decides where **UAT checklists** land. Off, every PR carries its own pha
 
 ## What a YOLO run looks like
 
-> Kick off a phased plan with YOLO on. Each phase opens a PR, clears CI, squash-merges into the target branch, and deletes its branch. That repeats to the last phase. What you're left with is one clean PR against your default branch, with a UAT checklist ready to run.
+A typical unattended run looks like this:
+
+1. Each phase opens a PR against the target branch.
+2. The driver clears CI and review findings.
+3. It merges the phase and deletes the phase branch.
+4. After the final phase, it opens one integration PR against the default branch with a UAT checklist.
 
 Blockers interrupt that rather than breaking it. When the driver can't get a phase green on its own it hands you that PR: one phase, small, with the failure explained. You resolve it, and the moment CI clears the run continues unattended to the next blocker or to the end. You are the exception handler, not a step in the loop.
 
@@ -131,9 +153,9 @@ Independent repos run concurrently. Only declared dependencies serialize anythin
 
 There is no atomic cross-repo merge, because three PRs can't land as one transaction. If platforms must ship together, express it as a dependency plus an explicit cutover phase.
 
-## Bring your own everything
+## Requirements and integrations
 
-The only assumptions are GitHub and Claude Code.
+The only required platforms are GitHub and Claude Code. Languages, CI providers, review tools, and branch conventions are configurable.
 
 CI is modelled as three separable capabilities rather than a list of vendors, so a setup nobody anticipated still works:
 
@@ -147,7 +169,7 @@ See [the configuration reference](skills/phase-planner/references/configuration.
 
 ## Where tests run
 
-Running tests in the session is preferred, because the loop is seconds instead of a CI round trip. It isn't always possible, so `verify` is per repo and defaults to `auto`: try locally, fall back to CI, and record which path actually ran in the PR body.
+Running tests in the session is fastest, but it is not always possible. The per-repository `verify` setting defaults to `auto`: try locally, fall back to CI, and record in the PR body which path actually ran.
 
 Web and backend code runs locally. Android runs its JVM unit tests locally and leaves instrumented tests to CI. iOS is CI-only, because building needs macOS and Xcode, which no Linux container has.
 
@@ -186,13 +208,13 @@ cp -r claude-phases/skills/* ~/.claude/skills/
 
 Or copy the same directories into `.claude/skills/` in one repo. Many projects gitignore `.claude/`, in which case that copy won't survive a fresh clone.
 
-### Then
+### Start a project
 
 1. Open a Claude Code session on your repo and say **"plan a project"**. `phase-planner` will interview you, inspect the repo, and write `docs/plans/<project>.md`.
 2. Work through [the hygiene checklist](skills/phase-planner/references/hygiene.md) it gives you.
 3. Say **"run the next phase"**, from anywhere, including your phone.
 
-## Status
+## Project status
 
 Working, and built with its own phased plan. Every commit here arrived through the loop described above.
 
@@ -202,11 +224,11 @@ Working, and built with its own phased plan. Every commit here arrived through t
 - [x] Examples, profiles, and install instructions
 - [x] Driven a feature in repositories other than this one
 
-### The first outside run
+### First production run
 
 A two-repo feature: Google Calendar sync between a Next.js backend and an iOS app. Eight phases, roughly twenty-four review rounds, three phases merged unattended with YOLO on, an integration PR at the end, merged to `main` and deployed to production.
 
-What that exercise is worth knowing for:
+That run validated the recovery model and exposed several limits:
 
 - **The plan file did its job.** Sessions died and restarted repeatedly across two days. Recovery from a cold start worked every time, including twice mid-phase.
 - **Review caught two blocking bugs that a green suite did not.** A cross-tenant write and a race that dropped a live webhook channel. Both were the same shape: code correct under an assumption nothing enforced.

@@ -1,34 +1,48 @@
 # Design notes
 
-Why the rules are the way they are. Most of them look like over-engineering until you know what they're defending against, and a rule whose reason has been forgotten tends to get simplified back into a bug.
+This document explains why `claude-phases` works the way it does. The detailed rules can look excessive without the failure that motivated them, and a rule whose reason is forgotten is easy to simplify back into a bug.
+
+## Design at a glance
+
+Five principles account for most of the system:
+
+| Principle | Consequence |
+|---|---|
+| A Claude Code session is temporary | The committed plan file is the durable state |
+| State must survive a crash at any point | The driver records transitions before or immediately after external actions |
+| Only one driver may advance a plan | Driver identity, heartbeats, and blob SHAs form an optimistic lock |
+| A green check is weak evidence | Merge readiness is split into independent CI, review, and thread gates |
+| YOLO delegates phase merges, not final release judgment | The driver may merge phase PRs, but never the final integration PR |
+
+If you are new to the project, read [The plan file is the state](#the-plan-file-is-the-state), [What a green check does not prove](#what-a-green-check-does-not-prove), and [Finishing a plan](#finishing-a-plan) first. The remaining sections explain edge cases and the real runs that uncovered them.
 
 ## The plan file is the state
 
 A Claude Code cloud session is ephemeral. Its container is reclaimed after inactivity, its context compacts as it grows, and it can die at any moment: mid-implementation, between opening a PR and recording it, between merging and advancing.
 
-That single fact drives everything. A fresh session must reconstruct the world from the plan file plus what GitHub reports, with no memory of what came before. Every other decision here is downstream.
+That fact drives the design. A fresh session must reconstruct the world from the plan file and GitHub, with no memory of what came before.
 
 ### Status is written outside the phase PR, on the plan branch
 
 The predecessor to this project, [cpm](https://github.com/sixoverground/claude-project-manager), writes phase status *inside* the phase PR. That works there, because cpm is an external poller that tracks the cursor itself; the plan file is documentation.
 
-Here it would be fatal. A status written inside a PR is invisible until that PR merges. A fresh session reading the plan would see `Pending` for a phase that already has an open PR, and start it a second time. Resume becomes structurally impossible, and the failure mode is duplicate branches for a single phase, the most confusing state to unpick.
+Here it would break recovery. A status written inside a PR is invisible until that PR merges. A fresh session would see `Pending` for a phase that already has an open PR and start it again, producing duplicate branches and PRs for one phase.
 
-So the driver commits status before the action it describes: claim before branching, record the PR before waiting on it. Every crash window in [the recovery table](../skills/phase-planner/references/format.md#recovery) closes because of that ordering. It is the thing most worth not "tidying up" later.
+The driver therefore claims a phase before creating its branch, then records the PR immediately after opening it and before waiting. That ordering closes every crash window in the [recovery table](../skills/phase-planner/references/format.md#recovery).
 
 ### The plan branch is not necessarily the default branch
 
 This started out written as "the default branch", and stayed that way until the first attempt to plan a real project. A feature spanning two repos, every phase targeting `feature/calendar`, nothing reaching `main` until the whole thing worked. The plan had to live on the feature branch, and the spec had no way to say so.
 
-The requirement was never the default branch specifically. It is:
+The actual requirement is:
 
 > a branch that no phase PR modifies, and that is readable without merging one.
 
 A feature branch satisfies both. So `plan_branch` names it, defaulting to the default branch because that remains the common case.
 
-The one interaction worth stating: `plan_branch` is usually also `target_branch`, so phase PRs merge into the branch the plan sits on. That's safe because phase PRs never touch the plan file, but it does mean the blob `sha` moves under the driver's feet on every merge, which is why the sha must be re-read at the start of every transition rather than cached across one.
+Usually `plan_branch` is also `target_branch`, so phase PRs merge into the branch containing the plan. This is safe because phase PRs never touch the plan file. A merge still moves the branch, however, so the driver must read the plan blob's SHA again before every state transition.
 
-Two failure modes come with it, and both are handled by refusing rather than guessing. A `plan_branch` that doesn't exist is a planner refusal. A `plan_branch` that has been *deleted* mid-plan. The feature merged, GitHub auto-deleted the branch. Makes the driver stop and report. Falling back to the default branch there would show every row `Pending` and re-run a project that had already shipped, which is the worst outcome in the system dressed up as recovery.
+The planner refuses a `plan_branch` that does not exist. If that branch is deleted during a run, the driver stops and reports it. Falling back to the default branch could make every row appear `Pending` and repeat work that already shipped.
 
 ### Phase PRs never touch the plan file
 
@@ -64,7 +78,7 @@ And running both, the plan file for the driver and issues for visibility, is the
 
 ## The merge gate
 
-### Three questions that were riding on one signal
+### Three questions, three signals
 
 The reviewer gate started as a single check: *did the required reviewer approve?* That turns out to conflate three separate questions, and separating them is what lets one rule work across reviewers that behave completely differently.
 
@@ -74,7 +88,7 @@ The reviewer gate started as a single check: *did the required reviewer approve?
 | Were its findings addressed? | Thread resolution |
 | Must the review check itself be green? | The checks gate, name it in `ci.required` |
 
-Keeping them apart is what lets the gate work for a reviewer that signals findings by *failing* and for one that never fails by design. Anthropic's managed Code Review is the second kind: its check always concludes `neutral` so it can never block a merge through branch protection. A gate requiring `success` would wait forever on a reviewer that had already done its job.
+Keeping these questions separate supports reviewers with different reporting behavior. Anthropic's managed Code Review, for example, always concludes `neutral`; requiring `success` would wait forever even after it completed.
 
 ### Why `neutral` passes the checks gate
 
@@ -94,9 +108,9 @@ Detection asks which checks appear on recent PRs. That answer is conditional on 
 
 Hence the planner refusal, and hence the rule about checks whose triggers you can't read at all. CodeQL default setup, Xcode Cloud, any external provider with its own start conditions. Those are left out of `ci.required` when targeting a feature branch, so they're counted if they appear and waited on if they don't. It's the same failsafe direction as zero-checks, pointed at a different unknown.
 
-## What a green check does not tell you
+## What a green check does not prove
 
-This is the part worth reading even if you skip the rest, because it was learned the expensive way.
+This is the most important limitation in the merge model, and it was learned from real runs.
 
 Setting up one Claude review workflow on this repository produced **six runs that all reported `success`** and meant six different things:
 
@@ -109,7 +123,7 @@ Setting up one Claude review workflow on this repository produced **six runs tha
 | 5 | 22s | Aborted waiting on a sub-agent |
 | 6 | 9 min | Real review, found four real bugs, and **could not post any of them**: every `gh` call denied at the tool-permission layer |
 
-Six greens, and **not one of them meant "reviewed and clean."** Nothing in GitHub's UI separated them from each other, or from the seventh run, which finally was.
+All six runs were green, but none meant "reviewed and clean." GitHub's UI did not distinguish them from the seventh run, which finally did complete correctly.
 
 Three rules come from that:
 
@@ -137,11 +151,9 @@ The driver already had the right rule for problems it finds on its own: stay ins
 
 The reviewer has read one diff. The phase's scope came from a plan a person agreed to. When those disagree about what this PR is for, the plan wins.
 
-### Fixing the flagged line is what makes it take five rounds
+### Fix the pattern, not only the flagged line
 
-A reviewer comments where it happened to be looking. The finding underneath is usually present in three other places in the same diff, so a fix applied only at the comment's anchor guarantees the next round turns up its siblings, and the round after that, theirs. Rounds multiply because each one is answered narrowly, not because reviewers are thorough.
-
-The same arithmetic makes a push per comment a round per comment. Read every open thread, group the ones that are the same finding, push once.
+A reviewer comments where it happened to find a problem. The same underlying mistake may appear elsewhere in the diff, so changing only the anchored line often produces another round of equivalent findings. The driver reads every open thread, groups related findings, fixes the general case, and pushes once.
 
 ### Declining needs a destination
 
@@ -187,15 +199,15 @@ Note that `local` has no fallback: if the toolchain is missing, verification fai
 
 ## Finishing a plan
 
-### What the run is converging on
+### The intended result
 
-The target experience, stated once because several rules only make sense against it: start a plan with YOLO on, and each phase opens a PR, clears CI, squash-merges, and deletes its branch. Repeating to the last phase, leaving **one clean PR against the default branch with a UAT checklist ready to run**.
+With YOLO on, each phase opens a PR, clears CI and review, merges, and deletes its branch. After the final phase, the desired result is **one integration PR against the default branch with a UAT checklist ready to run**.
 
 Blockers interrupt that rather than ending it. A phase the driver cannot get green becomes a small PR handed to the developer, and the run resumes unattended once CI clears. The developer is the exception handler, not a participant in the loop.
 
-All of it is scoped to YOLO. With YOLO off the driver merges nothing, deletes nothing, and opens no integration PR. The developer merged every phase and read every checklist on the way past, so there is no absence to hand back from.
+These finishing rules apply only with YOLO on. With YOLO off, the driver merges nothing, deletes nothing, and opens no integration PR. The developer sees and merges each phase individually.
 
-Read that way, the two rules below stop being tidiness and become load-bearing: a leftover branch breaks "a branch that exists means work that hasn't landed", and a per-phase checklist under YOLO breaks "the thing you're handed at the end is the thing to verify".
+A leftover phase branch weakens the signal that an existing branch still contains unmerged work. A checklist buried in an automatically merged phase PR is equally easy to miss. That is why the driver deletes merged phase branches and places cumulative UAT on the integration PR.
 
 
 ### The last phase merging is not the same as the feature being done

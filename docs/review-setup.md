@@ -1,8 +1,8 @@
 # Reviewer setup
 
-A code reviewer is optional. Nothing here is required to run a plan, but if you want the merge gate to mean something beyond "CI is green", you want one.
+An automated code reviewer is optional. A plan can run without one, but adding a reviewer gives the merge gate evidence beyond passing CI.
 
-Five setups are supported, they compose, and none of them is more "correct" than the others. Pick by what your plan and organization allow.
+Five setups are supported, and you can combine them. Choose based on your Claude plan, organization permissions, and preferred review behavior.
 
 | Setup | Cost | Plan required | Configured where | Can the planner set it up? |
 |---|---|---|---|---|
@@ -12,7 +12,9 @@ Five setups are supported, they compose, and none of them is more "correct" than
 | [OpenAI Codex](#openai-codex) | Per your ChatGPT plan | Any with Codex | ChatGPT / GitHub app settings | No, prints steps |
 | [Humans only, or nobody](#humans-only-or-nobody) | Free | Any | Nothing to configure | N/A |
 
-On Pro or Max, start with the Actions setup. It authenticates against your existing subscription and needs no admin access.
+For most Pro or Max users, start with [Claude via GitHub Actions](#claude-via-github-actions). It uses your existing subscription and does not require organization administrator access.
+
+Whichever reviewer you choose, finish with [Verifying your setup](#verifying-your-setup). A configured workflow and a green check do not necessarily prove that a review occurred.
 
 ---
 
@@ -38,7 +40,7 @@ review:
 
 **If you don't see the Code Review section**, it's one of: you're not on Team or Enterprise, you don't hold Owner or Primary Owner, your org has Zero Data Retention on, or the preview hasn't reached your org. None of those can be worked around from the repo. Use the Actions setup below instead, which runs on any plan.
 
-**Its check run always completes `neutral`**, by design, so it can never block a merge through branch protection. This library accounts for that: `neutral` passes the checks gate, and proof-of-review asks only whether the check *completed*, not what it concluded. Requiring `success`, which is what a naive implementation does. Would deadlock every merge on a reviewer that had already done its job.
+**Its check run always completes `neutral`**, by design, so it cannot block a merge through branch protection. This library treats `neutral` as passing and asks separately whether the review completed. Requiring `success` would deadlock every merge after the reviewer had already done its job.
 
 **Tune it** with a `REVIEW.md` at your repo root: severity calibration, a cap on nits, paths to skip, repo-specific checks. It's injected at highest priority into every review agent.
 
@@ -102,7 +104,7 @@ Reviews then draw on your subscription's usage rather than metered API spend.
 
 ### Both flags are required, and neither fails loudly
 
-This pair cost an afternoon to work out, so it is worth stating plainly:
+Both flags are necessary, and both failure modes are easy to miss:
 
 | Missing | Symptom |
 |---|---|
@@ -198,7 +200,7 @@ Two ways out, in order of preference:
 1. **Set Codex to review every push**, and leave `rereview` at its default. The gate then holds real proof for every commit it merges. Always prefer this when the setting is available to you.
 2. **Set `rereview: optional`.** The entry is then also satisfied by a review of an earlier commit on the same PR, once `rereview_grace` (default `15m`) has passed since the head was pushed.
 
-Be clear-eyed about what option 2 costs: the driver can merge a commit Codex never read. What keeps it honest is that **a PR with no sign of Codex at all never times out**. The gate blocks on a reviewer that has said nothing, on the grounds that the integration is broken rather than declining.
+Option 2 allows the driver to merge a commit Codex did not read. To limit that risk, **a PR with no sign of Codex at all never times out**. The gate treats total silence as a broken integration, not as a decision to skip review.
 
 ### Codex only reviews the connected user's PRs
 
