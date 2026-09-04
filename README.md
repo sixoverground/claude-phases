@@ -249,6 +249,12 @@ Treat the first plan you drive as a test, and read [SECURITY.md](SECURITY.md) be
 
 The first two are the spec, and they live inside `phase-planner` rather than in `docs/` because an installed skill is a zip of its own directory and can't read this repo. They're written to be read on their own.
 
+## Field Report
+
+[I Let Claude Merge 38 PRs. Here’s What Broke.](https://www.craigphares.com/i-let-claude-merge-38-prs-heres-what-broke/)
+
+A real-world experience using claude-phases, and how that influenced PR auto-merge design decisions.
+
 ## Related
 
 [claude-project-manager](https://github.com/sixoverground/claude-project-manager) runs the same idea from a macOS launchd job, firing a scheduled routine per phase. It suits being at your desk with the loop outside the model. This one puts the loop inside a session you can talk to.
