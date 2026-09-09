@@ -2,6 +2,8 @@
 
 This document explains why `claude-phases` works the way it does. The detailed rules can look excessive without the failure that motivated them, and a rule whose reason is forgotten is easy to simplify back into a bug.
 
+A narrative account of the runs behind these rules, including the missing integration PR and the six green checks that proved nothing, is in [I Let Claude Merge 38 PRs. Here’s What Broke.](https://www.craigphares.com/i-let-claude-merge-38-prs-heres-what-broke/).
+
 ## Design at a glance
 
 Five principles account for most of the system:
