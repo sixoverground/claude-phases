@@ -42,12 +42,14 @@ So every plan carries a pointer back. Immediately after the title paragraph, bef
 ```markdown
 ## For the driver
 
-This plan is executed by the `phase-driver` skill, and nothing in this file stands in for it. If you are acting on this plan and that skill is not in your context, because the session was compacted or was woken by a check-in or a webhook, invoke `phase-driver` before you do anything else, then reconcile. The rule a session without it most often drops: **a merge always advances the plan.** After any phase PR merges, start whatever it unblocks in the same turn, and when the last row merges, finish the plan by the skill's finishing steps rather than going idle.
+This plan is executed by the `phase-driver` skill, and nothing in this file stands in for it. If you are acting on this plan and that skill is not in your context, because the session was compacted or was woken by a check-in or a webhook, invoke `phase-driver` before you do anything else, then reconcile. The rule a session without it most often drops: **a merge always advances the plan.** After any phase PR merges, start whatever it unblocks in the same turn unless `Driver: paused`, and when the last row merges, finish the plan by the skill's finishing steps rather than going idle.
 ```
 
 It restates exactly one rule, the one that was observed to drop, and otherwise points at the skill. The plan is not the place for the rest: a rule copied into a plan is frozen at the version that wrote it, and the driver reads a plan far longer than the planner writes one.
 
 The planner writes it. The driver adds it to a plan that predates it, on the plan branch, in its next status write. Neither edits its text.
+
+That self-heal reaches only a session that still holds the driver skill. A plan already in flight under a session that has compacted is in exactly the state the section exists to rescue, and no code can reach it: invoke `phase-driver` once by hand in that session, or paste the section in. Either is a one-time step per plan.
 
 ---
 
