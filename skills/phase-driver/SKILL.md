@@ -17,7 +17,7 @@ Read `references/recovery.md`, `references/gates.md`, and `references/vocabulary
 4. **Every plan commit message ends `[skip ci]`.**
 5. **One phase = one PR = one repo.**
 6. **Re-read the head SHA immediately before anything irreversible** and re-check the gate against it.
-7. **If your context was compacted or you don't remember starting this: re-read this file and the plan, run Reconcile, and continue.** That is the normal path, not an error.
+7. **If your context was compacted or you don't remember starting this: re-read this file and the plan, run Reconcile, and continue.** That is the normal path, not an error. This rule can only reach a session that still has this file, so two things outside it point back here: the plan's **For the driver** section, and the check-in message you schedule for yourself. If one of those sent you here, that is the path working.
 8. **Never claim work you didn't do.** If tests didn't run, say so in the PR body. If you can't tell why CI failed, say that and link the run.
 
 ## 1. Find the plan
@@ -37,6 +37,17 @@ Run this on every invocation and every wake, including when you think you know t
 3. For **every** non-terminal row, ask GitHub what's actually true: `list_pull_requests` filtered by that row's head branch in that row's repo, then `pull_request_read{get}` for any match.
 4. Apply `references/recovery.md` per row. Where the plan and GitHub disagree, **GitHub is the truth**, fix the plan, never assume.
 5. Rewrite `Heartbeat` and, if you took over, `Driver-ID`.
+6. If the plan has no `## For the driver` section, add it in that same write, between the title paragraph and `## PR Sequence`. Plans written before the section existed lack it, and without it a session that loses this file has nothing to send it back.
+
+### For the driver
+
+The text, verbatim; do not adapt it:
+
+```markdown
+## For the driver
+
+This plan is executed by the `phase-driver` skill, and nothing in this file stands in for it. If you are acting on this plan and that skill is not in your context, because the session was compacted or was woken by a check-in or a webhook, invoke `phase-driver` before you do anything else, then reconcile. The rule a session without it most often drops: **a merge always advances the plan.** After any phase PR merges, start whatever it unblocks in the same turn, and when the last row merges, finish the plan by the skill's finishing steps rather than going idle.
+```
 
 ### Driver-ID
 
@@ -118,6 +129,8 @@ Where each step came from stops mattering the moment the plan is done. What matt
 ## 4. Watch
 
 Subscribe to PR activity for each open phase PR. Schedule a check-in 45–60 minutes out if you can. Webhooks don't reliably deliver CI success or new pushes, and a missed event otherwise stalls the plan silently.
+
+**The check-in message is written for a session that has nothing.** It is the one message you send to a future self, and that self may have compacted and lost this file. So it says to invoke `phase-driver`, names the plan file, says to reconcile, and says nothing else. Do not put state or conclusions in it: the plan already holds the state, and a reading recorded in a check-in is re-read as fact on every wake after it. Observed: a driver woken without this file in context merged a green PR and did not start the next phase, because the rule to do so was in here.
 
 Message the user what you started and where. Then **end your turn.** Sleeping is correct; there is nothing to poll.
 

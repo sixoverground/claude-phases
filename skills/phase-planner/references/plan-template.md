@@ -32,6 +32,10 @@ phases:
 
 One paragraph: what this plan delivers, and how many phases it takes to get there.
 
+## For the driver
+
+This plan is executed by the `phase-driver` skill, and nothing in this file stands in for it. If you are acting on this plan and that skill is not in your context, because the session was compacted or was woken by a check-in or a webhook, invoke `phase-driver` before you do anything else, then reconcile. The rule a session without it most often drops: **a merge always advances the plan.** After any phase PR merges, start whatever it unblocks in the same turn, and when the last row merges, finish the plan by the skill's finishing steps rather than going idle.
+
 ## PR Sequence
 
 | PR | Branch | Repo | Scope | Phase | Status | Link | Depends |
