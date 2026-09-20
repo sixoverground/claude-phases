@@ -4,6 +4,18 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.7.0]
+
+### The plan points back at the skill
+
+Found with YOLO on. The driver merged a green phase PR and did not start the next phase. Asked why, when the skill says to in so many words, it said it had not read the skill: its context had compacted, and it had been driving from the plan file and the compaction summary since. Golden rule 7 tells a compacted session to re-read the skill and continue, and it is written in the one file a compacted session no longer has.
+
+* **A fixed `## For the driver` section in every plan**, between the title paragraph and the table. It names `phase-driver`, says to invoke it before acting when it is not in context, and restates one rule: a merge always advances the plan. `phase-planner` carries it from the template; the driver adds it to a plan that predates it in its next status write. Neither edits the text.
+* **A plan already in flight needs one manual step.** The driver's self-heal runs on reconcile, which reaches only a session that still holds the skill. A session that has already compacted is the case the section exists for and cannot add it to itself. Say `run phase-driver` once in that session, or paste the section in from `skills/phase-planner/references/plan-template.md`. After that the plan carries it.
+* **One rule restated, not the skill.** Text copied into a plan is frozen at the version that wrote it, and a plan is read for weeks. The section carries the invariant that has not changed since 0.1.0 and points at the skill for the rest.
+* **The check-in message is written for a session that has nothing.** It says to invoke `phase-driver`, names the plan, says to reconcile, and says nothing else. It is the one message the driver sends to a future self, and a conclusion recorded in it is re-read as fact on every wake, which the 0.3.0 completion failure already showed.
+* Golden rule 7 now says what reaches a session that cannot read it, so a driver arriving via the plan section or a check-in knows that is the path working.
+
 ## [0.6.0]
 
 ### A stop for review rounds that keep going

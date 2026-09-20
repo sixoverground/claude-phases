@@ -14,6 +14,8 @@ No value ever appears in two of those places. Config is config, per-phase status
 
 A fourth section, **Carried findings**, appears only once something has been recorded in it. It holds work the driver was told about and deliberately did not do. It is not state, and nothing reads it to decide what to run.
 
+One more block, **For the driver**, sits between the title paragraph and the table in every plan. It is fixed text, not state, and nothing reads it to decide what to run either. It exists to send a session that opens this file without the driver skill in context back to the skill. See [For the driver](#for-the-driver) below.
+
 ---
 
 ## Why the plan file holds the state
@@ -28,6 +30,26 @@ Two invariants make it work:
 - **Phase PRs never modify the plan file.** One writer means a squash merge can never conflict with its own bookkeeping, no matter how far the plan branch has moved.
 
 The **plan branch** is `plan_branch`, defaulting to the home repo's default branch. What the first invariant actually requires is a branch that no phase PR modifies and that is readable without merging one. The default branch is the usual answer, not the only one. Feature-branch work, where every phase targets `feature/x` and nothing reaches `main` until the feature is whole, puts the plan on `feature/x` and satisfies it just as well.
+
+---
+
+## For the driver
+
+The plan file is the durable memory, and the skill is not. A session that compacts, or that is woken by a check-in or a PR webhook, comes back with the plan and with GitHub, and with none of `phase-driver` in its context. It knows the state and has forgotten the rules. Observed on a real run: a driver in that condition merged a green phase PR and stopped, because "start whatever that unblocks" was a rule in the skill and the skill was gone. The skill's own instruction for a compacted session, re-read this file and continue, cannot reach a session that has lost the file it is written in.
+
+So every plan carries a pointer back. Immediately after the title paragraph, before `## PR Sequence`, verbatim from the template:
+
+```markdown
+## For the driver
+
+This plan is executed by the `phase-driver` skill, and nothing in this file stands in for it. If you are acting on this plan and that skill is not in your context, because the session was compacted or was woken by a check-in or a webhook, invoke `phase-driver` before you do anything else, then reconcile. The rule a session without it most often drops: **a merge always advances the plan.** After any phase PR merges, start whatever it unblocks in the same turn unless `Driver: paused`, and when the last row merges, finish the plan by the skill's finishing steps rather than going idle.
+```
+
+It restates exactly one rule, the one that was observed to drop, and otherwise points at the skill. The plan is not the place for the rest: a rule copied into a plan is frozen at the version that wrote it, and the driver reads a plan far longer than the planner writes one.
+
+The planner writes it. The driver adds it to a plan that predates it, on the plan branch, in its next status write. Neither edits its text.
+
+That self-heal reaches only a session that still holds the driver skill. A plan already in flight under a session that has compacted is in exactly the state the section exists to rescue, and no code can reach it: invoke `phase-driver` once by hand in that session, or paste the section in. Either is a one-time step per plan.
 
 ---
 

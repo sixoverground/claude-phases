@@ -90,6 +90,8 @@ The plan branch is the home repo's default branch unless you set `plan_branch`. 
 
 **If the plan branch rejects the commit**, branch protection is on. `plan_writes: plan-pr` doesn't rescue this. That key lives inside the plan file, so the commit that would deliver it is the one being refused. Instead: open a PR with the plan file, tell the user it must merge before the driver can start, and set `plan_writes: plan-pr` in the front matter so the driver uses the same path for every later status write. Don't hand off until it's merged; a driver pointed at a plan that isn't on the plan branch will report the project as unstarted.
 
+Carry the **For the driver** section over from the template unchanged, between the title paragraph and the table. It is what sends a session that has lost the driver skill back to it, and a plan without it can stall on the first merge after a compaction.
+
 Front matter carries the config you detected. Set the initial `YOLO` in Driver State: default it **off**, and say why. Unattended merging is a decision someone should make deliberately once they trust the setup, not inherit from a default.
 
 Leave `Driver-ID` and `Active` empty. The driver claims those.
@@ -109,6 +111,7 @@ When asked to change a plan already in flight:
 
 - **Read Carried findings first.** The driver appends there when a reviewer raised something that belonged to the plan but not to the phase it came up on. It is the one part of the plan written by execution rather than planning, and it is where the answer to "what else should this plan do" usually already is. Propose phases for what deserves them, say plainly what you would leave, and tick an entry with the phase that now covers it. Never delete one silently.
 - **Never renumber phases.** Append, or subdivide into `3a`/`3b`.
+- **Add the For the driver section if the plan predates it**, verbatim from the template, between the title paragraph and the table.
 - **Never edit a `Merged` row.** It's a record of what shipped; editing it makes the plan disagree with history.
 - **Don't touch Driver State** beyond what you were asked to change. A driver may be live, and `Driver-ID`/`Heartbeat` are its lock.
 - Re-run detection if the repo set changed.

@@ -60,6 +60,16 @@ That guard deadlocks a long-lived session against itself. A driver that writes i
 
 So the lock carries identity, not just recency. A driver recognizes its own `Driver-ID` and proceeds; a stranger's recent ID blocks; a stranger's stale ID gets taken over. Small addition, and without it "keep one session running" and "start a fresh session whenever" cannot both be supported.
 
+### The skill is not durable, so the plan points back at it
+
+The plan file survives everything. The skill does not: a session that compacts, or that a check-in or webhook wakes, comes back holding the plan and GitHub and nothing of `phase-driver`. It knows the state and has forgotten the rules, and it does not know that it has forgotten them, because the plan looks complete and the compaction summary says it is driving a plan.
+
+Observed, with YOLO on: the driver merged a green phase PR and stopped. Asked why it hadn't started the next phase when the skill plainly says to, it answered that it had not read the skill. It had been driving from the plan file and a compacted summary, and "start whatever that unblocks" was never in front of it. The skill's own rule for this case, re-read this file and continue, is in the one file such a session cannot see.
+
+So the pointer has to live outside the skill. Two places. Every plan carries a fixed **For the driver** section that names the skill, says to invoke it before acting, and restates the single rule that was observed to drop, that a merge always advances the plan. And the check-in message the driver schedules for itself says to invoke the skill and reconcile, and nothing else. Between them they cover the ways a session comes back: from a merge webhook it must open the plan to record `Merged`, and from a check-in it reads the message.
+
+The section restates one rule and not the rest, deliberately. Text copied into a plan is frozen at the version of the skill that wrote it, and a plan is read for weeks after it was written. The rule it carries is the invariant that has not changed since the first version. Everything else is a pointer.
+
 ### Why one plan file rather than a sequence of issues
 
 Breaking a feature into issues is the obvious alternative, and for a lot of work it is the better one. Issues have a UI, notifications, search, cross-references and boards; they hold discussion before work starts; `Closes #12` gives the state transition away for free; and anyone on the team can pick one up. Against a hand-maintained markdown table, that is not a close contest.

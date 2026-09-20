@@ -62,7 +62,7 @@ The plugin uses a Markdown plan in your repository as its durable state and GitH
 
 Long-running agent work needs somewhere durable to keep its place. A cloud session's container can be reclaimed, its context can compact, and the session can stop between opening a PR and recording that it did.
 
-So the plan file *is* the state. A new session can read `docs/plans/my-app.md`, compare it with GitHub, reconstruct what happened, and continue without relying on memory. Everything else in the design follows from that.
+So the plan file *is* the state. A new session can read `docs/plans/my-app.md`, compare it with GitHub, reconstruct what happened, and continue without relying on memory. Everything else in the design follows from that. The plan also points back at the driver skill, since a session that has lost the skill still has the plan, and the plan is where it will look.
 
 A regular cloud session also remains conversational. You can ask what it is waiting for, pause it, change merge authority, or resolve a blocker without being at the machine where the run began.
 
