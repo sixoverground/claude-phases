@@ -1,6 +1,7 @@
 ---
 name: phase-planner
 description: Write a phased implementation plan to a docs/plans markdown file named for the project. Break work into one-PR phases, detect each repo's CI and review setup, and propose matching configuration. Use when asked to plan a project, break work into phases, set up a phased plan, or create a plan for phase-driver to execute. Also use when revising an existing plan's phases or configuration.
+model: fable
 ---
 
 # Phase planner
@@ -19,6 +20,10 @@ Only three. Everything else you can find out yourself, and asking someone to rec
 2. **Which repos?** `owner/name`, possibly several.
 3. **Project name?** Lowercase, hyphenated. Becomes the plan's filename.
 
+**Ask with `AskUserQuestion`, all three in one call, and keep every later question in the same tool.** This skill sets `model` in its front matter, and Claude Code applies that for the rest of the turn it was invoked in and no longer: the session model comes back the moment a turn ends and the person replies. A question asked as ordinary text ends the turn, so the detection, the confirmation and the plan itself would run on whatever model the session was started with. `AskUserQuestion` blocks inside the turn, and planning stays on one model from the first question to the written file.
+
+Offer what you can infer as options, so the common answer is a click: the current repo for *which repos*, its name for *project name*. Anything else arrives typed under Other. *What are we building* has no answer you can infer, so offer the kind of work as options, a new feature, a refactor or migration, a fix, and expect the description itself under Other.
+
 One more thing you need but shouldn't have to ask for: **`home_repo`**, where the plan file lives and the only repo the driver writes state to. With a single repo it's that repo. With several, propose the one the work centres on. Usually the backend or the repo with the most phases, and confirm it in the same breath as your detection findings. Don't leave it unset: it's required, and a plan without it doesn't load.
 
 ## 2. Detect how each repo works
@@ -36,9 +41,9 @@ acme/acme-web
   verify           local (package.json, node)
 ```
 
-Then say what you inferred, and let them correct it. People will tell you "we're moving off Copilot" or "that repo's CI is broken, ignore it", facts you cannot read from the API.
+Then say what you inferred, and ask whether it holds, through `AskUserQuestion` again: one confirmation for the lot, with *correct something* as an option, or one question per repo where a finding is genuinely uncertain. People will tell you "we're moving off Copilot" or "that repo's CI is broken, ignore it", facts you cannot read from the API.
 
-**Where detection comes up empty**, such as a new repo with no PR history, say so plainly and ask. Guessing produces a config that fails on the first PR, which is worse than one question.
+**Where detection comes up empty**, such as a new repo with no PR history, say so plainly and ask, through the same tool. Guessing produces a config that fails on the first PR, which is worse than one question.
 
 ## 3. Refuse configurations that can never pass
 

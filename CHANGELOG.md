@@ -4,6 +4,15 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.8.0]
+
+### Each skill names its model
+
+* **`model: fable` on `phase-planner` and `model: opus` on `phase-driver`**, in the skills' front matter. Claude Code applies it for the turn the skill is invoked in. A value the org's `availableModels` allowlist excludes, or that auto mode does not support, is skipped and the session keeps its model, so the defaults are safe in a public plugin.
+* **The planner asks through `AskUserQuestion`.** The override is per turn, and the planner used to end its turn before writing anything: once for the three opening questions, once to confirm detection, and again for any gap detection left. Each reply came back on the session model. `AskUserQuestion` blocks inside the turn, so a plan now goes from first question to written file on one model. Inferred answers are offered as options so the common case is a click.
+* **Driver golden rule 9: invoke the skill at the start of every wake, even when you remember it.** The model rides on the invocation, not on the memory of the rules. 0.7.0's plan section and check-in message already push each wake through the skill; this is the second reason they exist.
+* **A Model section in the configuration reference**: where the choice lives, why it is not a plan key, how to change it, and why a per-repo `model` is deliberately not offered yet.
+
 ## [0.7.0]
 
 ### The plan points back at the skill

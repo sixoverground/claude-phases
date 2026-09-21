@@ -1,6 +1,7 @@
 ---
 name: phase-driver
 description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook or a check-in wakes the session and a plan file is present.
+model: opus
 ---
 
 # Phase driver
@@ -19,6 +20,7 @@ Read `references/recovery.md`, `references/gates.md`, and `references/vocabulary
 6. **Re-read the head SHA immediately before anything irreversible** and re-check the gate against it.
 7. **If your context was compacted or you don't remember starting this: re-read this file and the plan, run Reconcile, and continue.** That is the normal path, not an error. This rule can only reach a session that still has this file, so two things outside it point back here: the plan's **For the driver** section, and the check-in message you schedule for yourself. If one of those sent you here, that is the path working.
 8. **Never claim work you didn't do.** If tests didn't run, say so in the PR body. If you can't tell why CI failed, say that and link the run.
+9. **Invoke this skill at the start of every wake, even when you remember it.** Its front matter names the model for the turn it is invoked in and for nothing after. A wake that acts without invoking it runs that turn on whatever model the session was started with. Remembering the rules is not the same as having them applied.
 
 ## 1. Find the plan
 
