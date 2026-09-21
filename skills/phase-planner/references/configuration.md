@@ -311,6 +311,28 @@ Each status transition then becomes a one-file PR against the plan branch with a
 
 ---
 
+## Model
+
+There is no `model` key in the plan. The model each skill runs on is set in that skill's own front matter, and the reason it lives there rather than here shapes how both skills behave.
+
+| Skill | `model` | Why |
+|---|---|---|
+| `phase-planner` | `fable` | Planning is one long turn of reading a codebase and deciding how to cut it |
+| `phase-driver` | `opus` | Implementation, CI fixes and review answers, dozens of turns per plan |
+
+**The override is per turn.** Claude Code applies a skill's `model` for the rest of the turn in which the skill is invoked, and the session model resumes on the next prompt. Nothing is saved to settings. Two consequences, one per skill:
+
+- The planner asks its questions with `AskUserQuestion`, which blocks inside the turn, rather than as messages that end it. Every ended turn would hand the rest of the planning back to the session model.
+- The driver invokes itself at the start of every wake, including wakes where it still remembers the rules. A webhook or check-in that starts a turn without the skill runs that turn on the session model. Its golden rule 9 says so, and the check-in message it schedules for itself is written to trigger it.
+
+**Where the alias is unavailable, nothing breaks.** A value your organization's `availableModels` allowlist excludes is not used, and the session keeps its current model. The same happens in auto mode for a model auto mode does not support; `opus` and `fable` both are, on the Anthropic API. So the shipped defaults degrade to whatever the session already runs on, never to an error.
+
+**To change it**, edit the `model:` line in the installed skill's `SKILL.md`, or set `model` in the repo's `.claude/settings.json` to change what sessions in that repo start on. The second is the only knob an installer controls without editing the plugin, and it applies to every turn, skill or not.
+
+**Why not a per-repo key.** A per-repo `model`, say Opus for the iOS phases and Sonnet for a docs repo, would read naturally next to `verify` and `ci`. It is not offered because nothing lets a skill change the session's model from configuration at runtime. The only path is delegating the phase to a subagent, which takes a model at call time but does not see the conversation, and review answers and CI fixes would need the same treatment or fall back to the driver's model. That is an architectural change to the driver, held until the skill-level default proves insufficient.
+
+---
+
 ## Worked examples
 
 **A single repo with GitHub Actions and Copilot**, the common case:
