@@ -4,6 +4,13 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.9.1]
+
+### Ask Claude which version it has
+
+* **Each skill's description now ends "This copy is claude-phases <version>."** Ask "what version of claude-phases are you using?" and Claude answers from the skill listing, which is always in context. The body would need the skill invoked, which for `phase-driver` switches that turn to its model to answer a question. `plugin.json` is no help: a claude.ai upload is the skill folder alone, and Claude Code doesn't show the manifest to the model.
+* **`scripts/check-skill-versions.sh`** fails a PR whose skill descriptions name a different version from `plugin.json`, so bumping the version is still one decision and CI catches the copies.
+
 ## [0.9.0]
 
 ### An arbiter for review loops, so YOLO stays unattended

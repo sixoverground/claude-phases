@@ -47,6 +47,11 @@ jobs:
       - name: Check the version was bumped
         run: scripts/check-version-bump.sh "${{ github.event.pull_request.base.sha }}"
 
+      # The skills state the version in their descriptions so Claude can say
+      # which one is installed. This keeps those copies on plugin.json's.
+      - name: Check skill descriptions name this version
+        run: scripts/check-skill-versions.sh
+
   release:
     name: Tag and release
     if: github.event_name != 'pull_request'
