@@ -49,7 +49,7 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 
 **Gate 4.** Group reviews by author, take each author's most recent. A `CHANGES_REQUESTED` that the same reviewer later superseded with an approval or a comment no longer blocks.
 
-**Gate 5.** Every review thread resolved. Only diff-anchored comments form resolvable threads, so this does nothing for a reviewer that posts only top-level comments. Resolve a thread only when you've actually addressed it.
+**Gate 5.** Every review thread resolved. Only diff-anchored comments form resolvable threads, so this does nothing for a reviewer that posts only top-level comments. Resolve a thread only when you've actually addressed it: fixed it, declined it as out of scope and said where it went, or answered it with checkable reasoning that it is wrong or not worth a round. A thread a person opened stays open when you disagree with it. See *Answering a review* in the skill.
 
 **Gate 6.** Each entry in `review.required` needs proof it evaluated **this** commit. An entry is satisfied by any of:
 

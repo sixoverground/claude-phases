@@ -4,6 +4,26 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.9.0]
+
+### An arbiter for review loops, so YOLO stays unattended
+
+0.6.0's stop at `stuck.max_review_rounds` worked, and then waited for a person on every phase that ran long. Most of those stops had an answer anyone looking at the whole phase could see, usually "the same mistake in one more place" or "nits", and the driver couldn't see it because it wrote every fix under review.
+
+* **`stuck.arbiter`**, default `{ model: fable, extra_rounds: 3 }`, `null` for the old stop. At `max_review_rounds` the driver stops pushing and starts a subagent with a fresh context. It reads the phase's scope, the whole diff, every finding from every round, and what the driver changed, but not what the driver thinks of the findings. It returns a verdict per group of findings (`rework`, `fix`, `carry`, `issue`, `accept`, `reject`) and a bar for what still deserves a round.
+* **The verdict is posted on the PR before it is acted on**, under a `<!-- phase-driver:arbiter -->` marker, so a phase merged unattended shows why threads were resolved without a fix. The driver re-reads it from the PR on later rounds rather than remembering it.
+* **The driver works `extra_rounds` more rounds under the verdict, then stops for a person** with the existing report plus what changed after the verdict. `continue` starts a new budget, which gets its own arbitration.
+* **Its limits run one way.** It cannot accept an in-scope correctness, security or data defect, rejects only with checkable reasoning, and never widens a phase. The driver can do more than a verdict asks about a defect, never less.
+* **`Arbitrations` in Driver State**, `<phase id>:<count>`, written before the arbiter starts, so a session that dies mid-arbitration doesn't run a second one in the same budget.
+* **It runs with YOLO off too.** YOLO decides who merges, not who sorts nits from bugs.
+* **Without a subagent**, as in a claude.ai skill upload, the driver does the same pass itself and says on the PR that it wasn't independent.
+
+### Answering a review
+
+* **The driver resolves a review bot's thread it disagrees with**, with reasoning someone can check: the line, test, invariant or caller that makes the finding false. The old rule left it open for a person, which under YOLO meant a phase held until someone came to agree with a reply that had already answered it. A finding raised again on a later head gets looked at again rather than argued. **A thread a person opened still stays open** on a disagreement.
+* **A minor finding never starts a push.** Nits, naming, style, anything labelled optional or minor: reply and resolve, and carry the plainly correct ones in a push that is happening anyway. A label never makes a correctness, security or data finding minor.
+* **From the second round on, look back before pushing.** Group every finding from every round by the mistake underneath and check the whole diff for each group, so the next round doesn't find the sibling the last fix missed.
+
 ## [0.8.0]
 
 ### Each skill names its model

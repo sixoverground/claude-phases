@@ -20,7 +20,10 @@ phases:
       required: []
       changes_requested_blocks: true
       threads_must_resolve: true
-    stuck: { max_cycles: 5, max_review_rounds: 3 }
+    stuck:
+      max_cycles: 5
+      max_review_rounds: 3
+      arbiter: { model: fable, extra_rounds: 3 }
 
   repos:
     OWNER/REPO: {}
@@ -102,5 +105,6 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 - Active: -
 - UAT-pending: -
 - Review-baselines: -
+- Arbitrations: -
 - Heartbeat: -
 - Note: -
