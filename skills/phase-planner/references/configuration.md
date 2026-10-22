@@ -237,7 +237,7 @@ See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/d
 | `stuck.max_cycles` | `5` | Consecutive wakes where a gate fails for the same reason, with an unmoved head, before the phase is marked `Blocked` |
 | `stuck.max_review_rounds` | `3` | Head commits on one phase PR that a `review.required` entry has evaluated, before the driver steps back: it hands the loop to the arbiter, or with no arbiter, stops and reports. `null` disables it |
 | `stuck.arbiter.model` | `fable` | Model for the arbiter, a fresh-context subagent that judges the review loop against the phase's scope and the whole diff |
-| `stuck.arbiter.extra_rounds` | `3` | Rounds the driver keeps answering under the arbiter's verdict before it stops for a person. At least `1` |
+| `stuck.arbiter.extra_rounds` | `3` | Reviewed heads, counted from the arbitration's own count, before the driver stops for a person. Counted like `max_review_rounds`: the head that reaches it is reported, not answered. At least `1` |
 
 Set `stuck.arbiter: null` to go back to stopping for a person at `max_review_rounds`.
 
@@ -251,11 +251,11 @@ Raise it for a repo whose reviewer is genuinely thorough on large diffs. Lower i
 
 ### The arbiter
 
-At `max_review_rounds` the driver stops answering and starts a subagent with a fresh context. The subagent gets the phase's scope, the whole diff against base, and every finding from every round, and returns a verdict for each group of related findings: rework the mistake across the diff, fix it, carry it to the plan, file it as an issue, accept it as not worth a round, or reject it as wrong. It also returns a bar for what still counts as worth a round. The driver posts the verdict on the PR, acts on it in one push, and judges the next `extra_rounds` rounds against it. If the loop is still going after that, it stops for you, with the verdict in the report.
+At `max_review_rounds` the driver stops answering and starts a subagent with a fresh context. The subagent gets the phase's scope, the whole diff against base, and every finding from every round, and returns a verdict for each group of related findings: rework the mistake across the diff, fix it, carry it to the plan, file it as an issue, accept it as not worth a round, or reject it as wrong. It also returns a bar for what still counts as worth a round. The driver posts the verdict on the PR, acts on it in one push, and judges later findings against it. With the defaults that is head 3 answered by the arbitration, heads 4 and 5 under the verdict, and a stop at head 6 with the verdict in the report. Every boundary is "at or past", so a count that jumped while the session was down still gets arbitrated and still stops.
 
 **Why a separate agent.** The driver wrote every fix the reviewer keeps finding fault with, and it comes to each round focused on the newest comment. That focus is what turns one mistake into five rounds, one sibling at a time. A fresh context has nothing to defend. That matters more than the model, but `fable` is the default: it is a judgement about scope, like planning, and running on a different model from the driver means it doesn't share the driver's blind spots. It runs at most once per budget, so the cost is small.
 
-**What it may not do.** It cannot accept an in-scope defect in correctness, security, or data; those get fixed. It can reject a finding only with reasoning someone can check. It never widens a phase or adds one. And on a thread a person opened, its call is a reply, not a resolution.
+**What it may not do.** It cannot accept an in-scope defect in correctness, security, or data; those get fixed. Its bar never covers one either. It can reject a finding only with reasoning someone can check. It never widens a phase or adds one. And on a thread a person opened, its call is a reply, not a resolution.
 
 **It runs with YOLO off too.** YOLO decides who merges. The arbiter decides who sorts a review loop, and that shouldn't need you either way.
 

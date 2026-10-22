@@ -161,8 +161,8 @@ A review round costs a push, a CI run, and another review. Observed on a real ph
 **A review comment is evidence, not an order.** Judge each one against this phase's scope, exactly as you would a problem you noticed yourself:
 
 - **In scope, and right.** Fix it, generally, per the rule above. Then reply saying what you changed and **resolve the thread**. Gate 5 wants every thread resolved, so a fix pushed without resolving leaves the phase blocked on a thread that no longer says anything true.
-- **In scope, right, and minor.** A nit, a naming or style preference, wording, anything a reviewer labels nit, optional, minor or low, and nothing that changes what the code does. Reply once and resolve. **It never starts a push on its own.** Carry the plainly correct ones in a push that is happening anyway for something else, and leave the rest as they are. A push for a nit costs a whole round, CI and a re-review, and the re-review finds the next nit. A label never makes a finding minor if it is about correctness, security, or data: those are the first bullet, whatever the reviewer called them.
-- **In scope, and wrong.** Reply with your reasoning and **resolve the thread**. The reasoning has to be checkable by someone reading it later: name the line, test, invariant, or caller that makes the claim false. "I disagree" or "this is fine" is not a reason, and a thread resolved on one is a finding waved away. If the same reviewer raises it again on a later head, take that as a sign your reply didn't show it was wrong, not as a reason to argue again. Look at it once more, fix it if they were right, and otherwise reply with a link to your earlier answer and resolve. **A thread a person opened stays open** when you disagree: reply, and leave it for them. They can answer, and resolving their comment for them overrules someone who is present.
+- **In scope, right, and minor.** A nit, a naming or style preference, wording, anything a reviewer labels nit, optional, minor or low, and nothing that changes what the code does. Reply once and resolve, or on a person's thread reply and leave it to them. **It never starts a push on its own.** Carry the plainly correct ones in a push that is happening anyway for something else, and leave the rest as they are. A push for a nit costs a whole round, CI and a re-review, and the re-review finds the next nit. A label never makes a finding minor if it is about correctness, security, or data: those are the first bullet, whatever the reviewer called them.
+- **In scope, and wrong.** Reply with your reasoning and **resolve the thread**. The reasoning has to be checkable by someone reading it later: name the line, test, invariant, or caller that makes the claim false. "I disagree" or "this is fine" is not a reason, and a thread resolved on one is a finding waved away. If the same reviewer raises it again on a later head, take that as a sign your reply didn't show it was wrong, not as a reason to argue again. Look at it once more, fix it if they were right, and otherwise reply with a link to your earlier answer and resolve. **A thread a person opened stays open** when you disagree: reply, and leave it for them.
 - **Out of scope.** Do not implement it. This is the same rule as §3: a phase does what its Phase Details say and notes the rest. Record it, reply naming why it falls outside this phase and where it went, and resolve the thread.
 
 Out of scope is not the same as unimportant, so where it gets recorded depends on what it is:
@@ -179,7 +179,11 @@ A plan starts without that section, so the first finding creates it, immediately
 
 **Append to it; never add a phase.** Recording is execution and belongs to you. Deciding that a finding is worth a phase means writing scope, acceptance criteria, UAT and dependencies for it, which is planning: it belongs to `phase-planner` and to the person whose plan it is. Tell the user what you recorded and let them ask for a phase. A driver that adds phases because a reviewer suggested something is re-planning a project mid-flight on the say-so of a tool that has read one diff.
 
-Every outcome above resolves a review bot's thread, and that is deliberate. A thread held open only because you disagreed with a bot stalls the phase until a person settles a question the reply has already answered, and under YOLO nobody is coming to settle it. The reply is the record: it stays on the PR, readable, and anyone who thinks you were wrong can reopen the thread. That is why the reasoning has to be checkable. A person's thread is different only because a person can still answer it.
+Every outcome above resolves a review bot's thread, and that is deliberate. A thread held open only because you disagreed with a bot stalls the phase until a person settles a question the reply has already answered, and under YOLO nobody is coming to settle it. The reply is the record: it stays on the PR, readable, and anyone who thinks you were wrong can reopen the thread. That is why the reasoning has to be checkable.
+
+**A thread a person opened is resolved only when you fixed what it raised or recorded it as out of scope.** Any other answer, minor or wrong, goes in as a reply and the thread stays open for them. They can answer, and resolving their comment for them overrules someone who is present. This holds everywhere a later step says to resolve, the arbiter's verdicts included.
+
+**Resolving a thread does not clear gate 4.** If a bot's latest review is `CHANGES_REQUESTED` and you answer it without pushing, the review still blocks until that bot submits a newer one. Ask it for one where the integration has a way (re-requesting the review, or its trigger comment such as `@codex review`). Where it has none, mark the row `Blocked` with that reason now rather than waiting for `stuck.max_cycles` to find it.
 
 **Widening a phase because a reviewer suggested it is still widening it.** The scope came from a plan someone agreed to; a comment is a suggestion from a tool that has read this diff and nothing else.
 
@@ -197,17 +201,19 @@ Counting submissions instead breaks in both directions. Three required reviewers
 
 `stuck.max_cycles` does not cover this. That one counts a gate failing with an **unmoved head**, and a review round moves the head every time by construction, so this loop reads as progress on every pass.
 
-**The budget.** Subtract this phase's baseline in `Review-baselines`, if it has one, from the derived count, and call the result the effective count. Then:
+**The budget.** Subtract this phase's baseline in `Review-baselines`, if it has one, from the derived count, and call the result the effective count. An arbitration is **in this budget** when this phase has an entry in `Arbitrations` whose count is above its baseline, or above zero where it has no baseline, so a `continue` from a person starts a budget that gets its own arbitration. Then, first match wins:
 
-| Effective count | `stuck.arbiter` | Do this |
-|---|---|---|
-| Below `max_review_rounds` | either | Answer the review as above |
-| At `max_review_rounds`, no arbitration in this budget | set (the default) | **Do not push.** [Arbitrate](#arbitrate) |
-| Past arbitration, below `max_review_rounds` + `extra_rounds` | set | Answer the review [under the verdict](#after-the-verdict) |
-| At `max_review_rounds` + `extra_rounds` | set | [Stop for a person](#stop-for-a-person) |
-| At `max_review_rounds` | `null` | [Stop for a person](#stop-for-a-person) |
+| Situation | Do this |
+|---|---|
+| Effective count below `max_review_rounds` | Answer the review as above |
+| `stuck.arbiter: null`, effective count at or past `max_review_rounds` | [Stop for a person](#stop-for-a-person) |
+| No arbitration in this budget, effective count at or past `max_review_rounds` | **Do not push.** [Arbitrate](#arbitrate) |
+| Arbitrated at count *A*, derived count below *A* + `extra_rounds` | Answer the review [under the verdict](#after-the-verdict) |
+| Arbitrated at count *A*, derived count at or past *A* + `extra_rounds` | [Stop for a person](#stop-for-a-person) |
 
-An arbitration is **in this budget** when this phase has an entry in `Arbitrations` whose count is above its baseline, or above zero where it has no baseline. So a `continue` from a person starts a budget that gets its own arbitration.
+**"At or past", never "at".** Missed webhooks, a session that was down for a while, or a PR that was already over the threshold before this rule existed can all arrive with the count beyond a boundary, and a test for equality lets that phase walk past the backstop.
+
+**`extra_rounds` counts the same way `max_review_rounds` does**, in reviewed heads, measured from the arbitration's own count rather than from the threshold, so an arbitration that happened late still gets its full allowance. With the defaults: the arbitration answers head 3, heads 4 and 5 are answered under the verdict, and head 6 stops, unanswered, exactly as head 3 would have without an arbiter.
 
 **This runs whether YOLO is on or off.** YOLO decides who presses merge. Nothing about a person merging means they should be the one to sort a review loop's nits from its bugs, and a phase that gets to its merge gate without them is the point of both modes.
 
@@ -231,22 +237,22 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
    | `fix` | Real, in scope, and separate from the rest | Fix it, generally |
    | `carry` | Belongs to this plan, not this phase | Carried findings |
    | `issue` | A real defect unrelated to what the plan delivers | A GitHub issue |
-   | `accept` | Real, and not worth a round | Reply with the arbiter's reasoning and resolve |
-   | `reject` | The finding is wrong | Reply with the arbiter's reasoning and resolve |
+   | `accept` | Real, and not worth a round | Reply with the arbiter's reasoning and resolve a bot's thread |
+   | `reject` | The finding is wrong | Reply with the arbiter's reasoning and resolve a bot's thread |
 
-4. **Its limits.** Say these in the brief. It may not `accept` an in-scope defect in correctness, security, or data: those are `fix` or `rework`. It may `reject` only with the checkable reasoning [a disagreement needs](#answering-a-review). It never widens the phase or adds one; out of scope is `carry` or `issue`. On a thread a person opened, an `accept` or `reject` goes in as a reply and the thread stays open, the same as any disagreement with a person.
-5. **Post the verdict before you act on it.** One PR comment whose first line is `<!-- phase-driver:arbiter -->`, then the overall call, the bar, and each group with its verdict and reasoning. Say whether it came from a separate subagent. Under YOLO the phase can merge without anyone having read the PR, and this comment is how someone reading it afterwards finds out why threads were resolved without a fix.
-6. **Act on it in one push**, by the table, and resolve each thread with its reply. Where you are sure a verdict lets through something broken, fix it anyway and say so in the reply: the limits run one way, so you can do more than it asks about a defect, never less.
+4. **Its limits.** Say these in the brief. It may not `accept` an in-scope defect in correctness, security, or data: those are `fix` or `rework`. It may `reject` only with the checkable reasoning [a disagreement needs](#answering-a-review). It never widens the phase or adds one; out of scope is `carry` or `issue`. On a thread a person opened, an `accept` or `reject` goes in as a reply and the thread stays open, [as anywhere else](#answering-a-review).
+5. **Post the verdict before you act on it.** One PR comment whose first line is `<!-- phase-driver:arbiter <phase id>:<count> -->`, with the same entry you recorded in step 1, then the overall call, the bar, and each group with its verdict and reasoning. Say whether it came from a separate subagent. Under YOLO the phase can merge without anyone having read the PR, and this comment is how someone reading it afterwards finds out why threads were resolved without a fix.
+6. **Act on it in one push**, by the table. Resolve each bot's thread with its reply, and each person's thread only where you fixed or carried what it raised. Where you are sure a verdict lets through something broken, fix it anyway and say so in the reply: the limits run one way, so you can do more than it asks about a defect, never less.
 
 **Without a subagent**, as in a claude.ai skill upload, do the pass yourself against the same brief, starting from the diff and the findings rather than from your own replies, and say in the comment that the arbitration was not independent. A model the session can't use falls back to the session's model, the same as a skill's `model`.
 
-**An `Arbitrations` entry in this budget with no verdict comment on the PR** means a session died between recording the arbitration and posting it. Run the arbiter again; don't count it twice.
+**An `Arbitrations` entry in this budget with no verdict comment carrying that same entry in its marker** means a session died between recording the arbitration and posting it. Run the arbiter again; don't record it twice. A verdict from an earlier budget doesn't count: its marker names a different entry.
 
 #### After the verdict
 
-The verdict covers the rest of the budget, `stuck.arbiter.extra_rounds` more rounds (default `3`). On each of them, **read the verdict comment from the PR**, the most recent one carrying the marker, rather than remembering it. Judge new findings against it:
+The verdict covers the rest of the budget, up to the stop at the arbitration's count plus `stuck.arbiter.extra_rounds` (default `3`). On each round until then, **read the verdict comment from the PR**, the one whose marker names this budget's `Arbitrations` entry, rather than remembering it. Judge new findings against it:
 
-- **Below the bar**, accept it, with a reply saying so and linking the verdict.
+- **Below the bar**, accept it, with a reply saying so and linking the verdict. The bar never covers an in-scope defect in correctness, security, or data, the same limit the arbiter works under: fix those whatever the bar says.
 - **In a group the arbiter called `rework`**, the rework missed a place. Fix that mistake everywhere again, not just where it was found.
 - **Anything else**, answer it as [above](#answering-a-review).
 
