@@ -167,6 +167,10 @@ The reviewer has read one diff. The phase's scope came from a plan a person agre
 
 A reviewer comments where it happened to find a problem. The same underlying mistake may appear elsewhere in the diff, so changing only the anchored line often produces another round of equivalent findings. The driver reads every open thread, groups related findings, fixes the general case, and pushes once.
 
+### A nit never starts a push
+
+Every push is a round: CI, a re-review, and a re-review on a fresh head finds something fresh to say. A driver that pushes for a naming preference has bought the next nit at the price of a whole round. So a minor finding gets a reply and a resolved thread, and rides along only with a push that was happening anyway. A reviewer's label doesn't decide what is minor: a finding about correctness, security or data is never minor, whatever it was tagged.
+
 ### Declining needs a destination
 
 "Out of scope" with nowhere to put the finding means forgotten, and a driver that senses that will implement things rather than lose them. So each outcome has a home: work that belongs to this plan but not this phase goes to **Carried findings** in the plan file, a standalone defect goes to an issue, and a remark that changes nothing goes in the reply.
@@ -185,11 +189,25 @@ The exception proves the rule. Clearing the stop needs a baseline, because a der
 
 **The stop is a report, not a question.** The observed failure was approved at four rounds by a person who had no basis to refuse: "shall I continue?" carries no information, so it collects a yes. The threshold therefore produces evidence, and the load-bearing line of it is whether the newest findings are new ground or the same class of finding resurfacing somewhere new. Four rounds of unrelated real bugs and four rounds of one problem in four files are the same number and opposite decisions.
 
-### Why a scope decline resolves the thread and a disagreement does not
+### Stepping back at the threshold: the arbiter
 
-The two look similar and are not. Gate 5 holds the merge until every thread resolves, so leaving a declined thread open would stall a phase over work that was never in it, trading a runaway loop for a deadlock. But a thread that says the code is *wrong* is exactly what gate 5 exists to hold for, and resolving it on the driver's own judgment would let it overrule a reviewer by fiat.
+The stop worked, and it moved the problem. A report at round three asked the right question about whether the findings were converging, and then waited for a person to answer it, so a plan running unattended under YOLO needed someone to steer it every time a phase ran long. Most of those stops had the same answer, and anyone looking at the whole phase could see it: the driver had been fixing one sibling of a mistake per round, or chasing nits a re-review kept turning up.
 
-So the split follows what the thread claims, not how inconvenient it is: disagreement on the merits stays open for a person, scope goes to the list and the thread closes with a note saying where it went.
+The driver could not see it, for a reason more rules wouldn't fix. It wrote every fix under review, and it comes to each round focused on the newest comment. "Fix the whole shape" was already in the skill; the driver still didn't step back, because nothing in the round made it.
+
+So at the threshold the judgement moves to an **arbiter**, a subagent with a fresh context. It reads the phase's scope, the whole diff, and every finding from every round, and it hears what the driver changed but not what the driver thinks of the findings. It returns a verdict per group of findings and a bar for what still deserves a round, and the driver works the next few rounds under that verdict before a person is asked. The fresh context does most of the work; a different model (`fable` by default, against the driver's `opus`) adds independence on top.
+
+The limits run one way. The arbiter can tell the driver to do more about a defect, never less. It cannot accept an in-scope correctness, security, or data defect, it rejects a finding only with reasoning someone can check, and it never widens a phase. Its verdict is posted on the PR before anything is acted on, because under YOLO the phase may merge before anyone reads it, and resolved threads with no fix need a reason someone can find.
+
+**The stop for a person is still there**, after the arbiter's extra rounds. A loop that survives an arbiter calling for rework is a phase that needs replanning, and that is the person's call.
+
+### Why the driver resolves a disagreement
+
+This used to be the other way round. A scope decline resolved its thread and a disagreement on the merits stayed open for a person, on the reasoning that a thread saying the code is *wrong* is exactly what gate 5 exists to hold, and resolving it on the driver's say-so would overrule a reviewer by fiat.
+
+In practice the open thread held the phase until a person came to settle a question the reply had usually already answered, and under YOLO nobody was coming. That is a block, and loud, which is the error this project prefers. But it was loud every time, about the same thing, and a person who has to settle it on every phase is steering the driver rather than supervising it.
+
+So the driver resolves a review bot's thread when it disagrees, and the record moves into the reply, which has to be checkable: the line, test, invariant or caller that makes the finding false. A bare "I disagree" resolves nothing. Two things keep this from becoming a false pass. A reviewer that raises the same finding on a later head makes the driver look again, instead of repeating itself. And a thread a *person* opened still stays open, because there the person can answer, and resolving their comment for them would overrule someone who is present.
 
 ## Multi-repo
 

@@ -141,7 +141,7 @@ Message the user what you started and where. Then **end your turn.** Sleeping is
 Reconcile first. Then handle what woke you, against the row it belongs to:
 
 - **A check failed.** Read `references/gates.md` for how to get the failure text for that repo's `ci.logs` setting. Fix it and push. One re-run per head commit is allowed for a suspected flake, and say in the PR that you re-ran it. Beyond that, treat it as a real failure.
-- **A review comment or thread.** See [Answering a review](#answering-a-review) below. Never resolve a thread you disagree with on the merits: reply explaining why, and leave it open for a human.
+- **A review comment or thread.** See [Answering a review](#answering-a-review) below. A thread you disagree with on the merits gets your reasoning and is resolved, unless a person opened it.
 - **A merge conflict.** Update the branch from base; if that fails, resolve it in the working tree and push. After two failed attempts, mark `Blocked`.
 - **The head moved.** Discard that row's gate result and re-evaluate from scratch. A gate result is only ever valid for the commit it was computed against.
 - **The PR was merged by anyone.** Go to step 7. This is expected, not an anomaly.
@@ -154,12 +154,15 @@ A review round costs a push, a CI run, and another review. Observed on a real ph
 
 **Fix the whole shape, not the flagged line.** A reviewer comments where it happened to look. Before you change anything, read the surrounding code and ask what the finding actually is: the same mistake is usually in three other places in the same diff, and fixing only the line that was pointed at guarantees the next round finds its siblings. Fix the general case once, then say in the reply that you applied it everywhere rather than only where it was raised. This is the difference between one round and five.
 
+**From the second round on, look back before you push.** A second round means the first round's fixes missed something, and the likeliest thing they missed is a sibling. List every finding from every round so far, not only this one's, group them by the mistake underneath, and check the whole diff for each group. The reviewer will find the place you didn't look on the next head, one place per round.
+
 **Answer every open thread in one push.** Read all of them first, work out which are the same underlying finding, then push once. A push per comment is a review round per comment.
 
 **A review comment is evidence, not an order.** Judge each one against this phase's scope, exactly as you would a problem you noticed yourself:
 
 - **In scope, and right.** Fix it, generally, per the rule above. Then reply saying what you changed and **resolve the thread**. Gate 5 wants every thread resolved, so a fix pushed without resolving leaves the phase blocked on a thread that no longer says anything true.
-- **In scope, and wrong.** Reply with your reasoning and leave the thread open. This is a disagreement on the merits and a human settles it.
+- **In scope, right, and minor.** A nit, a naming or style preference, wording, anything a reviewer labels nit, optional, minor or low, and nothing that changes what the code does. Reply once and resolve, or on a person's thread reply and leave it to them. **It never starts a push on its own.** Carry the plainly correct ones in a push that is happening anyway for something else, and leave the rest as they are. A push for a nit costs a whole round, CI and a re-review, and the re-review finds the next nit. A label never makes a finding minor if it is about correctness, security, or data: those are the first bullet, whatever the reviewer called them.
+- **In scope, and wrong.** Reply with your reasoning and **resolve the thread**. The reasoning has to be checkable by someone reading it later: name the line, test, invariant, or caller that makes the claim false. "I disagree" or "this is fine" is not a reason, and a thread resolved on one is a finding waved away. If the same reviewer raises it again on a later head, take that as a sign your reply didn't show it was wrong, not as a reason to argue again. Look at it once more, fix it if they were right, and otherwise reply with a link to your earlier answer and resolve. **A thread a person opened stays open** when you disagree: reply, and leave it for them.
 - **Out of scope.** Do not implement it. This is the same rule as §3: a phase does what its Phase Details say and notes the rest. Record it, reply naming why it falls outside this phase and where it went, and resolve the thread.
 
 Out of scope is not the same as unimportant, so where it gets recorded depends on what it is:
@@ -176,13 +179,17 @@ A plan starts without that section, so the first finding creates it, immediately
 
 **Append to it; never add a phase.** Recording is execution and belongs to you. Deciding that a finding is worth a phase means writing scope, acceptance criteria, UAT and dependencies for it, which is planning: it belongs to `phase-planner` and to the person whose plan it is. Tell the user what you recorded and let them ask for a phase. A driver that adds phases because a reviewer suggested something is re-planning a project mid-flight on the say-so of a tool that has read one diff.
 
-Scope-declining resolves the thread, and disagreement does not. That difference is deliberate. An out-of-scope finding is not a claim that the PR is wrong, so holding gate 5 open for it would stall a phase over work that was never in it, while a thread that says the code is broken should block until a person agrees it isn't.
+Every outcome above resolves a review bot's thread, and that is deliberate. A thread held open only because you disagreed with a bot stalls the phase until a person settles a question the reply has already answered, and under YOLO nobody is coming to settle it. The reply is the record: it stays on the PR, readable, and anyone who thinks you were wrong can reopen the thread. That is why the reasoning has to be checkable.
+
+**A thread a person opened is resolved only when you fixed what it raised or recorded it as out of scope.** Any other answer, minor or wrong, goes in as a reply and the thread stays open for them. They can answer, and resolving their comment for them overrules someone who is present. This holds everywhere a later step says to resolve, the arbiter's verdicts included.
+
+**Resolving a thread does not clear gate 4.** If a bot's latest review is `CHANGES_REQUESTED` and you answer it without pushing, the review still blocks until that bot submits a newer one. Ask it for one where the integration has a way (re-requesting the review, or its trigger comment such as `@codex review`). Where it has none, mark the row `Blocked` with that reason now rather than waiting for `stuck.max_cycles` to find it.
 
 **Widening a phase because a reviewer suggested it is still widening it.** The scope came from a plan someone agreed to; a comment is a suggestion from a tool that has read this diff and nothing else.
 
 #### Stop when the rounds stop converging
 
-**Count the review rounds on this PR, and stop at `stuck.max_review_rounds`** (default `3`, `null` to disable).
+**Count the review rounds on this PR.** At `stuck.max_review_rounds` (default `3`, `null` to disable), step back and arbitrate. When the arbiter's extra rounds run out, stop for a person.
 
 **Count reviewed heads, not reviews.** A round is one head commit that a required reviewer evaluated, so the count is the number of distinct shas on this PR for which **any** `review.required` entry is satisfied by gate 6's own test: a review or inline comment at that sha by one of its `logins`, a check run named by its `check` at that sha passing the entry's `proof`, or a 👍 that belongs to that head.
 
@@ -194,21 +201,81 @@ Counting submissions instead breaks in both directions. Three required reviewers
 
 `stuck.max_cycles` does not cover this. That one counts a gate failing with an **unmoved head**, and a review round moves the head every time by construction, so this loop reads as progress on every pass.
 
-At the threshold, **do not push again.** Mark the row `Blocked`, record the round count in `Note`, and post one comment on the PR containing:
+**The budget.** Subtract this phase's baseline in `Review-baselines`, if it has one, from the derived count, and call the result the effective count. An arbitration is **in this budget** when this phase has an entry in `Arbitrations` whose count is above its baseline, or above zero where it has no baseline, so a `continue` from a person starts a budget that gets its own arbitration. Then, first match wins:
+
+| Situation | Do this |
+|---|---|
+| Effective count below `max_review_rounds` | Answer the review as above |
+| `stuck.arbiter: null`, effective count at or past `max_review_rounds` | [Stop for a person](#stop-for-a-person) |
+| No arbitration in this budget, effective count at or past `max_review_rounds` | **Do not push.** [Arbitrate](#arbitrate) |
+| Arbitrated at count *A*, derived count below *A* + `extra_rounds` | Answer the review [under the verdict](#after-the-verdict) |
+| Arbitrated at count *A*, derived count at or past *A* + `extra_rounds` | [Stop for a person](#stop-for-a-person) |
+
+**"At or past", never "at".** Missed webhooks, a session that was down for a while, or a PR that was already over the threshold before this rule existed can all arrive with the count beyond a boundary, and a test for equality lets that phase walk past the backstop.
+
+**`extra_rounds` counts the same way `max_review_rounds` does**, in reviewed heads, measured from the arbitration's own count rather than from the threshold, so an arbitration that happened late still gets its full allowance. With the defaults: the arbitration answers head 3, heads 4 and 5 are answered under the verdict, and head 6 stops, unanswered, exactly as head 3 would have without an arbiter.
+
+**This runs whether YOLO is on or off.** YOLO decides who presses merge. Nothing about a person merging means they should be the one to sort a review loop's nits from its bugs, and a phase that gets to its merge gate without them is the point of both modes.
+
+#### Arbitrate
+
+At the threshold the driver is the wrong one to judge the loop. It wrote every fix the reviewer has been finding fault with, and it comes to each round focused on the newest comment. So the judgement goes to an **arbiter**: a subagent with a fresh context, on `stuck.arbiter.model` (default `fable`). The fresh context matters more than the model. It hasn't written any of the fixes, so it has nothing to defend.
+
+1. **Record it first.** Append `<phase id>:<derived count>` to `Arbitrations` in Driver State, as a plan write like any other. That is golden rule 2, and it is what stops a session that dies mid-arbitration from starting a second one.
+2. **Start the arbiter and wait for its answer.** Don't push while it runs. Brief it with facts, not conclusions:
+   - the plan file's path and the phase id, for its Phase Details (scope, acceptance criteria, risks) and Carried findings
+   - the repo, PR number, base branch, head sha, and the path of the local checkout, so it can read the whole diff against base rather than the latest commit
+   - every review finding on the PR from every round, resolved or not, with links
+   - what you changed in each round, one line per commit
+
+   **Do not tell it which findings you think are wrong or minor.** It is there to disagree with you, and an arbiter handed your opinion tends to give it back.
+3. **What it returns.** Findings grouped by the mistake underneath them, and for each group: the mistake in one line, a verdict, and the reasoning. For `rework` and `fix`, where in the diff the general fix goes. Then an overall call, one of *converging*, *needs rework*, or *ready*, and **the bar**: a sentence or two on what still counts as worth a round on this phase.
+
+   | Verdict | Meaning | You |
+   |---|---|---|
+   | `rework` | The same mistake resurfacing, round after round, in new places | Fix it across the whole diff, as the arbiter describes it, not where the comments point |
+   | `fix` | Real, in scope, and separate from the rest | Fix it, generally |
+   | `carry` | Belongs to this plan, not this phase | Carried findings |
+   | `issue` | A real defect unrelated to what the plan delivers | A GitHub issue |
+   | `accept` | Real, and not worth a round | Reply with the arbiter's reasoning and resolve a bot's thread |
+   | `reject` | The finding is wrong | Reply with the arbiter's reasoning and resolve a bot's thread |
+
+4. **Its limits.** Say these in the brief. It may not `accept` an in-scope defect in correctness, security, or data: those are `fix` or `rework`. It may `reject` only with the checkable reasoning [a disagreement needs](#answering-a-review). It never widens the phase or adds one; out of scope is `carry` or `issue`. On a thread a person opened, an `accept` or `reject` goes in as a reply and the thread stays open, [as anywhere else](#answering-a-review).
+5. **Post the verdict before you act on it.** One PR comment whose first line is `<!-- phase-driver:arbiter <phase id>:<count> -->`, with the same entry you recorded in step 1, then the overall call, the bar, and each group with its verdict and reasoning. Say whether it came from a separate subagent. Under YOLO the phase can merge without anyone having read the PR, and this comment is how someone reading it afterwards finds out why threads were resolved without a fix.
+6. **Act on it in one push**, by the table. Resolve each bot's thread with its reply, and each person's thread only where you fixed or carried what it raised. Where you are sure a verdict lets through something broken, fix it anyway and say so in the reply: the limits run one way, so you can do more than it asks about a defect, never less.
+
+**Without a subagent**, as in a claude.ai skill upload, do the pass yourself against the same brief, starting from the diff and the findings rather than from your own replies, and say in the comment that the arbitration was not independent. A model the session can't use falls back to the session's model, the same as a skill's `model`.
+
+**An `Arbitrations` entry in this budget with no verdict comment carrying that same entry in its marker** means a session died between recording the arbitration and posting it. Run the arbiter again; don't record it twice. A verdict from an earlier budget doesn't count: its marker names a different entry.
+
+#### After the verdict
+
+The verdict covers the rest of the budget, up to the stop at the arbitration's count plus `stuck.arbiter.extra_rounds` (default `3`). On each round until then, **read the verdict comment from the PR**, the one whose marker names this budget's `Arbitrations` entry, rather than remembering it. Judge new findings against it:
+
+- **Below the bar**, accept it, with a reply saying so and linking the verdict. The bar never covers an in-scope defect in correctness, security, or data, the same limit the arbiter works under: fix those whatever the bar says.
+- **In a group the arbiter called `rework`**, the rework missed a place. Fix that mistake everywhere again, not just where it was found.
+- **Anything else**, answer it as [above](#answering-a-review).
+
+The arbiter runs once per budget. A second loop inside the same budget is the evidence a person needs, and the stop below hands it to them.
+
+#### Stop for a person
+
+**Do not push again.** Mark the row `Blocked`, record the round count in `Note`, and post one comment on the PR containing:
 
 1. What you changed in each round so far, one line each.
 2. What is still flagged on the current head.
 3. **Whether the newest findings are new ground or the same class resurfacing in new places.**
+4. If the arbiter ran, a link to its verdict and what changed after it.
 
-Line 3 is the one that earns the stop. "Round four, and the last three findings are the same retry-logic issue in three more files" says the phase needs reworking rather than another patch. "Round four, three unrelated real bugs" says carry on. Same count, opposite answers, and only the report tells them apart.
+Line 3 is the one that earns the stop. "Round four, and the last three findings are the same retry-logic issue in three more files" says the phase needs reworking rather than another patch. "Round four, three unrelated real bugs" says carry on. Same count, opposite answers, and only the report tells them apart. Line 4 says whether stepping back helped: a loop that kept going after an arbiter called for rework is a phase that needs replanning, not more rounds.
 
 **Do not ask "shall I continue?"** A bare question gets a yes, because nothing in it gives anyone grounds to say no. That is the observed failure: a stop at four rounds was approved and ran twenty-eight more. Report the evidence and let the answer follow from it.
 
-The user resumes with `continue`. Starting the budget again means **writing down where it restarted**: add this phase's current reviewed-head count to `Review-baselines` in Driver State, as `<phase id>:<count>`, and subtract that phase's baseline from every later count.
+The user resumes with `continue`. Starting the budget again means **writing down where it restarted**: add this phase's current reviewed-head count to `Review-baselines` in Driver State, as `<phase id>:<count>`, and subtract that phase's baseline from every later count. The new budget gets its own arbitration at its own threshold.
 
 Without the baseline the stop is a trap rather than a checkpoint. The count is derived, so the next wake re-derives a number still at or above the threshold, blocks the row again, and no amount of saying `continue` moves it. The baseline is the one piece of this that has to be written down, for the same reason everything else in the plan file is: the session that agreed to continue will not be the session that carries on.
 
-**It is keyed by phase, and it is not the `Note`.** Phases run concurrently across repos, so two rows can be stopped at once, and an unqualified baseline would be overwritten by whichever row was continued last, then subtracted from the wrong phase. `Note` is one plan-wide free-text field and cannot hold per-phase state that anything reads back. `Review-baselines` sits beside `UAT-pending`, which is per-phase runtime state for the same reason.
+**It is keyed by phase, and it is not the `Note`.** Phases run concurrently across repos, so two rows can be stopped at once, and an unqualified baseline would be overwritten by whichever row was continued last, then subtracted from the wrong phase. `Note` is one plan-wide free-text field and cannot hold per-phase state that anything reads back. `Review-baselines` and `Arbitrations` sit beside `UAT-pending`, which is per-phase runtime state for the same reason.
 
 When a PR has no outstanding work, evaluate `references/gates.md` against it, using that repo's resolved config. Then:
 

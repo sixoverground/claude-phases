@@ -235,7 +235,11 @@ See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/d
 | Key | Default | Meaning |
 |---|---|---|
 | `stuck.max_cycles` | `5` | Consecutive wakes where a gate fails for the same reason, with an unmoved head, before the phase is marked `Blocked` |
-| `stuck.max_review_rounds` | `3` | Head commits on one phase PR that a `review.required` entry has evaluated, before the driver stops answering and reports. `null` disables it |
+| `stuck.max_review_rounds` | `3` | Head commits on one phase PR that a `review.required` entry has evaluated, before the driver steps back: it hands the loop to the arbiter, or with no arbiter, stops and reports. `null` disables it |
+| `stuck.arbiter.model` | `fable` | Model for the arbiter, a fresh-context subagent that judges the review loop against the phase's scope and the whole diff |
+| `stuck.arbiter.extra_rounds` | `3` | Reviewed heads, counted from the arbitration's own count, before the driver stops for a person. Counted like `max_review_rounds`: the head that reaches it is reported, not answered. At least `1` |
+
+Set `stuck.arbiter: null` to go back to stopping for a person at `max_review_rounds`.
 
 **Why both.** `max_cycles` counts a gate stuck against an **unmoved head**. A review loop moves the head on every round, so it reads as progress and that counter never trips, which is how a single PR ran thirty-two review rounds. `max_review_rounds` is the guard for a phase that is moving and getting nowhere.
 
@@ -243,7 +247,19 @@ See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/d
 
 The count is derived from the PR each time rather than tracked, so it survives a session dying mid-phase. A driver that remembered it would forget on compaction and start again from one. The one durable part is the baseline written when a user says `continue`, without which the stop could never be cleared.
 
-Raise it for a repo whose reviewer is genuinely thorough on large diffs. Lower it to `1` to have every phase report after a single round, which is a reasonable way to watch a new reviewer's behaviour before trusting it unattended.
+Raise it for a repo whose reviewer is genuinely thorough on large diffs. Lower it to `1`, with `arbiter: null`, to have every phase report after a single round, which is a reasonable way to watch a new reviewer's behaviour before trusting it unattended.
+
+### The arbiter
+
+At `max_review_rounds` the driver stops answering and starts a subagent with a fresh context. The subagent gets the phase's scope, the whole diff against base, and every finding from every round, and returns a verdict for each group of related findings: rework the mistake across the diff, fix it, carry it to the plan, file it as an issue, accept it as not worth a round, or reject it as wrong. It also returns a bar for what still counts as worth a round. The driver posts the verdict on the PR, acts on it in one push, and judges later findings against it. With the defaults that is head 3 answered by the arbitration, heads 4 and 5 under the verdict, and a stop at head 6 with the verdict in the report. Every boundary is "at or past", so a count that jumped while the session was down still gets arbitrated and still stops.
+
+**Why a separate agent.** The driver wrote every fix the reviewer keeps finding fault with, and it comes to each round focused on the newest comment. That focus is what turns one mistake into five rounds, one sibling at a time. A fresh context has nothing to defend. That matters more than the model, but `fable` is the default: it is a judgement about scope, like planning, and running on a different model from the driver means it doesn't share the driver's blind spots. It runs at most once per budget, so the cost is small.
+
+**What it may not do.** It cannot accept an in-scope defect in correctness, security, or data; those get fixed. Its bar never covers one either. It can reject a finding only with reasoning someone can check. It never widens a phase or adds one. And on a thread a person opened, its call is a reply, not a resolution.
+
+**It runs with YOLO off too.** YOLO decides who merges. The arbiter decides who sorts a review loop, and that shouldn't need you either way.
+
+Without a subagent, as in a claude.ai skill upload, the driver runs the same pass itself and says so on the PR. A model your organization or auto mode excludes falls back to the session's model.
 
 Counted per row, so one wedged platform never stalls the others.
 
@@ -313,7 +329,7 @@ Each status transition then becomes a one-file PR against the plan branch with a
 
 ## Model
 
-There is no `model` key in the plan. The model each skill runs on is set in that skill's own front matter, and the reason it lives there rather than here shapes how both skills behave.
+The plan has no `model` key for either skill. The model each skill runs on is set in that skill's own front matter, and the reason it lives there rather than here shapes how both skills behave.
 
 | Skill | `model` | Why |
 |---|---|---|
@@ -330,6 +346,8 @@ There is no `model` key in the plan. The model each skill runs on is set in that
 **To change it**, edit the `model:` line in the installed skill's `SKILL.md`, or set `model` in the repo's `.claude/settings.json` to change what sessions in that repo start on. The second is the only knob an installer controls without editing the plugin, and it applies to every turn, skill or not.
 
 **Why not a per-repo key.** A per-repo `model`, say Opus for the iOS phases and Sonnet for a docs repo, would read naturally next to `verify` and `ci`. It is not offered because nothing lets a skill change the session's model from configuration at runtime. The only path is delegating the phase to a subagent, which takes a model at call time but does not see the conversation, and review answers and CI fixes would need the same treatment or fall back to the driver's model. That is an architectural change to the driver, held until the skill-level default proves insufficient.
+
+**`stuck.arbiter.model` is the exception, and it shows why.** The arbiter is already a subagent, starting without the conversation on purpose, so its model can be chosen at call time and that choice can live in the plan.
 
 ---
 
