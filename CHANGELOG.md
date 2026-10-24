@@ -4,6 +4,18 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.9.2]
+
+### An arbitration no longer waits for a person
+
+Found on a real phase. At round 3 the arbiter ran and posted a verdict, and the driver held its push until Codex finished reviewing the head. Codex finished, and the driver sat idle until the user came back to ask why they had needed to say `continue`. Nothing in the skill said that a wait ends on its own, so the driver handed one to the user.
+
+* **A wait is never a question for the user.** CI, a reviewer and the arbiter each end their own wait, through a webhook, a completion notification or the check-in. The driver says what it is waiting on and never asks for `continue` or `go` to release it. Only a `Blocked` row, a merge with YOLO off and a question the skill says to ask wait on a person.
+* **An arbitration is not a stop.** The row stays `In Review` and the driver goes from verdict to push in the same turn. Holding the push for a reviewer still working on the head is allowed, since it saves a round, and is an ordinary wait.
+* **The arbiter runs in the foreground**, so its verdict returns inside the turn. Run in the background, its completion notification is the wake.
+* **A shorter check-in when the answer has no webhook.** A reviewer that has answered 👀 often finishes with a 👍 or a passing check, neither of which reliably wakes the session, so the driver arms a 10 to 15 minute check-in for it rather than 45 to 60.
+* **`continue` writes a baseline only at a review-round stop.** Said at any other time it means carry on and writes nothing. Before this, a `continue` given after an arbitration reset the budget, which put that arbitration outside it and gave the phase a second arbiter and three more rounds nobody had decided on.
+
 ## [0.9.1]
 
 ### Ask Claude which version it has

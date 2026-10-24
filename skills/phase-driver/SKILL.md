@@ -1,6 +1,6 @@
 ---
 name: phase-driver
-description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.9.1.
+description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.9.2.
 model: opus
 ---
 
@@ -136,6 +136,10 @@ Subscribe to PR activity for each open phase PR. Schedule a check-in 45–60 min
 
 Message the user what you started and where. Then **end your turn.** Sleeping is correct; there is nothing to poll.
 
+**A wait is never a question for the user.** Whatever you are waiting on, whether CI, a reviewer or the arbiter, ends the wait itself: its webhook, its completion notification or your check-in wakes you, and you act on that wake. So when you end a turn on a wait, say what you are waiting on and what you will do when it lands. Never ask the user to say `continue`, `go` or anything else to release it. Only three things wait on a person: a row in `Blocked`, a merge with YOLO off, and a question this skill tells you to ask. Observed: after an arbitration, a driver held its push until Codex finished reviewing the head, ended its turn waiting for `continue`, and sat idle after Codex finished until the user came back to ask why.
+
+**Some reviewers finish without an event.** A 👍 reaction, or a check run that passes, often delivers no webhook at all. When the thing you are waiting on will finish that way, typically a reviewer that has answered with 👀 and is still working, arm the check-in 10 to 15 minutes out rather than 45 to 60, so its answer is picked up in minutes rather than an hour.
+
 ## 5. On every wake
 
 Reconcile first. Then handle what woke you, against the row it belongs to:
@@ -222,7 +226,7 @@ Counting submissions instead breaks in both directions. Three required reviewers
 At the threshold the driver is the wrong one to judge the loop. It wrote every fix the reviewer has been finding fault with, and it comes to each round focused on the newest comment. So the judgement goes to an **arbiter**: a subagent with a fresh context, on `stuck.arbiter.model` (default `fable`). The fresh context matters more than the model. It hasn't written any of the fixes, so it has nothing to defend.
 
 1. **Record it first.** Append `<phase id>:<derived count>` to `Arbitrations` in Driver State, as a plan write like any other. That is golden rule 2, and it is what stops a session that dies mid-arbitration from starting a second one.
-2. **Start the arbiter and wait for its answer.** Don't push while it runs. Brief it with facts, not conclusions:
+2. **Start the arbiter and wait for its answer.** Don't push while it runs. Run it in the foreground (the Agent tool's `run_in_background: false`), so the verdict comes back inside this turn. If it does run in the background, its completion notification is your wake: act on the verdict then, without asking anyone. Brief it with facts, not conclusions:
    - the plan file's path and the phase id, for its Phase Details (scope, acceptance criteria, risks) and Carried findings
    - the repo, PR number, base branch, head sha, and the path of the local checkout, so it can read the whole diff against base rather than the latest commit
    - every review finding on the PR from every round, resolved or not, with links
@@ -242,7 +246,9 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
 
 4. **Its limits.** Say these in the brief. It may not `accept` an in-scope defect in correctness, security, or data: those are `fix` or `rework`. It may `reject` only with the checkable reasoning [a disagreement needs](#answering-a-review). It never widens the phase or adds one; out of scope is `carry` or `issue`. On a thread a person opened, an `accept` or `reject` goes in as a reply and the thread stays open, [as anywhere else](#answering-a-review).
 5. **Post the verdict before you act on it.** One PR comment whose first line is `<!-- phase-driver:arbiter <phase id>:<count> -->`, with the same entry you recorded in step 1, then the overall call, the bar, and each group with its verdict and reasoning. Say whether it came from a separate subagent. Under YOLO the phase can merge without anyone having read the PR, and this comment is how someone reading it afterwards finds out why threads were resolved without a fix.
-6. **Act on it in one push**, by the table. Resolve each bot's thread with its reply, and each person's thread only where you fixed or carried what it raised. Where you are sure a verdict lets through something broken, fix it anyway and say so in the reply: the limits run one way, so you can do more than it asks about a defect, never less.
+6. **Act on it in one push**, by the table, in the turn the verdict lands. Resolve each bot's thread with its reply, and each person's thread only where you fixed or carried what it raised. Where you are sure a verdict lets through something broken, fix it anyway and say so in the reply: the limits run one way, so you can do more than it asks about a defect, never less.
+
+**An arbitration is not a stop.** It is what happens instead of the stop at `max_review_rounds`. The row stays `In Review`, nothing is written to `Review-baselines`, and you go from the verdict to the push without anyone's say-so. If a required reviewer is still reviewing the current head when the verdict lands (a 👀 from it, or its check run in progress), you may hold the push so its findings join the same one, since that saves a round. That hold is a wait like any in §4: end the turn saying what you are waiting on, let its result or your check-in wake you, and push then. The first point at which a person is needed is [Stop for a person](#stop-for-a-person), at the arbitration's count plus `extra_rounds`.
 
 **Without a subagent**, as in a claude.ai skill upload, do the pass yourself against the same brief, starting from the diff and the findings rather than from your own replies, and say in the comment that the arbitration was not independent. A model the session can't use falls back to the session's model, the same as a skill's `model`.
 
