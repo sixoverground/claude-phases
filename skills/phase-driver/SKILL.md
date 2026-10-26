@@ -1,6 +1,6 @@
 ---
 name: phase-driver
-description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.9.2.
+description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.9.3.
 model: opus
 ---
 
@@ -193,7 +193,7 @@ Every outcome above resolves a review bot's thread, and that is deliberate. A th
 
 #### Stop when the rounds stop converging
 
-**Count the review rounds on this PR.** At `stuck.max_review_rounds` (default `3`, `null` to disable), step back and arbitrate. When the arbiter's extra rounds run out, stop for a person.
+**Count the review rounds on this PR.** At `stuck.max_review_rounds` (default `3`, `null` to disable), or sooner where the [repo's own rules](#the-repos-own-stop-rules) call for a stop, step back and arbitrate. When the arbiter's extra rounds run out, stop for a person.
 
 **Count reviewed heads, not reviews.** A round is one head commit that a required reviewer evaluated, so the count is the number of distinct shas on this PR for which **any** `review.required` entry is satisfied by gate 6's own test: a review or inline comment at that sha by one of its `logins`, a check run named by its `check` at that sha passing the entry's `proof`, or a 👍 that belongs to that head.
 
@@ -209,9 +209,9 @@ Counting submissions instead breaks in both directions. Three required reviewers
 
 | Situation | Do this |
 |---|---|
-| Effective count below `max_review_rounds` | Answer the review as above |
-| `stuck.arbiter: null`, effective count at or past `max_review_rounds` | [Stop for a person](#stop-for-a-person) |
-| No arbitration in this budget, effective count at or past `max_review_rounds` | **Do not push.** [Arbitrate](#arbitrate) |
+| Effective count below `max_review_rounds`, and no [stop rule of the repo's own](#the-repos-own-stop-rules) fires on this head | Answer the review as above |
+| `stuck.arbiter: null`, and the effective count is at or past `max_review_rounds` or a repo stop rule fires | [Stop for a person](#stop-for-a-person) |
+| No arbitration in this budget, and the effective count is at or past `max_review_rounds` or a repo stop rule fires | **Do not push.** [Arbitrate](#arbitrate) |
 | Arbitrated at count *A*, derived count below *A* + `extra_rounds` | Answer the review [under the verdict](#after-the-verdict) |
 | Arbitrated at count *A*, derived count at or past *A* + `extra_rounds` | [Stop for a person](#stop-for-a-person) |
 
@@ -220,6 +220,18 @@ Counting submissions instead breaks in both directions. Three required reviewers
 **`extra_rounds` counts the same way `max_review_rounds` does**, in reviewed heads, measured from the arbitration's own count rather than from the threshold, so an arbitration that happened late still gets its full allowance. With the defaults: the arbitration answers head 3, heads 4 and 5 are answered under the verdict, and head 6 stops, unanswered, exactly as head 3 would have without an arbiter.
 
 **This runs whether YOLO is on or off.** YOLO decides who presses merge. Nothing about a person merging means they should be the one to sort a review loop's nits from its bugs, and a phase that gets to its merge gate without them is the point of both modes.
+
+#### The repo's own stop rules
+
+A repo may say for itself when a review loop should stop, in its `CLAUDE.md`, `AGENTS.md` or contributing guide: a cap on fix rounds, or a rule like "when a round's findings are mostly follow-ups on the previous round's fixes, stop pushing and escalate." Those rules bind the phase like anything else the repo says. Most were written before the repo had an arbiter, so the "escalate" in them means a person, and read literally they skip the arbiter this plan configured. Read them this way instead.
+
+**The arbiter is the escalation.** A repo rule that says to stop and escalate a review loop is answered by arbitrating, not by stopping for a person. Where it fires before `max_review_rounds`, as a follow-ups rule can on head 2, arbitrate on that head: record `<phase id>:<derived count>` in `Arbitrations` exactly as at the threshold, and the stop for a person then comes at that count plus `extra_rounds`, like any arbitration. Go straight to a person only when `stuck.arbiter` is `null`, or when the repo's rule itself says the arbiter does not stand in for the person it names.
+
+**A tighter budget wins.** A repo that caps fix rounds below what this plan allows ends the loop where its cap runs out, counted the repo's way. With an arbiter the plan allows `max_review_rounds + extra_rounds - 1` fix pushes: the ones before the arbitration, the arbitration's own, and the ones answered under the verdict. Without one it allows `max_review_rounds - 1`. When the repo's cap runs out first, do what the repo says happens then, such as filing what is left and merging; where it says nothing, [stop for a person](#stop-for-a-person). The planner should have matched the plan to the cap. When it didn't, say so once on the PR.
+
+**Name both when you stop or arbitrate.** The comment says which repo rule fired, if any, and where this plan's arbiter stands: not run yet, ran at count *A*, or not configured. A stop report that cites a repo rule and says nothing about the arbiter is how the arbiter gets skipped without anyone seeing it.
+
+Observed: a repo's `CLAUDE.md` said a round of follow-ups on the previous round's fixes meant "stop pushing and escalate" to its owner, "whatever the round count." On head 3, the plan's threshold, with a Fable arbiter configured there, a round-3 finding followed up a round-2 fix. The driver took the repo's sentence at its word: it marked the row `Blocked`, posted a stop report citing the rule, and asked for `continue`. The arbiter never ran, and nine dependent phases waited until the user asked why.
 
 #### Arbitrate
 
@@ -231,6 +243,7 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
    - the repo, PR number, base branch, head sha, and the path of the local checkout, so it can read the whole diff against base rather than the latest commit
    - every review finding on the PR from every round, resolved or not, with links
    - what you changed in each round, one line per commit
+   - the repo's own review rules, if it has any, by path and quoted: a severity bar, a threat model or a budget the repo set binds the verdict as much as the limits below
 
    **Do not tell it which findings you think are wrong or minor.** It is there to disagree with you, and an arbiter handed your opinion tends to give it back.
 3. **What it returns.** Findings grouped by the mistake underneath them, and for each group: the mistake in one line, a verdict, and the reasoning. For `rework` and `fix`, where in the diff the general fix goes. Then an overall call, one of *converging*, *needs rework*, or *ready*, and **the bar**: a sentence or two on what still counts as worth a round on this phase.
@@ -248,7 +261,7 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
 5. **Post the verdict before you act on it.** One PR comment whose first line is `<!-- phase-driver:arbiter <phase id>:<count> -->`, with the same entry you recorded in step 1, then the overall call, the bar, and each group with its verdict and reasoning. Say whether it came from a separate subagent. Under YOLO the phase can merge without anyone having read the PR, and this comment is how someone reading it afterwards finds out why threads were resolved without a fix.
 6. **Act on it in one push**, by the table, in the turn the verdict lands. Resolve each bot's thread with its reply, and each person's thread only where you fixed or carried what it raised. Where you are sure a verdict lets through something broken, fix it anyway and say so in the reply: the limits run one way, so you can do more than it asks about a defect, never less.
 
-**An arbitration is not a stop.** It is what happens instead of the stop at `max_review_rounds`. The row stays `In Review`, nothing is written to `Review-baselines`, and you go from the verdict to the push without anyone's say-so. If a required reviewer is still reviewing the current head when the verdict lands (a 👀 from it, or its check run in progress), you may hold the push so its findings join the same one, since that saves a round. That hold is a wait like any in §4: end the turn saying what you are waiting on, let its result or your check-in wake you, and push then. The first point at which a person is needed is [Stop for a person](#stop-for-a-person), at the arbitration's count plus `extra_rounds`.
+**An arbitration is not a stop.** It is what happens instead of the stop at `max_review_rounds`, and instead of the stop a [repo's own rule](#the-repos-own-stop-rules) asks for. The row stays `In Review`, nothing is written to `Review-baselines`, and you go from the verdict to the push without anyone's say-so. If a required reviewer is still reviewing the current head when the verdict lands (a 👀 from it, or its check run in progress), you may hold the push so its findings join the same one, since that saves a round. That hold is a wait like any in §4: end the turn saying what you are waiting on, let its result or your check-in wake you, and push then. The first point at which a person is needed is [Stop for a person](#stop-for-a-person), at the arbitration's count plus `extra_rounds`.
 
 **Without a subagent**, as in a claude.ai skill upload, do the pass yourself against the same brief, starting from the diff and the findings rather than from your own replies, and say in the comment that the arbitration was not independent. A model the session can't use falls back to the session's model, the same as a skill's `model`.
 

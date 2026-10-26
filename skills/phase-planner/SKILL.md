@@ -1,6 +1,6 @@
 ---
 name: phase-planner
-description: Write a phased implementation plan to a docs/plans markdown file named for the project. Break work into one-PR phases, detect each repo's CI and review setup, and propose matching configuration. Use when asked to plan a project, break work into phases, set up a phased plan, or create a plan for phase-driver to execute. Also use when revising an existing plan's phases or configuration. This copy is claude-phases 0.9.2.
+description: Write a phased implementation plan to a docs/plans markdown file named for the project. Break work into one-PR phases, detect each repo's CI and review setup, and propose matching configuration. Use when asked to plan a project, break work into phases, set up a phased plan, or create a plan for phase-driver to execute. Also use when revising an existing plan's phases or configuration. This copy is claude-phases 0.9.3.
 model: fable
 ---
 
@@ -38,6 +38,7 @@ acme/acme-web
   CI               2 checks on recent PRs: build, test
   dispatch         workflow_dispatch declared in ci.yml
   reviewer         Copilot reviewed the last 5 PRs
+  review rules     CLAUDE.md caps fix rounds at 3; escalate on follow-ups
   verify           local (package.json, node)
 ```
 

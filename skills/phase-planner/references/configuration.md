@@ -241,6 +241,8 @@ See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/d
 
 Set `stuck.arbiter: null` to go back to stopping for a person at `max_review_rounds`.
 
+**A repo's own review rules sit beside these.** With an arbiter, the plan allows `max_review_rounds + extra_rounds - 1` fix pushes before the stop for a person, five with defaults; without one, `max_review_rounds - 1`. A repo whose `CLAUDE.md` caps fix rounds lower wins where the cap runs out, so set these to fit it rather than leave two budgets disagreeing. A repo rule that says to stop and escalate is answered by the arbiter, earlier than `max_review_rounds` if the rule fires earlier, and reaches a person only when the arbiter's rounds run out. See [the repo's own review rules](detection.md#the-repos-own-review-rules--stuck).
+
 **Why both.** `max_cycles` counts a gate stuck against an **unmoved head**. A review loop moves the head on every round, so it reads as progress and that counter never trips, which is how a single PR ran thirty-two review rounds. `max_review_rounds` is the guard for a phase that is moving and getting nowhere.
 
 **It counts reviewed heads, not reviews.** Two required reviewers looking at the same commit is one round, because answering both costs one push. Summing submissions would let three configured reviewers exhaust a budget of three on the opening head, and would sit at zero forever for a `check:` entry, which posts a check run rather than a review.

@@ -193,7 +193,7 @@ A plan branch that isn't the default branch often sidesteps this entirely, since
 | `Active` | One entry per in-flight phase. A list, so several repos can be in flight at once |
 | `UAT-pending` | Phase ids whose UAT checklist hasn't reached a human yet. See [When UAT reaches a human](#when-uat-reaches-a-human) |
 | `Review-baselines` | `<phase id>:<count>` pairs, written when a user clears a review-round stop with `continue`. The driver subtracts a phase's baseline from its derived reviewed-head count. Per phase, because concurrent phases can each be stopped |
-| `Arbitrations` | `<phase id>:<count>` pairs, written when the driver hands a review loop to the arbiter at `stuck.max_review_rounds`, with the reviewed-head count at that moment. An entry above the phase's baseline means this budget has had its arbitration. Written before the arbiter starts, so a session that dies mid-arbitration doesn't start a second one |
+| `Arbitrations` | `<phase id>:<count>` pairs, written when the driver hands a review loop to the arbiter at `stuck.max_review_rounds`, or sooner when a repo's own stop rule fires, with the reviewed-head count at that moment. An entry above the phase's baseline means this budget has had its arbitration. Written before the arbiter starts, so a session that dies mid-arbitration doesn't start a second one |
 | `Heartbeat` | UTC timestamp, rewritten on every turn that touches the plan |
 | `Note` | Free text for the current situation; the place a `Blocked` reason goes |
 
