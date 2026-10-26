@@ -4,6 +4,18 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.9.3]
+
+### A repo's own stop rule no longer skips the arbiter
+
+Found on a real phase. The repo's `CLAUDE.md` said that when a round's findings are mostly follow-ups on the previous round's fixes, the driver should "stop pushing and escalate" to its owner, "whatever the round count." On head 3, the plan's `max_review_rounds`, with a Fable arbiter configured there, the newest finding followed up a round-2 fix. The driver applied the repo's sentence, stopped the phase for a person and asked for `continue`. The arbiter never ran. The rule was written before the repo had an arbiter, so "escalate" in it could only mean a person, and nothing in the skill said how the two rules fit together.
+
+* **The arbiter is the escalation.** A repo rule that says to stop and escalate a review loop is answered by arbitrating. Where it fires before `max_review_rounds`, the driver arbitrates on that head, records it in `Arbitrations` as usual, and stops for a person `extra_rounds` heads later. It goes straight to a person only with `stuck.arbiter: null` or when the repo's rule says the arbiter does not stand in.
+* **A tighter budget wins.** A repo that caps fix rounds below the plan's allowance (`max_review_rounds + extra_rounds - 1` pushes with an arbiter, five with defaults) ends the loop where its cap runs out, and the driver does what the repo says happens then.
+* **Stop and arbitration comments name both rules**: which repo rule fired, and whether the arbiter has run, ran at which count, or is not configured.
+* **The arbiter's brief carries the repo's review rules**, so a severity bar or threat model the repo set binds the verdict.
+* **The planner reads the repo's review rules** (`CLAUDE.md`, `AGENTS.md`, contributing guide), lists them in its findings, and proposes `stuck` values that fit a fix-round cap, rather than leaving two budgets to disagree mid-phase.
+
 ## [0.9.2]
 
 ### An arbitration no longer waits for a person

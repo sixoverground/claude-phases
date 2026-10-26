@@ -91,6 +91,21 @@ Never set it for a reviewer that reviews every push. It trades proof for an assu
 
 Default `output`. Set `proof: completed` only when you've seen that reviewer produce a green check with no output on a clean pass. Some reviewers are genuinely silent when they find nothing. Explain the trade when you set it: a skipped or no-op job then also counts as a review.
 
+## The repo's own review rules → `stuck`
+
+Read the repo's `CLAUDE.md`, `AGENTS.md` and contributing guide for anything that says when a review loop should stop: a cap on fix rounds, a severity bar below which findings get no push, or a rule like "when a round is mostly follow-ups on the last round's fixes, stop and escalate." These bind the driver as repo instructions, so a plan whose `stuck` config disagrees with them sets up two stop rules that fire at different points, and the driver has to pick one mid-phase.
+
+Compare the cap with what the plan allows. With an arbiter, the driver makes up to `max_review_rounds + extra_rounds - 1` fix pushes before it stops for a person; with defaults that is five. Without one, `max_review_rounds - 1`.
+
+| Observed | Do |
+|---|---|
+| No review rules | Nothing. Defaults apply |
+| A fix-round cap at or above what the plan allows | Nothing to change. Name the rule in the findings table |
+| A cap below what the plan allows | Propose `stuck` values that fit it, such as `extra_rounds` lowered so the arbitration's push is the cap's last round. Or ask whether the rule should count the arbiter's rounds. The person picks one; never leave the two disagreeing |
+| A rule to stop and escalate to a person | Say in the handoff that the driver treats the arbiter as that escalation and goes to a person only when the arbiter's rounds run out. If they want the person first, set `stuck.arbiter: null`. Suggest the repo's rule name the arbiter itself, so a session that reads the rule without this skill reads the same thing |
+
+**The rule usually predates the arbiter.** A repo that wrote "escalate to the owner" before it had an arbiter meant the only escalation it had. Read literally at round 3, it stops a phase the plan set up to arbitrate. That is the observed failure behind this section: a plan configured a Fable arbiter at 3, the repo's `CLAUDE.md` said to escalate on follow-ups "whatever the round count", and the driver stopped for a person instead of arbitrating.
+
 ## Toolchain → `verify`
 
 From the repo's files:
