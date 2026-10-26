@@ -209,11 +209,13 @@ Counting submissions instead breaks in both directions. Three required reviewers
 
 | Situation | Do this |
 |---|---|
-| Effective count below `max_review_rounds`, and no [stop rule of the repo's own](#the-repos-own-stop-rules) fires on this head | Answer the review as above |
+| No arbitration in this budget, effective count below `max_review_rounds`, and no [stop rule of the repo's own](#the-repos-own-stop-rules) fires on this head | Answer the review as above |
 | `stuck.arbiter: null`, and the effective count is at or past `max_review_rounds` or a repo stop rule fires | [Stop for a person](#stop-for-a-person) |
 | No arbitration in this budget, and the effective count is at or past `max_review_rounds` or a repo stop rule fires | **Do not push.** [Arbitrate](#arbitrate) |
+| Arbitrated at count *A*, derived count at or past *A* + `extra_rounds`, or a repo rule fires that sends a loop after the arbiter to a person | [Stop for a person](#stop-for-a-person) |
 | Arbitrated at count *A*, derived count below *A* + `extra_rounds` | Answer the review [under the verdict](#after-the-verdict) |
-| Arbitrated at count *A*, derived count at or past *A* + `extra_rounds` | [Stop for a person](#stop-for-a-person) |
+
+**An arbitration in this budget always takes the last two rows**, whatever the effective count. One can now happen before `max_review_rounds`, when a repo's rule fires early, and the heads after it are answered under its verdict and stop at its count plus `extra_rounds`, not at the threshold.
 
 **"At or past", never "at".** Missed webhooks, a session that was down for a while, or a PR that was already over the threshold before this rule existed can all arrive with the count beyond a boundary, and a test for equality lets that phase walk past the backstop.
 
