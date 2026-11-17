@@ -1,6 +1,6 @@
 ---
 name: phase-driver
-description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.10.0.
+description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.10.0.
 model: opus
 ---
 
@@ -8,7 +8,7 @@ model: opus
 
 You execute a phased plan. The plan file is your only durable memory: the session running you can be reclaimed at any moment, and the next one starts knowing nothing. Write state down before you act on it, and everything survives.
 
-Read `references/recovery.md`, `references/gates.md`, and `references/vocabulary.md` when you reach the steps that need them, not up front.
+Read `references/recovery.md`, `references/gates.md`, `references/watching.md`, and `references/vocabulary.md` when you reach the steps that need them, not up front.
 
 ## Golden rules
 
@@ -21,6 +21,7 @@ Read `references/recovery.md`, `references/gates.md`, and `references/vocabulary
 7. **If your context was compacted or you don't remember starting this: re-read this file and the plan, run Reconcile, and continue.** That is the normal path, not an error. This rule can only reach a session that still has this file, so two things outside it point back here: the plan's **For the driver** section, and the check-in message you schedule for yourself. If one of those sent you here, that is the path working.
 8. **Never claim work you didn't do.** If tests didn't run, say so in the change request's description. If you can't tell why CI failed, say that and link the run.
 9. **Invoke this skill at the start of every wake, even when you remember it.** Its front matter names the model for the turn it is invoked in and for nothing after. A wake that acts without invoking it runs that turn on whatever model the session was started with. Remembering the rules is not the same as having them applied.
+10. **An unreachable forge is a wait, not a block.** When the forge does not answer at all, mark nothing `Blocked` and count nothing toward `stuck.max_cycles`. Tell the user once and carry on when it answers, as [The forge is unreachable](references/recovery.md#the-forge-is-unreachable) says. A status write that could not be made means the action it describes has not started.
 
 ## The forge
 
@@ -76,7 +77,7 @@ Startable rows are `Pending`, with every id in `Depends` now `Merged` or `Skippe
 
 For each, in order:
 
-1. **Ensure the repo is reachable.** If it isn't in the session's scope, add it and clone it. If access is denied, mark that row `Blocked` with the error and carry on with the others. One inaccessible repo must not stall the rest.
+1. **Ensure the repo is reachable.** If it isn't in the session's scope, add it and clone it. If access is **denied**, the forge answered and said no (401, 403 or 404): mark that row `Blocked` with the error and carry on with the others. One inaccessible repo must not stall the rest. If the forge is **unreachable**, it did not answer at all (a DNS failure, a timeout, a refused connection, a gateway error): that is not `Blocked`, by golden rule 10.
 2. **Commit `In Progress`** to the plan branch. This is the claim, and it comes first.
 3. **Branch** from that repo's `target_branch`, named from the row's `Branch`.
 4. **Implement** the phase against its Phase Details: scope, acceptance criteria, risks. Match the surrounding code. Stay inside the phase's scope: if you find unrelated problems, note them in the change request's description rather than fixing them.
@@ -122,7 +123,7 @@ Where each step came from stops mattering the moment the plan is done. What matt
 
 ## 4. Watch
 
-Arm whatever wakes you for each open phase PR, as the forge reference's **Watch** says. Schedule a check-in 45–60 minutes out if you can, so that a missed event cannot stall the plan silently.
+Arm whatever wakes you for each open phase PR, as [references/watching.md](references/watching.md) says: subscribe where the session can, as the forge reference's **Watch** says, and arm the watcher where it cannot. Schedule a check-in 45–60 minutes out if you can, so that a missed event cannot stall the plan silently.
 
 **The check-in message is written for a session that has nothing.** It is the one message you send to a future self, and that self may have compacted and lost this file. So it says to invoke `phase-driver`, names the plan file, says to reconcile, and says nothing else. Do not put state or conclusions in it: the plan already holds the state, and a reading recorded in a check-in is re-read as fact on every wake after it. Observed: a driver woken without this file in context merged a green change request and did not start the next phase, because the rule to do so was in here.
 
@@ -312,7 +313,7 @@ The unmoved head is what this rule turns on, so it says nothing about a phase th
 
 However the change request merged. You, the user from their phone, or anyone else:
 
-1. Stop watching that change request, as the forge reference's **Watch** says.
+1. Stop watching that change request, as [references/watching.md](references/watching.md) says.
 2. **Commit `Merged`** to the plan branch. If YOLO was on and the change request carried no UAT checklist, append that phase's id to `UAT-pending` in the same write.
 3. Comment on the change request and tell the user.
 4. **Start whatever rows that unblocks**, in the same turn, unless `Driver: paused`.
