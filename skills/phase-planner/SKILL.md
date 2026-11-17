@@ -1,6 +1,6 @@
 ---
 name: phase-planner
-description: Write a phased implementation plan to a docs/plans markdown file named for the project. Break work into one-PR phases, detect each repo's CI and review setup, and propose matching configuration. Use when asked to plan a project, break work into phases, set up a phased plan, or create a plan for phase-driver to execute. Also use when revising an existing plan's phases or configuration. This copy is claude-phases 0.10.0.
+description: Write a phased implementation plan to a docs/plans markdown file named for the project. Break work into one-PR phases, detect each repo's CI and review setup, and propose matching configuration. Use when asked to plan a project, break work into phases, set up a phased plan, or create a plan for phase-driver to execute. Also use when revising an existing plan's phases or configuration. This copy is claude-phases 0.11.0.
 model: fable
 ---
 
@@ -51,7 +51,7 @@ Then say what you inferred, and ask whether it holds, through `AskUserQuestion` 
 Before writing, check the config you're about to produce against what you observed. Refuse and explain if:
 
 - a name in `ci.required` matches no check seen on any recent PR
-- a login in `review.required` has never reviewed in that repo
+- a login in `review.required` has never reviewed in that repo. For a `marker` entry, check its `logins` against the authors of marker notes instead: a reviewer that has only ever found nothing has posted markers and no reviews, and is set up correctly
 - a `check` in `review.required` matches no check run you've seen
 - `ci.allow_none: false` on a repo with no CI at all
 - `target_branch` names a branch that doesn't exist
@@ -65,6 +65,11 @@ Every one of these produces a gate that waits forever. The failure surfaces as "
 The same applies to checks you *can't* read: CodeQL default setup and external providers like Xcode Cloud configure their own start conditions, often scoped to the default branch. Don't put those in `ci.required` when targeting a feature branch. Left unnamed they're counted only if they actually appear, which is the behaviour you want while their scope is unverified.
 
 **Also warn** when a reviewer is configured but is only known to post top-level comments. `threads_must_resolve` needs diff-anchored comments to mean anything.
+
+**A `marker` entry has a refusal and a warning of its own.**
+
+- **Refuse** a `marker` entry when no top-level comment on any recent PR carries that reviewer's marker **and** nothing in the repo could post one: no CI job, workflow or installed tool that runs the reviewer. A marker no one will ever write is a gate that waits forever. Change: name the reviewer that is actually set up, or set the reviewer up first. Where the repo does contain the job that will post it but no PR has run it yet, say so in the findings rather than refusing, and let the first phase PR confirm it.
+- **Warn** when a `marker` entry has no `logins` on a repo where people outside the project can comment, which includes every public repo. A marker is plain text, so anyone can type one for the current head and make an unreviewed commit pass gate 6. Change: set `logins` to the account the reviewer posts as.
 
 **Milestone rows have four refusals of their own.** Each produces a plan the driver either stops on or that destroys its own state:
 

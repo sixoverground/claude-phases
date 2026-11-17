@@ -1,20 +1,20 @@
 # Recovery
 
-What to do when the plan and GitHub disagree. That's the normal state after a session dies, not an error.
+What to do when the plan and the forge disagree. That's the normal state after a session dies, not an error.
 
 Apply this **per non-terminal row**, not once per plan, plus every `Merged` milestone row that is not yet settled (see [Milestone rows](#milestone-rows)). With several repos in flight, each recovers independently.
 
-**GitHub is the truth.** The plan records what a driver intended; GitHub records what happened. Where they differ, fix the plan.
+**The forge is the truth.** The plan records what a driver intended; the forge records what happened. Where they differ, fix the plan.
 
-| Plan says | GitHub says | What happened | Do this |
+| Plan says | The forge says | What happened | Do this |
 |---|---|---|---|
 | `Pending`, stale heartbeat | no branch, no PR | Never started | Start it normally |
-| `Pending` | open PR on that branch | Died after opening the PR, before recording it | Adopt the PR: write `In Review` + `Link`, subscribe, evaluate the gate |
+| `Pending` | open PR on that branch | Died after opening the PR, before recording it | Adopt the PR: write `In Review` + `Link`, watch, evaluate the gate |
 | `In Progress`, foreign ID, heartbeat < 90 min | anything | Another driver is live | Stop. Report. Touch nothing |
 | `In Progress`, stale | no branch | Claimed, died before doing anything | Reset to `Pending`, then start it normally |
 | `In Progress`, stale | branch exists, no PR | Died mid-implementation | See below |
 | `In Progress` | open PR on that branch | Died after opening the PR, before recording it | Write `In Review` + `Link`, adopt |
-| `In Review` | PR open | Normal operation | Re-subscribe, re-evaluate the gate against the current head |
+| `In Review` | PR open | Normal operation | Re-arm the watch, re-evaluate the gate against the current head |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, then start whatever it unblocks |
 | `In Review` | PR closed, not merged | A human killed it | Ask why. Default to `Blocked` if there's no answer |
 | `In Review` | no PR at all, branch gone | Someone cleaned up. **Not** the driver's own post-merge delete: that only ever runs on a branch whose PR is merged, and a merged PR still exists to be found | Reset to `Pending` |
@@ -23,9 +23,9 @@ Apply this **per non-terminal row**, not once per plan, plus every `Merged` mile
 
 ## Milestone rows
 
-Every milestone row in a repo has the same head and base, so a milestone row is matched to its PR by SKILL.md's **Which PR is a milestone's**: the row's `Link` where it has one, and otherwise head equal to the target branch, base equal to the default branch, **and a title starting `Milestone <id>:`** with this row's id. A PR naming another id is never this row's, not even a merged one from an earlier milestone. The same per-row rule applies: GitHub is the truth.
+Every milestone row in a repo has the same head and base, so a milestone row is matched to its PR by SKILL.md's **Which PR is a milestone's**: the row's `Link` where it has one, and otherwise head equal to the target branch, base equal to the default branch, **and a title starting `Milestone <id>:`** with this row's id. A PR naming another id is never this row's, not even a merged one from an earlier milestone. The same per-row rule applies: the forge is the truth.
 
-| Plan says | GitHub says | What happened | Do this |
+| Plan says | The forge says | What happened | Do this |
 |---|---|---|---|
 | `Pending`, dependencies `Merged` or `Skipped` | no PR with this row's identity | Ready to ship | Start it, by SKILL.md's Milestones section |
 | `Pending` or `In Progress`, dependencies `Merged` or `Skipped` | an open PR with this row's identity | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch. A row with a dependency that is neither `Merged` nor `Skipped` never adopts a PR: report the mismatch |
@@ -41,6 +41,17 @@ The `Merged` rows are why reconcile looks past terminal rows for milestones: a `
 `In Progress` with no PR and no preparation commits on the branch at all is the first row of the table in disguise: prepare from the start, then open the PR. Where `milestone.prepare` is absent there is nothing to finish, and the third row reduces to opening the PR.
 
 The last row is why re-sync comes before anything starts in §7. A session that dies after writing `Merged` and before moving the branch leaves a target branch that is gone, or still at its pre-merge head, and a phase branched from either starts from a base that is not the default branch.
+
+## The forge is unreachable
+
+The forge did not answer at all: a DNS failure, a timeout, a refused connection, a gateway error. A VPN that dropped and a Mac that lost its Wi-Fi look like this. It is not the same as access denied, where the forge answered 401, 403 or 404, which marks the row `Blocked` as SKILL.md §3 says.
+
+- **Mark nothing `Blocked`.** Nothing is wrong with any phase. A row blocked for an outage stays blocked after the outage, until a person clears it.
+- **Do not count the wake toward `stuck.max_cycles`.** No gate was evaluated, so no gate failed.
+- **Tell the user once**, not once per poll.
+- **Keep watching.** The watcher backs off to at most five minutes between polls, prints one line when the forge stops answering and one when it answers again. Reconcile then, as on any wake.
+
+**A status write that could not be made means the action it describes has not started.** Golden rule 2 puts the write first, so a claim that failed to land is no claim: do not branch, push or open anything for it. Retry the write when the forge answers, after reconciling.
 
 ## The plan branch is gone
 
@@ -60,7 +71,7 @@ You can't tell from the plan whether the previous driver got most of the way thr
 
 ## Adopting a PR you didn't open
 
-Once adopted, treat it as yours: subscribe, evaluate the gate, fix CI, answer review. Don't re-implement anything already in the diff, and don't force-push over commits you didn't write.
+Once adopted, treat it as yours: watch it, evaluate the gate, fix CI, answer review. Don't re-implement anything already in the diff, and don't force-push over commits you didn't write.
 
 If its head is far behind the base, update the branch before evaluating the gate. A gate result against a stale base is meaningless.
 
@@ -76,4 +87,4 @@ A container that was reclaimed and restarted comes back with a fetch cache from 
 
 **Never start a phase that has an open PR.** Duplicate branches for one phase are the most confusing state to unpick, and every recovery path above is written to avoid creating one. If in doubt, search the row's repo for open PRs by head branch before you create anything.
 
-**Never mark `Merged` without confirming it in GitHub.** Being wrong here starts the next phase on a base that doesn't contain the previous one.
+**Never mark `Merged` without confirming it on the forge.** Being wrong here starts the next phase on a base that doesn't contain the previous one.

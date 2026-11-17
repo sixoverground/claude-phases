@@ -4,6 +4,26 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.11.0]
+
+### Run the driver on your own machine
+
+The driver could only wait in a cloud session, where GitHub webhooks wake it. A local session in a terminal had nothing to wake it, so a driver that ended its turn on a wait simply stopped.
+
+* **A watcher where webhooks were.** A session that cannot subscribe arms a polling loop, from a template in the new `references/watching.md`, that prints a line only when an open pull request changes: a push, a check, a comment, review or reaction, a merge. Each line is a complete wake message, so a session that has lost its context still knows to invoke the skill and reconcile. It runs under bash 3.2 with only `gh`, keeps no state the plan needs, and a session that can subscribe still does, so cloud behaviour is unchanged.
+* **An unreachable forge is a wait, not a blocked phase.** Access denied (401, 403, 404) still blocks the row. A forge that does not answer at all, a dropped VPN or Wi-Fi, now marks nothing `Blocked` and counts toward nothing; the watcher says so once, backs off, and the driver carries on when it answers.
+
+### A review contract any reviewer can meet
+
+A reviewer can now prove it looked at a commit by posting a one-line marker, `<!-- phases:review v=1 reviewer=<name> sha=<full sha> -->`, defined in the new review contract (`docs/review-contract.md`). A `{ marker: "<name>" }` entry in `review.required` waits for that marker on the head commit, optionally only from accounts listed in `logins`. Any self-hosted reviewer that meets the contract becomes a required reviewer, on any forge, and a review workflow that posts it no longer needs `proof: completed`.
+
+### The driver no longer assumes GitHub
+
+Nothing changes for a GitHub user. This is the groundwork for a second forge.
+
+* **The rules are forge-neutral.** The driver's core speaks of change requests and "the forge". Everything specific to GitHub (which tool opens a pull request and why that decides whether it gets reviewed, how status is written to the plan, how branches are deleted and moved) now lives in `references/forge-github.md`, which the driver reads at every reconcile.
+* **So is the merge gate.** `gates.md` asks each gate as a question any forge can answer. How GitHub answers it lives in `forge-github.md`, a heading per gate: check conclusions, review states, thread resolution, the 👍 decline reaction and `rereview: optional`, moved word for word.
+
 ## [0.10.0]
 
 ### Milestones: ship a feature branch part-way through a plan
