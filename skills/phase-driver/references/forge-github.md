@@ -180,14 +180,18 @@ Then the entry is satisfied at this head, as a review there would satisfy it.
 
 **A sign** for [`rereview: optional`](#rereview-optional): the same comment with `status` `completed`, naming any commit on this PR.
 
-**Not proof, and not a sign:**
+**Not proof, and not a sign** (treat the comment as absent):
 
 | Found | Why |
 |---|---|
 | `status` anything but `completed`, such as `running` | The review has not finished. This is the comment's 👀 |
 | An author outside `logins` | Anyone can paste the line into a comment |
 | A version other than `v1`, or JSON that does not parse | A format this rule was not written for. Treat the comment as absent |
-| `commit_sha` shorter than the full sha, or naming another head | Proof for that commit at most, as with a marker |
+| `commit_sha` shorter than the full sha | A prefix can match more than one commit, as with a marker |
+
+A completed comment whose full `commit_sha` names an **earlier** head of this PR is not proof for the current head, and **is** a sign, by the rule above. That is the stale case `rereview: optional` exists for, and reading it as nothing would block that entry forever.
+
+**It is not history.** Codex edits this comment in place, so it says what was true of its latest review and nothing about earlier heads. It never counts toward the reviewed heads in SKILL.md's review-round budget: that count is derived from records that stay put. A round in which Codex found something leaves a review at that commit, which the count already reads, and a round in which it found nothing ends the loop anyway.
 
 **Never read a verdict from it.** `has_any_findings` and `has_unresolved_findings` are Codex's opinion of its own findings. Gate 6 asks only whether the reviewer looked; its findings are threads, and gate 5 owns those.
 
