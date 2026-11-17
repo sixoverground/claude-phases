@@ -85,7 +85,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 7  | claude/forge-neutral-gates | sixoverground/claude-phases | Behaviour-neutral: split `gates.md` and `recovery.md` into forge-neutral rules plus the GitHub mapping | 2b | Merged | [#35](https://github.com/sixoverground/claude-phases/pull/35) | 2a |
 | 8  | claude/local-watcher | sixoverground/claude-phases | Local sessions: `references/watching.md`, the polling watcher, and "forge unreachable is not Blocked" | 3 | Merged | [#36](https://github.com/sixoverground/claude-phases/pull/36) | 2b |
 | 9  | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the review contract, the forge-neutral driver and local running to `main` | M1 | In Review | [#37](https://github.com/sixoverground/claude-phases/pull/37) | 1, 2a, 2b, 3 |
-| 10 | claude/forge-config | sixoverground/claude-phases | Config keys `forge`, `host`, `integration_pr`, `ci.logs: gitlab-jobs`; `group/project` ids and `!42` links; forge selection in the driver | 4 | Pending | - | M1 |
+| 10 | claude/forge-config | sixoverground/claude-phases | Config keys `forge`, `host`, `integration_pr`, `ci.logs: gitlab-jobs`; `group/project` ids and `!42` links; forge selection in the driver | 4 | Pending | - | 15 |
 | 11 | claude/gitlab-driver-core | sixoverground/claude-phases | `references/forge-gitlab.md` part 1: plan reads and writes, finding, opening and merging MRs, milestones, finishing | 5a | Pending | - | 4 |
 | 12 | claude/gitlab-gates | sixoverground/claude-phases | `references/forge-gitlab.md` part 2: the six gates, job traces, discussions, the watcher command | 5b | Pending | - | 5a |
 | 13 | claude/gitlab-planner | sixoverground/claude-phases | Planner: `references/detection-gitlab.md`, four new refusals, hygiene items, `profiles/ci-gitlab-runner-macos.yml` | 6 | Pending | - | 5b |
@@ -95,10 +95,11 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 17 | claude/gitlab-posting | sixoverground/codex-mr-review | Post findings as MR discussions, summary note, script-owned marker, fingerprint dedupe | 10 | Pending | - | 9 |
 | 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Pending | - | 10 |
 | 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | Pending | - | 7, 11 |
-| 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Pending | - | 4, 5a, 5b, 6, 7, 12 |
+| 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Pending | - | 15, 4, 5a, 5b, 6, 7, 12 |
 | 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Pending | - | M2 |
 | 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Pending | - | 13 |
 | 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | Pending | - | 13, 14 |
+| 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Pending | - | M1 |
 
 Rows `M1`, `M2` and `M3` are milestone rows, the row kind phase 0b defines: the branch is the repo's `target_branch`, the PR goes to the default branch, and `Depends` lists what it ships. **A driver that does not know milestone rows must not start one.** The released 0.9.3 does not, and it cannot reach one here before the bootstrap, since every milestone depends on phases that come after phase 0d.
 
@@ -114,7 +115,7 @@ Home-repo phases merge into `feature/local-gitlab`. The marketplace serves `main
 |---|---|---|
 | **Bootstrap**, by hand after 0d | 0a to 0d: the scoped version check and milestones themselves | Every later milestone. The driver cannot open a milestone PR until the driver that knows how is installed |
 | **M1** | 1, 2a, 2b, 3: the review contract, the forge-neutral driver, the watcher | Phase 9, which has to be driven from a session on the Mac where the Codex CLI is logged in. A local session has nothing to wait with until the installed driver has the watcher |
-| **M2** | 4, 5a, 5b, 6, 7, 12: GitLab support, the planner on GitLab, the local guide, the marker reviewer setup | Phase 13, which drives a real gitlab.com project with the installed driver and planner |
+| **M2** | 15, 4, 5a, 5b, 6, 7, 12: taking over from a dead driver, GitLab support, the planner on GitLab, the local guide, the marker reviewer setup | Phase 13, which drives a real gitlab.com project with the installed driver and planner |
 | **M3** | 13, 14: the trial's corrections and the final documentation | The end of the plan |
 
 Three driven milestones is the fewest the real dependencies allow. M1 cannot wait for M2: the tool track would sit idle for six phases with nothing able to drive it locally. M2 cannot be folded into M3: the trial is what M3 ships, and it cannot run on a driver that lacks M2. The bootstrap is the price of building the feature inside the plan that uses it.
@@ -570,6 +571,39 @@ After merging:
 
 ---
 
+### Phase 15 — Taking over from a dead driver (sixoverground/claude-phases)
+
+**Added after M1's UAT**, from the Carried finding it raised. Phase 15 runs first after `M1` because it is small, and because every phase from 4 on is driven from a local session, where a killed session is the common case rather than the rare one. It ships in `M2`.
+
+**Scope.** A person can release a dead driver's claim on the plan. And a session on the same machine can see for itself that the holder has gone, instead of waiting out the heartbeat.
+
+- **`take over`** in `skills/phase-driver/references/vocabulary.md`. It means the person says the driver named in `Driver-ID` is gone. Reconcile, then confirm once. The confirmation names the holder's ID, its heartbeat's age, and, where `Driver-Host` is recorded, its host and whether that process is running. On yes, mint a new ID, write it with the next write, and carry on exactly as the stale-heartbeat takeover does. The driver never says `take over` to itself.
+- **`Driver-Host`** in Driver State, as `<hostname>:<pid>:<process start time>`, written in the same write as the claim. The PID is the Claude Code session's own process, not the shell a command runs in. The start time guards against a reused PID. A session that cannot name its own process writes `-`, which is also what a plan written before this field reads as. Add it to `skills/phase-planner/references/format.md`, `plan-template.md` and `examples/`, and to the driver's own lists of Driver State fields.
+- **`skills/phase-driver/SKILL.md` Driver-ID table, one new row** above "Different ID, heartbeat under 90 minutes old": a different ID whose `Driver-Host` names **this** host, where that PID is not running or is running with a different start time. That holder is dead: take over, and say so in the report and in the commit that claims. A different host, or a `Driver-Host` of `-`, changes nothing: report and stop, as now. **The stop report names `take over`**, with the heartbeat's age, so the person knows the one word that releases it.
+- `skills/phase-driver/references/recovery.md`: the `In Progress, foreign ID, heartbeat < 90 min` row points at both ways out.
+- Nothing about the 90-minute rule changes for a different machine, or for a cloud session, whose host a local session cannot inspect.
+
+**Depends on.** `M1`.
+
+**Acceptance criteria.**
+- [ ] `vocabulary.md` has `take over`, with the confirmation and what it names
+- [ ] Driver State documents `Driver-Host` in `format.md` and `plan-template.md`, and the examples carry it. A plan without it is read as `-`
+- [ ] The Driver-ID table has the same-host row, worded so it never fires on a different host or on `-`
+- [ ] The stop report names `take over`
+- [ ] How the driver finds its own session process, and its start time, is stated as commands that run under macOS's bash 3.2 and on Linux. The PR body records running them from a real session on the Mac
+- [ ] A real run on the scratch repo: kill a local session mid-phase, start a new one on the same Mac, say `status`. It takes over by itself and says why. The PR body records it
+- [ ] The conventions under "How this plan is driven" hold
+
+**UAT.**
+- [ ] On the Mac, start a phase on the scratch repo, kill the session mid-phase, start a new one and say `status`. It should say the previous driver's process is gone and take over without being asked
+- [ ] Start a driver in one terminal and a second session in another, and say `status` in the second. It should say a live driver holds the plan, name `take over`, and change nothing
+- [ ] In that second session say `take over`. It should ask once, naming the holder's ID, heartbeat age, host and that its process is still running, and take over only after you confirm
+- [ ] Edit `Driver-Host` in the scratch plan to another hostname, kill the holder, and say `status`. It should not take over by itself, and should name `take over`
+
+**Risks.** A false "dead" is the failure that matters. A successor that takes over from a live driver puts two drivers on one phase, the outcome the Driver-ID rules exist to prevent. That is why the automatic path needs the same host, a matching PID **and** a matching start time, and treats anything it cannot check as alive. Finding the session's own PID from inside a tool call is the uncertain part. If it cannot be done reliably, ship `take over` alone, and say so in the PR rather than recording a PID that means nothing.
+
+---
+
 ### Phase 4 — Forge configuration (sixoverground/claude-phases)
 
 **Scope.** The keys a non-GitHub repo needs, and the driver's rule for picking a forge.
@@ -587,7 +621,7 @@ After merging:
 - `skills/phase-driver/references/recovery.md`: the last row, all rows terminal, honours `integration_pr`.
 - New `profiles/forge-gitlab.yml`, and a **Forge** table in `profiles/README.md`.
 
-**Depends on.** `M1`. No capability check is needed at the top of this phase: the dependency holds it until `M1` is merged and the branch is level with `main`, and writing it needs nothing a milestone-aware driver lacks.
+**Depends on.** Phase 15, which itself waits on `M1`. No capability check is needed at the top of this phase: the dependency holds it until `M1` is merged and the branch is level with `main`, and writing it needs nothing a milestone-aware driver lacks.
 
 **Acceptance criteria.**
 - [ ] Every new key has a default, an off switch or a statement that it has none, and a profile that shows it, as CONTRIBUTING requires
@@ -937,9 +971,9 @@ After merging:
 
 ### Milestone M2 — GitLab support (sixoverground/claude-phases)
 
-**Ships.** Phases 4, 5a, 5b, 6, 7 and 12: the `forge`, `host` and `integration_pr` keys, the GitLab driver and gates, the planner on GitLab, the local guide and iOS verified on a Mac, and the setup for a marker reviewer. Labelled experimental.
+**Ships.** Phases 15, 4, 5a, 5b, 6, 7 and 12: taking over from a dead driver, the `forge`, `host` and `integration_pr` keys, the GitLab driver and gates, the planner on GitLab, the local guide and iOS verified on a Mac, and the setup for a marker reviewer. Labelled experimental.
 
-**Review scope.** A finding on this PR is in scope when it falls within the scope of phases 4, 5a, 5b, 6, 7 and 12, taken together. The driver answers it by its usual rules and commits fixes to `feature/local-gitlab`. Anything beyond those scopes goes to Carried findings.
+**Review scope.** A finding on this PR is in scope when it falls within the scope of phases 15, 4, 5a, 5b, 6, 7 and 12, taken together. The driver answers it by its usual rules and commits fixes to `feature/local-gitlab`. Anything beyond those scopes goes to Carried findings.
 
 **Needed by.** Phase 13, which drives a real gitlab.com project with the installed driver and planner.
 
@@ -1083,9 +1117,9 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T22:54:59Z
-- Note: M1 ready to merge (#37, a19cc7b); a person merges it, after the UAT on it
+- Heartbeat: 2026-11-17T23:00:58Z
+- Note: M1 head moved to 5aea9d6 (UAT fix: guarded rm in the watcher template); gates re-evaluated on the new head
 
 ## Carried findings
 
-- **A killed local session holds the plan for 90 minutes, and nothing lets a person release it.** Found in M1's UAT on #37, step "kill the session, start a new one, say `status`": the new session read the plan and GitHub correctly but would not take over, because the dead session's heartbeat was minutes old and the Driver-ID rules say a live-looking foreign ID means stop. That is the rule working; the gap is that `vocabulary.md` has no word for "that driver is gone, take over", so the session improvised one, and the only documented release is editing `Driver-ID` to `-` by hand. Locally a killed session is the common case, not the rare one. Out of scope for M1, which ships these rules unchanged. Candidates: a documented `take over` instruction, and recording host and PID in Driver State so a session on the same machine can check whether the holder is still running.
+- [x] **A killed local session holds the plan for 90 minutes, and nothing lets a person release it.** Planned as phase 15, shipping in `M2`. Found in M1's UAT on #37, step "kill the session, start a new one, say `status`": the new session read the plan and GitHub correctly but would not take over, because the dead session's heartbeat was minutes old and the Driver-ID rules say a live-looking foreign ID means stop. That is the rule working; the gap is that `vocabulary.md` has no word for "that driver is gone, take over", so the session improvised one, and the only documented release is editing `Driver-ID` to `-` by hand. Locally a killed session is the common case, not the rare one. Out of scope for M1, which ships these rules unchanged. Candidates: a documented `take over` instruction, and recording host and PID in Driver State so a session on the same machine can check whether the holder is still running.
