@@ -66,6 +66,11 @@ The same applies to checks you *can't* read: CodeQL default setup and external p
 
 **Also warn** when a reviewer is configured but is only known to post top-level comments. `threads_must_resolve` needs diff-anchored comments to mean anything.
 
+**A `marker` entry has a refusal and a warning of its own.**
+
+- **Refuse** a `marker` entry when no top-level comment on any recent PR carries that reviewer's marker **and** nothing in the repo could post one: no CI job, workflow or installed tool that runs the reviewer. A marker no one will ever write is a gate that waits forever. Change: name the reviewer that is actually set up, or set the reviewer up first. Where the repo does contain the job that will post it but no PR has run it yet, say so in the findings rather than refusing, and let the first phase PR confirm it.
+- **Warn** when a `marker` entry has no `logins` on a repo where people outside the project can comment, which includes every public repo. A marker is plain text, so anyone can type one for the current head and make an unreviewed commit pass gate 6. Change: set `logins` to the account the reviewer posts as.
+
 **Milestone rows have four refusals of their own.** Each produces a plan the driver either stops on or that destroys its own state:
 
 - **`plan_branch` is a branch a milestone row ships.** The branch is deleted on merge and re-created, and the plan goes with it. Change: leave `plan_branch` at the default branch.

@@ -197,9 +197,11 @@ Every outcome above resolves a review bot's thread, and that is deliberate. A th
 
 **Count the review rounds on this PR.** At `stuck.max_review_rounds` (default `3`, `null` to disable), or sooner where the [repo's own rules](#the-repos-own-stop-rules) call for a stop, step back and arbitrate. When the arbiter's extra rounds run out, stop for a person.
 
-**Count reviewed heads, not reviews.** A round is one head commit that a required reviewer evaluated, so the count is the number of distinct shas on this PR for which **any** `review.required` entry is satisfied by gate 6's own test: a review or inline comment at that sha by one of its `logins`, a check run named by its `check` at that sha passing the entry's `proof`, or a 👍 that belongs to that head.
+**Count reviewed heads, not reviews.** A round is one head commit that a required reviewer evaluated, so the count is the number of distinct shas on this PR for which **any** `review.required` entry is satisfied by gate 6's own test: a review or inline comment at that sha by one of its `logins`, a check run named by its `check` at that sha passing the entry's `proof`, a review marker naming that sha for a `marker` entry, or a 👍 that belongs to that head.
 
 **A reaction belongs to exactly one head.** It carries no sha, so bound it: a 👍 belongs to the head that was current when it was created, at or after that head's push and before the next head's push. Gate 6 asks only about the current head, where "at or after this head was pushed" is the whole test. Counting heads asks about all of them, and the same clause unbounded makes one reaction on the third head satisfy the first two as well, producing a count of three from a single 👍 and stopping the phase before one finding has been answered.
+
+**A marker needs none of that bounding.** A review marker carries the full sha it reviewed, so it counts for that sha and no other, the same as a review does. Two markers for one sha are one round, like two reviews of it.
 
 Counting submissions instead breaks in both directions. Three required reviewers all reviewing the opening head would exhaust a budget of three before the driver had answered anything once, though answering all three costs a single push and is plainly one round. And a `check:` entry posts no review at all, so a submission count sits at zero forever for managed Claude review and for review workflows, and the stop never fires for the setups most able to loop.
 

@@ -141,13 +141,34 @@ Each entry is satisfied when **any** of these is true for the current head commi
 - a review by one of its `logins` at that commit, or
 - an inline review-thread comment by one of them at that commit, or
 - a 👍 reaction on the PR by one of its `logins`, left at or after that commit was pushed, or
+- for a `marker` entry, a top-level comment on the PR carrying a review marker for that commit, by one of its `logins` when it lists any (see [The `marker` entry](#the-marker-entry)), or
 - a check run named by its `check` at that commit, judged by that entry's `proof` setting.
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
 
 The 👍 is there because some reviewers answer "this needs no review" with a reaction and nothing else. Codex on smart detect does. It counts only from a login you configured, and only when it postdates the push, so a teammate's thumbs up and the reviewer's reaction from three commits ago both fail to satisfy anything. **Only 👍 counts**: the same reviewer uses 👀 to mean "picked it up, working", and treating that as a verdict would merge on an acknowledgement. There is no key to turn it off: a reviewer that says "I looked and it's fine" has answered the only question this gate asks, and refusing to hear it just re-creates the hang.
 
-Two per-entry settings adjust what counts, and they apply to different halves of that list. `proof` tunes how much a `check` has to show. `rereview` tunes whether a `logins` reviewer is allowed to skip a commit.
+Two per-entry settings adjust what counts, and they apply to different halves of that list. `proof` tunes how much a `check` has to show. `rereview` tunes whether a `logins` reviewer is allowed to skip a commit. Neither applies to a `marker` entry.
+
+#### The `marker` entry
+
+```yaml
+review:
+  required:
+    - marker: "codex-local"
+      logins: ["phases-reviewer-bot"]   # optional: who may author the marker note
+```
+
+For any reviewer that meets the [review contract](https://github.com/sixoverground/claude-phases/blob/main/docs/review-contract.md). After every completed review, clean ones included, such a reviewer posts a top-level note on the change request containing `<!-- phases:review v=1 reviewer=<name> sha=<full sha> -->`. The entry is satisfied when a note carries a marker whose `reviewer` equals `marker` and whose `sha` is the current head's full sha.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `marker` | *required* | The reviewer's name, as it writes it in the marker. `[a-z0-9-]+` |
+| `logins` | none | When set, only a note authored by one of these accounts counts. **Set it on any repo where people outside the project can comment**: a marker is plain text, and without `logins` anyone can type one |
+
+`proof` and `rereview` are ignored on a `marker` entry. A marker is written by the reviewer's code only once a review has completed, so there is no empty-check case for `proof` to tune. And a reviewer that skips a commit posts no marker for it, so the gate blocks, which is the right answer for an unreviewed commit.
+
+The entry is forge-neutral: it reads top-level comments and their authors, which every forge has. It is how a self-hosted reviewer, one that runs in your own CI rather than as an installed app, becomes a required reviewer without the driver knowing anything about it.
 
 #### `proof`: how much a check run has to show
 
@@ -234,7 +255,7 @@ What separates them is the reviewer's own contract. Smart detect reviews every P
 
 ### Reviewer setups
 
-All five are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
+All six are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
 
 | Setup | Config | Notes |
 |---|---|---|
@@ -242,6 +263,7 @@ All five are first-class, and they compose. Require Copilot *and* a Claude check
 | **Claude via GitHub Actions** | `required: [{ check: "<job name>" }]` | A workflow using `anthropics/claude-code-action@v1` with the `code-review` plugin on `[opened, synchronize]`. Any plan; runs in your own CI; needs an `ANTHROPIC_API_KEY` repo secret |
 | **GitHub Copilot** | `required: [{ logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"] }]` | Enable the "Review new pushes" ruleset so anchors track the head |
 | **OpenAI Codex** | `required: [{ logins: ["chatgpt-codex-connector"], rereview: optional }]` | Reviews as a GitHub App with inline comments. On **smart detect** it reviews once and may skip later pushes, which is what `rereview: optional` is for. If it is set to review every push, drop the key and take the stronger default |
+| **Any reviewer that emits the contract** | `required: [{ marker: "<name>", logins: ["<its account>"] }]` | A self-hosted reviewer that posts the [review contract](https://github.com/sixoverground/claude-phases/blob/main/docs/review-contract.md)'s marker after every review. Pin `logins` to the account it posts as. `proof` and `rereview` don't apply |
 | **Humans only, or nobody** | `required: []` | Gates for `CHANGES_REQUESTED` and thread resolution still apply to human reviews |
 
 See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/docs/review-setup.md) for the full walkthrough of each.
