@@ -1083,5 +1083,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T16:20:13Z
-- Note: -
+- Heartbeat: 2026-11-17T16:22:44Z
+- Note: 0d ready to merge (#31 @ e788e05). Next is the maintainer's bootstrap: pause, merge, ship feature/local-gitlab to main by hand
