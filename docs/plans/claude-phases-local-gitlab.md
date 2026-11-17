@@ -1083,5 +1083,9 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T22:22:08Z
+- Heartbeat: 2026-11-17T22:54:59Z
 - Note: M1 ready to merge (#37, a19cc7b); a person merges it, after the UAT on it
+
+## Carried findings
+
+- **A killed local session holds the plan for 90 minutes, and nothing lets a person release it.** Found in M1's UAT on #37, step "kill the session, start a new one, say `status`": the new session read the plan and GitHub correctly but would not take over, because the dead session's heartbeat was minutes old and the Driver-ID rules say a live-looking foreign ID means stop. That is the rule working; the gap is that `vocabulary.md` has no word for "that driver is gone, take over", so the session improvised one, and the only documented release is editing `Driver-ID` to `-` by hand. Locally a killed session is the common case, not the rare one. Out of scope for M1, which ships these rules unchanged. Candidates: a documented `take over` instruction, and recording host and PID in Driver State so a session on the same machine can check whether the holder is still running.
