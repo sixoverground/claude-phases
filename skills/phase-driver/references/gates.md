@@ -56,11 +56,14 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 - a review by one of its `logins` with `commit_id == head.sha`, or
 - an inline review-thread comment by one of them at that sha, or
 - a **👍 reaction on the PR by one of its `logins`**, created at or after the head commit's committer date. See [The decline reaction](#the-decline-reaction), or
+- for a `marker` entry, **a top-level comment on the change request containing a `v=1` review marker** whose `reviewer` equals the entry's `marker` and whose `sha` equals `head.sha`, authored by one of the entry's `logins` when it lists any. See [The review marker](#the-review-marker), or
 - a check run named by its `check` at that sha, judged by the entry's `proof`:
   - **`output`** (default). `status == completed`, conclusion not `skipped` or `cancelled`, **and** a non-empty `output.title` or `output.summary`.
   - **`completed`.** `status == completed`, conclusion not `skipped` or `cancelled`.
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
+
+**A `marker` entry is satisfied by its marker and nothing else.** The review, inline-comment and 👍 rules above do not apply to it, and its `logins` only say who may author the marker note. A reviewer that posts a finding and then fails before finishing has written no marker, and an inline comment or 👍 from its account must not stand in for one: the marker exists precisely because those signals cannot say a review completed.
 
 ### The decline reaction
 
@@ -85,6 +88,37 @@ PR body reactions live on the *issues* endpoint; that is not a typo. A reaction 
 | Anything else | Nothing you can act on |
 
 **The trap: `issue_read` reports reaction counts, not who reacted.** A `"+1": 1` in that payload looks like the answer and isn't, because a teammate giving the PR a thumbs up produces the identical field. Counting reactions instead of attributing them turns any human's 👍 into a merge, which is the silent false pass this gate exists to prevent. If you cannot reach the reactions endpoint, say so and fall back to the other rules. Never infer a reviewer's verdict from a count.
+
+### The review marker
+
+A `{ marker: "<reviewer>" }` entry is satisfied by a reviewer that meets the [review contract](https://github.com/sixoverground/claude-phases/blob/main/docs/review-contract.md): after every completed review it posts a top-level note on the change request carrying, on a line of its own,
+
+```
+<!-- phases:review v=1 reviewer=<name> sha=<full 40-character sha> -->
+```
+
+The rule needs only what every forge has: the change request's top-level comments, their text, and their author. On GitHub those are the PR's issue comments (`gh api repos/{owner}/{repo}/issues/{number}/comments`), not its review comments.
+
+**It is proof for the sha it names, and only that one.** Match it exactly:
+
+- `reviewer` equals the entry's `marker`, and `sha` equals the full `head.sha`. A marker for an earlier head says nothing about this one.
+- When the entry lists `logins`, the comment's author is one of them, matched as everywhere else in this gate. Without `logins`, any author counts, so on a repo where outsiders can comment the entry is forgeable by anyone; the planner warns about this.
+
+**Four things that look like a marker and are not proof:**
+
+| Found | Why it is not proof |
+|---|---|
+| A `v` other than `1` | An unknown version. The format may mean something else there, so it blocks, and the report says which version it found |
+| An abbreviated sha, such as the first seven characters | The contract requires the full sha, and a prefix can match more than one commit |
+| A marker inside an inline thread comment on the diff | The contract puts it in a top-level note. A thread comment is where model-written findings live, which is exactly where a forged marker would come from |
+| A marker you wrote | **Never write a marker yourself**, in any comment, for any reason. The driver is the one thing a marker exists to inform, and a driver that can produce its own proof has no gate |
+
+`proof` and `rereview` do not apply to a `marker` entry. A marker is posted by the reviewer's code only after a completed review, so there is no empty-check case for `proof` to tune. And a reviewer that may skip a commit simply posts no marker for it, which blocks, as an unreviewed commit should.
+
+```
+6 reviewer     PASS (codex marker @ a1b2c3d)
+6 reviewer     BLOCK: no codex marker for a1b2c3d (latest is for 9f8e7d6)
+```
 
 ### `rereview: optional`
 
