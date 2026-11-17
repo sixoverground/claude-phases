@@ -66,7 +66,7 @@ while :; do
       gh api --paginate "repos/$R/issues/$N/reactions?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item reaction \(.content):\(.id)\"" >> "$new"
     } 2>"$D/err"; then
       up=1
-      if [ -f "$D/$K.down" ]; then rm -f "$D/$K.down"; lines="$lines $pr: the forge is answering again."; fi
+      if [ -f "$D/$K.down" ]; then rm -f "${D:?}/${K:?}.down"; lines="$lines $pr: the forge is answering again."; fi
       LC_ALL=C sort -o "$new" "$new"
       if [ -f "$D/$K.old" ] && ! cmp -s "$D/$K.old" "$new"; then
         what=''
@@ -99,6 +99,8 @@ while :; do
   sleep "$WAIT"
 done
 ```
+
+The `${D:?}` and `${K:?}` in its one `rm` are what let it start. Claude Code refuses an `rm` whose target could expand to the filesystem root when a variable is empty, and the guard makes the shell stop instead. Keep it.
 
 Fill it in:
 
