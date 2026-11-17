@@ -4,6 +4,23 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.10.0]
+
+### Milestones: ship a feature branch part-way through a plan
+
+Phases that target a feature branch reach the default branch only at the end, through the integration PR. That is false in practice whenever a later phase needs earlier work released, deployed or installed before it can be built. The first plan to need it was this project's own, which builds a feature into the driver and then needs the *installed* driver to have it.
+
+* **Milestone rows.** A row whose `Phase` id is `M1` and whose `Branch` is the repo's `target_branch` ships that branch to the default branch. Its `Depends` lists the phases it ships, and a later phase that needs the release depends on the milestone row, so the wait is in the table rather than in someone remembering to say `pause`. No new column: the id and the branch together mark it, and a row with one sign and not the other is an error the driver stops on.
+* **The driver opens it and never merges it**, with YOLO on or off. It runs the repo's `milestone.prepare` on the feature branch first, opens the PR with the UAT so far, fixes its checks and answers its review by the rules it already has, with fixes committed straight to the branch. When the gates pass it says the PR is ready, and a person merges it.
+* **After the merge** the driver re-syncs the feature branch, re-creating it after a squash merge deletes it, runs `milestone.after_merge`, and starts what was waiting. The re-sync moves a branch only when nothing can be lost, with a lease on the head it checked, and leaves anything else for a person.
+* **Crash recovery covers it.** A milestone PR is found by its link, or by a title naming its id, since every milestone in a repo has the same head and base. A `Merged` milestone is reconciled until its re-sync and `after_merge` are done, and its dependents start only then.
+* **The integration PR is the implicit final milestone.** A plan with no milestone rows behaves exactly as on 0.9.3: under YOLO, the integration PR opens at the end and is never merged. A plan with milestone rows ships through them, and keeps its plan file on the default branch, since the feature branch is deleted and re-created at each one.
+* **The planner proposes milestones only for a named need**, and asks for it rather than guessing. It writes `milestone.prepare` from the repo's own release convention, quoting where each step came from. It refuses setups that cannot work, such as a plan living on the branch a milestone ships, and warns when a feature-branch repo would be left with nothing to ship it. `examples/milestone-demo.md` shows the shape.
+
+### The version check runs only on PRs into `main`
+
+`Version bumped` ran on every pull request whatever its base, so a phase PR into a feature branch failed unless it bumped the version, which would have made every phase a release. It now runs only for PRs into `main`, and shows as skipped elsewhere rather than vanishing. The PR that ships a feature branch to `main` is the one that carries the bump.
+
 ## [0.9.3]
 
 ### A repo's own stop rule no longer skips the arbiter
