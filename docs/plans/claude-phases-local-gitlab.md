@@ -99,8 +99,8 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Pending | - | M2 |
 | 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Pending | - | 13 |
 | 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | Pending | - | 13, 14 |
-| 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | In Review | [#38](https://github.com/sixoverground/claude-phases/pull/38) | M1 |
-| 25 | claude/codex-review-state | sixoverground/claude-phases | Gate 6 on GitHub reads Codex's `codex-review-state` comment as proof for the head it names, and as a sign for `rereview: optional` | 16 | Pending | - | 15 |
+| 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Merged | [#38](https://github.com/sixoverground/claude-phases/pull/38) | M1 |
+| 25 | claude/codex-review-state | sixoverground/claude-phases | Gate 6 on GitHub reads Codex's `codex-review-state` comment as proof for the head it names, and as a sign for `rereview: optional` | 16 | In Progress | - | 15 |
 
 Rows `M1`, `M2` and `M3` are milestone rows, the row kind phase 0b defines: the branch is the repo's `target_branch`, the PR goes to the default branch, and `Depends` lists what it ships. **A driver that does not know milestone rows must not start one.** The released 0.9.3 does not, and it cannot reach one here before the bootstrap, since every milestone depends on phases that come after phase 0d.
 
@@ -1150,12 +1150,12 @@ After merging:
 - Driver: running
 - YOLO: off
 - Driver-ID: drv-776734c2
-- Active: 15 — sixoverground/claude-phases; 9 — sixoverground/codex-mr-review
+- Active: 16 — sixoverground/claude-phases; 9 — sixoverground/codex-mr-review
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T23:41:43Z
-- Note: 15 ready to merge (#38, 76da3c8)
+- Heartbeat: 2026-11-17T23:52:06Z
+- Note: -
 
 ## Carried findings
 
