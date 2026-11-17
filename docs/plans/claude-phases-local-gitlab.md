@@ -1083,5 +1083,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T21:36:14Z
+- Heartbeat: 2026-11-17T22:22:08Z
 - Note: M1 ready to merge (#37, a19cc7b); a person merges it, after the UAT on it
