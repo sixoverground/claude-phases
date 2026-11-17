@@ -85,7 +85,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 7  | claude/forge-neutral-gates | sixoverground/claude-phases | Behaviour-neutral: split `gates.md` and `recovery.md` into forge-neutral rules plus the GitHub mapping | 2b | Merged | [#35](https://github.com/sixoverground/claude-phases/pull/35) | 2a |
 | 8  | claude/local-watcher | sixoverground/claude-phases | Local sessions: `references/watching.md`, the polling watcher, and "forge unreachable is not Blocked" | 3 | Merged | [#36](https://github.com/sixoverground/claude-phases/pull/36) | 2b |
 | 9  | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the review contract, the forge-neutral driver and local running to `main` | M1 | In Review | [#37](https://github.com/sixoverground/claude-phases/pull/37) | 1, 2a, 2b, 3 |
-| 10 | claude/forge-config | sixoverground/claude-phases | Config keys `forge`, `host`, `integration_pr`, `ci.logs: gitlab-jobs`; `group/project` ids and `!42` links; forge selection in the driver | 4 | Pending | - | 15 |
+| 10 | claude/forge-config | sixoverground/claude-phases | Config keys `forge`, `host`, `integration_pr`, `ci.logs: gitlab-jobs`; `group/project` ids and `!42` links; forge selection in the driver | 4 | Pending | - | 16 |
 | 11 | claude/gitlab-driver-core | sixoverground/claude-phases | `references/forge-gitlab.md` part 1: plan reads and writes, finding, opening and merging MRs, milestones, finishing | 5a | Pending | - | 4 |
 | 12 | claude/gitlab-gates | sixoverground/claude-phases | `references/forge-gitlab.md` part 2: the six gates, job traces, discussions, the watcher command | 5b | Pending | - | 5a |
 | 13 | claude/gitlab-planner | sixoverground/claude-phases | Planner: `references/detection-gitlab.md`, four new refusals, hygiene items, `profiles/ci-gitlab-runner-macos.yml` | 6 | Pending | - | 5b |
@@ -95,11 +95,12 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 17 | claude/gitlab-posting | sixoverground/codex-mr-review | Post findings as MR discussions, summary note, script-owned marker, fingerprint dedupe | 10 | Pending | - | 9 |
 | 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Pending | - | 10 |
 | 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | Pending | - | 7, 11 |
-| 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Pending | - | 15, 4, 5a, 5b, 6, 7, 12 |
+| 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Pending | - | 15, 16, 4, 5a, 5b, 6, 7, 12 |
 | 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Pending | - | M2 |
 | 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Pending | - | 13 |
 | 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | Pending | - | 13, 14 |
 | 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Pending | - | M1 |
+| 25 | claude/codex-review-state | sixoverground/claude-phases | Gate 6 on GitHub reads Codex's `codex-review-state` comment as proof for the head it names, and as a sign for `rereview: optional` | 16 | Pending | - | 15 |
 
 Rows `M1`, `M2` and `M3` are milestone rows, the row kind phase 0b defines: the branch is the repo's `target_branch`, the PR goes to the default branch, and `Depends` lists what it ships. **A driver that does not know milestone rows must not start one.** The released 0.9.3 does not, and it cannot reach one here before the bootstrap, since every milestone depends on phases that come after phase 0d.
 
@@ -115,7 +116,7 @@ Home-repo phases merge into `feature/local-gitlab`. The marketplace serves `main
 |---|---|---|
 | **Bootstrap**, by hand after 0d | 0a to 0d: the scoped version check and milestones themselves | Every later milestone. The driver cannot open a milestone PR until the driver that knows how is installed |
 | **M1** | 1, 2a, 2b, 3: the review contract, the forge-neutral driver, the watcher | Phase 9, which has to be driven from a session on the Mac where the Codex CLI is logged in. A local session has nothing to wait with until the installed driver has the watcher |
-| **M2** | 15, 4, 5a, 5b, 6, 7, 12: taking over from a dead driver, GitLab support, the planner on GitLab, the local guide, the marker reviewer setup | Phase 13, which drives a real gitlab.com project with the installed driver and planner |
+| **M2** | 15, 16, 4, 5a, 5b, 6, 7, 12: taking over from a dead driver, Codex's review-state comment as proof, GitLab support, the planner on GitLab, the local guide, the marker reviewer setup | Phase 13, which drives a real gitlab.com project with the installed driver and planner |
 | **M3** | 13, 14: the trial's corrections and the final documentation | The end of the plan |
 
 Three driven milestones is the fewest the real dependencies allow. M1 cannot wait for M2: the tool track would sit idle for six phases with nothing able to drive it locally. M2 cannot be folded into M3: the trial is what M3 ships, and it cannot run on a driver that lacks M2. The bootstrap is the price of building the feature inside the plan that uses it.
@@ -604,6 +605,42 @@ After merging:
 
 ---
 
+### Phase 16 — Codex's review-state comment as proof (sixoverground/claude-phases)
+
+**Added after M1's UAT**, from the second Carried finding it raised. On scratch PR sixoverground/phases-watcher-scratch#4, a cloud session blocked gate 6 forever on a PR Codex had reviewed. Its tools report reaction counts, not who reacted, so it could not attribute the 👍. Codex had also posted a comment it *could* attribute, naming the head and saying the review completed. Ships in `M2`.
+
+**Scope.** GitHub only, so all of it is in `skills/phase-driver/references/forge-github.md`, under **Gate 6**. Each piece has a pointer from `gates.md`, as in 2b.
+
+- **Codex's review-state comment.** Codex posts a top-level comment whose body carries, on a line of its own, `<!-- codex-review-state:v1 {...} -->` with a JSON object whose `code_review` has `commit_sha`, `status` and `has_any_findings`. It updates that comment as a review runs, so read it each time rather than remembering it.
+- **Proof for a head**: the comment is authored by one of the entry's `logins`, `code_review.status` is `completed`, and `code_review.commit_sha` equals the full head sha. That satisfies the entry at that head, like a review there would.
+- **A sign** for `rereview: optional`: the same comment with `status` `completed` at **any** commit sha. That proves the integration is alive and has this PR, exactly as the existing signs do.
+- **What it is not**:
+  - Not proof when `status` is anything but `completed`. `running` is the comment's 👀.
+  - Not from an author outside `logins`.
+  - Never a verdict from `has_any_findings` or `has_unresolved_findings`. Gate 6 asks only whether the reviewer looked. Its findings are threads, and gate 5 owns those.
+  - A different or unknown `v`, or JSON that does not parse, is not proof.
+- **The report line names it**, like the 👍 lines do, for example `PASS (codex review-state comment @ fc72294, completed)`.
+- **The reactions fallback.** Where the session cannot read who reacted, it now says so and checks for this comment before reporting a block. The rule against inferring a verdict from a reaction count stays word for word.
+- `gates.md` itself gains only a pointer in gate 6's satisfier list. The decline reaction and `rereview: optional` texts stay byte-identical, with one row and one sentence added for the new sign.
+
+**Depends on.** Phase 15.
+
+**Acceptance criteria.**
+- [ ] `forge-github.md` Gate 6 states the comment's format, the proof rule, the sign rule and the four non-proofs
+- [ ] The rule is checked against a real Codex comment, with its body quoted in the PR description. Scratch #4 has one, and #35 to #37 show the `running` and `completed` states
+- [ ] `gates.md` gains only a pointer, and the decline-reaction and `rereview: optional` texts are unchanged except for the added row and sentence. `git diff` shows it
+- [ ] The report line for this proof is in the reporting examples
+- [ ] The conventions under "How this plan is driven" hold
+
+**UAT.**
+- [ ] On a scratch PR Codex reviewed with no findings, ask `why` from a cloud session. Gate 6 should pass and name the review-state comment
+- [ ] Push a commit and ask `why` before Codex has finished. With the comment still `running`, or naming the old sha, gate 6 should block
+- [ ] Edit the plan's `logins` to a different account and ask `why`. The comment should not count
+
+**Risks.** This reads a format Codex owns and has not documented. If Codex changes or drops it, the rule must fail closed: no comment matching `v1` means no proof from this source, and the other satisfiers carry on. The comment is updated in place, so a cached reading of it is the stale-proof trap gate 6 exists to avoid.
+
+---
+
 ### Phase 4 — Forge configuration (sixoverground/claude-phases)
 
 **Scope.** The keys a non-GitHub repo needs, and the driver's rule for picking a forge.
@@ -621,7 +658,7 @@ After merging:
 - `skills/phase-driver/references/recovery.md`: the last row, all rows terminal, honours `integration_pr`.
 - New `profiles/forge-gitlab.yml`, and a **Forge** table in `profiles/README.md`.
 
-**Depends on.** Phase 15, which itself waits on `M1`. No capability check is needed at the top of this phase: the dependency holds it until `M1` is merged and the branch is level with `main`, and writing it needs nothing a milestone-aware driver lacks.
+**Depends on.** Phase 16, which waits on 15 and so on `M1`. No capability check is needed at the top of this phase: the dependency holds it until `M1` is merged and the branch is level with `main`, and writing it needs nothing a milestone-aware driver lacks.
 
 **Acceptance criteria.**
 - [ ] Every new key has a default, an off switch or a statement that it has none, and a profile that shows it, as CONTRIBUTING requires
@@ -971,9 +1008,9 @@ After merging:
 
 ### Milestone M2 — GitLab support (sixoverground/claude-phases)
 
-**Ships.** Phases 15, 4, 5a, 5b, 6, 7 and 12: taking over from a dead driver, the `forge`, `host` and `integration_pr` keys, the GitLab driver and gates, the planner on GitLab, the local guide and iOS verified on a Mac, and the setup for a marker reviewer. Labelled experimental.
+**Ships.** Phases 15, 16, 4, 5a, 5b, 6, 7 and 12: taking over from a dead driver, Codex's review-state comment as proof of review, the `forge`, `host` and `integration_pr` keys, the GitLab driver and gates, the planner on GitLab, the local guide and iOS verified on a Mac, and the setup for a marker reviewer. Labelled experimental.
 
-**Review scope.** A finding on this PR is in scope when it falls within the scope of phases 15, 4, 5a, 5b, 6, 7 and 12, taken together. The driver answers it by its usual rules and commits fixes to `feature/local-gitlab`. Anything beyond those scopes goes to Carried findings.
+**Review scope.** A finding on this PR is in scope when it falls within the scope of phases 15, 16, 4, 5a, 5b, 6, 7 and 12, taken together. The driver answers it by its usual rules and commits fixes to `feature/local-gitlab`. Anything beyond those scopes goes to Carried findings.
 
 **Needed by.** Phase 13, which drives a real gitlab.com project with the installed driver and planner.
 
@@ -1117,10 +1154,10 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T23:09:42Z
+- Heartbeat: 2026-11-17T23:11:28Z
 - Note: M1 head moved to 5aea9d6 (UAT fix: guarded rm in the watcher template); gates re-evaluated on the new head
 
 ## Carried findings
 
 - [x] **A killed local session holds the plan for 90 minutes, and nothing lets a person release it.** Planned as phase 15, shipping in `M2`. Found in M1's UAT on #37, step "kill the session, start a new one, say `status`": the new session read the plan and GitHub correctly but would not take over, because the dead session's heartbeat was minutes old and the Driver-ID rules say a live-looking foreign ID means stop. That is the rule working; the gap is that `vocabulary.md` has no word for "that driver is gone, take over", so the session improvised one, and the only documented release is editing `Driver-ID` to `-` by hand. Locally a killed session is the common case, not the rare one. Out of scope for M1, which ships these rules unchanged. Candidates: a documented `take over` instruction, and recording host and PID in Driver State so a session on the same machine can check whether the holder is still running.
-- **Codex's own review-state comment is not read as proof, so a session that cannot attribute reactions blocks forever on a reviewed PR.** Found in M1's UAT, on scratch PR sixoverground/phases-watcher-scratch#4: a cloud session (released 0.10.0) took over, and gate 6 blocked on "one 👍 but I can't tell who left it". Its tools report reaction counts only, and gates.md rightly refuses to infer a verdict from a count. Codex had in fact also posted its summary comment, authored by `chatgpt-codex-connector[bot]`, carrying `<!-- codex-review-state:v1 {"code_review":{"commit_sha":"<full head sha>","status":"completed","has_any_findings":false,...}} -->`. That is attributable through the same tools that read comments, names the exact head, and says the review completed: as strong as a review at the head, and stronger than a 👍. Gate 6 does not count it, and `rereview: optional` does not count it as a sign either. Out of scope for M1, which ships gate 6 unchanged (2b moved it byte for byte). Candidate: in `forge-github.md`'s Gate 6, read that comment, from a `logins` author only, with `status` `completed` and `commit_sha` equal to the head, as proof for that head and as a sign at any head; never read its `has_*_findings` fields as a verdict, since threads and gate 5 own findings.
+- [x] **Codex's own review-state comment is not read as proof, so a session that cannot attribute reactions blocks forever on a reviewed PR.** Found in M1's UAT, on scratch PR sixoverground/phases-watcher-scratch#4: a cloud session (released 0.10.0) took over, and gate 6 blocked on "one 👍 but I can't tell who left it". Its tools report reaction counts only, and gates.md rightly refuses to infer a verdict from a count. Codex had in fact also posted its summary comment, authored by `chatgpt-codex-connector[bot]`, carrying `<!-- codex-review-state:v1 {"code_review":{"commit_sha":"<full head sha>","status":"completed","has_any_findings":false,...}} -->`. That is attributable through the same tools that read comments, names the exact head, and says the review completed: as strong as a review at the head, and stronger than a 👍. Gate 6 does not count it, and `rereview: optional` does not count it as a sign either. Out of scope for M1, which ships gate 6 unchanged (2b moved it byte for byte). Candidate: in `forge-github.md`'s Gate 6, read that comment, from a `logins` author only, with `status` `completed` and `commit_sha` equal to the head, as proof for that head and as a sign at any head; never read its `has_*_findings` fields as a verdict, since threads and gate 5 own findings. Planned as phase 16, shipping in `M2`.
