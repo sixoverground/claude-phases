@@ -14,7 +14,7 @@ Apply this **per non-terminal row**, not once per plan, plus every `Merged` mile
 | `In Progress`, stale | no branch | Claimed, died before doing anything | Reset to `Pending`, then start it normally |
 | `In Progress`, stale | branch exists, no PR | Died mid-implementation | See below |
 | `In Progress` | open PR on that branch | Died after opening the PR, before recording it | Write `In Review` + `Link`, adopt |
-| `In Review` | PR open | Normal operation | Watch, re-evaluate the gate against the current head |
+| `In Review` | PR open | Normal operation | Re-arm the watch, re-evaluate the gate against the current head |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, then start whatever it unblocks |
 | `In Review` | PR closed, not merged | A human killed it | Ask why. Default to `Blocked` if there's no answer |
 | `In Review` | no PR at all, branch gone | Someone cleaned up. **Not** the driver's own post-merge delete: that only ever runs on a branch whose PR is merged, and a merged PR still exists to be found | Reset to `Pending` |
@@ -41,6 +41,17 @@ The `Merged` rows are why reconcile looks past terminal rows for milestones: a `
 `In Progress` with no PR and no preparation commits on the branch at all is the first row of the table in disguise: prepare from the start, then open the PR. Where `milestone.prepare` is absent there is nothing to finish, and the third row reduces to opening the PR.
 
 The last row is why re-sync comes before anything starts in §7. A session that dies after writing `Merged` and before moving the branch leaves a target branch that is gone, or still at its pre-merge head, and a phase branched from either starts from a base that is not the default branch.
+
+## The forge is unreachable
+
+The forge did not answer at all: a DNS failure, a timeout, a refused connection, a gateway error. A VPN that dropped and a Mac that lost its Wi-Fi look like this. It is not the same as access denied, where the forge answered 401, 403 or 404, which marks the row `Blocked` as SKILL.md §3 says.
+
+- **Mark nothing `Blocked`.** Nothing is wrong with any phase. A row blocked for an outage stays blocked after the outage, until a person clears it.
+- **Do not count the wake toward `stuck.max_cycles`.** No gate was evaluated, so no gate failed.
+- **Tell the user once**, not once per poll.
+- **Keep watching.** The watcher backs off to at most five minutes between polls, prints one line when the forge stops answering and one when it answers again. Reconcile then, as on any wake.
+
+**A status write that could not be made means the action it describes has not started.** Golden rule 2 puts the write first, so a claim that failed to land is no claim: do not branch, push or open anything for it. Retry the write when the forge answers, after reconciling.
 
 ## The plan branch is gone
 
