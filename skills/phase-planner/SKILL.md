@@ -131,7 +131,7 @@ Carry the **For the driver** section over from the template unchanged, between t
 
 Front matter carries the config you detected. Set the initial `YOLO` in Driver State: default it **off**, and say why. Unattended merging is a decision someone should make deliberately once they trust the setup, not inherit from a default.
 
-Leave `Driver-ID` and `Active` empty. The driver claims those.
+Leave `Driver-ID`, `Driver-Host` and `Active` empty. The driver claims those.
 
 ## 6. Hand off
 
@@ -150,5 +150,5 @@ When asked to change a plan already in flight:
 - **Never renumber phases.** Append, or subdivide into `3a`/`3b`.
 - **Add the For the driver section if the plan predates it**, verbatim from the template, between the title paragraph and the table.
 - **Never edit a `Merged` row.** It's a record of what shipped; editing it makes the plan disagree with history.
-- **Don't touch Driver State** beyond what you were asked to change. A driver may be live, and `Driver-ID`/`Heartbeat` are its lock.
+- **Don't touch Driver State** beyond what you were asked to change. A driver may be live, and `Driver-ID`, `Driver-Host` and `Heartbeat` are its lock.
 - Re-run detection if the repo set changed.

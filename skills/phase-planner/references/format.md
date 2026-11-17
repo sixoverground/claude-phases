@@ -203,6 +203,7 @@ A plan branch that isn't the default branch often sidesteps this entirely, since
 - Driver: running          <!-- running | paused | idle -->
 - YOLO: on                 <!-- on = driver merges; off = you merge -->
 - Driver-ID: d7f3a91c
+- Driver-Host: craigs-mbp.local 48542 Tue Nov 17 18:15:56 2026
 - Active:
   - Phase 2 — acme/acme-ios#17 — In Review (gate: awaiting reviewer)
   - Phase 3 — acme/acme-android#9 — In Review (gate: CI pending)
@@ -218,6 +219,7 @@ A plan branch that isn't the default branch often sidesteps this entirely, since
 | `Driver` | `running` normally; `paused` finishes the current step and starts nothing new; `idle` when the plan is complete |
 | `YOLO` | `on`: the driver merges once gates pass. `off`: you merge, and the driver does everything else. Toggled at runtime |
 | `Driver-ID` | Random token identifying the driver instance holding the plan. See below |
+| `Driver-Host` | `<host> <pid> <start time>` of the Claude Code process holding the plan, written with the claim. `-` when unknown, and what a plan without the field reads as. Lets a later session on the same machine see that the holder has died |
 | `Active` | One entry per in-flight phase. A list, so several repos can be in flight at once |
 | `UAT-pending` | Phase ids whose UAT checklist hasn't reached a human yet. See [When UAT reaches a human](#when-uat-reaches-a-human) |
 | `Review-baselines` | `<phase id>:<count>` pairs, written when a user clears a review-round stop with `continue`. The driver subtracts a phase's baseline from its derived reviewed-head count. Per phase, because concurrent phases can each be stopped. A milestone row's id works the same way, as in `M1:3` |
@@ -232,11 +234,12 @@ Two drivers acting on one plan would race. But a *single* long-lived session tha
 | Condition | Action |
 |---|---|
 | `Driver-ID` matches the one I hold | It's me: proceed regardless of heartbeat age |
-| Different ID, heartbeat < 90 min | Another driver is live: report and stop |
+| Different ID, `Driver-Host` on this host names a process that is gone | The holder died: take over |
+| Different ID, heartbeat < 90 min | Another driver may be live: report and stop, naming `take over` |
 | Different ID, heartbeat stale | Take over: mint a new ID, continue |
 | No ID | Unclaimed: claim it |
 
-A fresh session holds no ID, so it always takes the third or fourth branch. A resuming session holds its own, so it never blocks itself.
+A fresh session holds no ID, so it always takes one of the last four branches. A resuming session holds its own, so it never blocks itself. A person can always release a dead driver's claim by saying `take over`.
 
 ---
 
