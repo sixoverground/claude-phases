@@ -1147,15 +1147,15 @@ After merging:
 
 ## Driver State
 
-- Driver: running
+- Driver: paused
 - YOLO: off
 - Driver-ID: drv-550f5e23
-- Active: M1 — sixoverground/claude-phases
+- Active: -
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T23:14:01Z
-- Note: M1 merged; re-syncing feature/local-gitlab and running after_merge
+- Heartbeat: 2026-11-17T23:14:41Z
+- Note: M1 settled (feature/local-gitlab re-created at bc8081b; 0.11.0 installed). Paused for a session restart so the driver runs 0.11.0; say resume in the new session to start 15 and 9
 
 ## Carried findings
 
