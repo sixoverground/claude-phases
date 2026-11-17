@@ -45,7 +45,7 @@ Run this on every invocation and every wake, including when you think you know t
 2. Check the **Driver-ID** rules below.
 3. For **every** non-terminal row, ask the forge what's actually true: find the change request for that row's branch in that row's repo, in any state, as the forge reference's **Find** says. A milestone row is matched more narrowly, by its [identity](#which-pr-is-a-milestones), and a `Merged` milestone row that is not yet [settled](#settled) is checked too, since its post-merge work can be left unfinished by a crash.
 4. Apply `references/recovery.md` per row. Where the plan and the forge disagree, **the forge is the truth**, fix the plan, never assume.
-5. Rewrite `Heartbeat` and, if you took over, `Driver-ID`.
+5. Rewrite `Heartbeat` and, if you took over, `Driver-ID` and `Driver-Host`.
 6. If the plan has no `## For the driver` section, add it in that same write, between the title paragraph and `## PR Sequence`. Plans written before the section existed lack it, and without it a session that loses this file has nothing to send it back.
 
 ### For the driver
@@ -63,11 +63,34 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | Condition | Action |
 |---|---|
 | `Driver-ID` matches the one you hold | It's you. Proceed regardless of heartbeat age |
-| Different ID, `Heartbeat` under 90 minutes old | Another driver is live. Report and stop; do not touch the plan |
+| Different ID, and its `Driver-Host` names **this** host and a process that is not running, or is running with a different start time | The holder is dead. Take over: mint a new random ID, write it with your own `Driver-Host`, continue, and say in your report and in the claiming commit that the previous holder's process was gone |
+| Different ID, `Heartbeat` under 90 minutes old | Another driver may be live. Report and stop; do not touch the plan. The report gives the heartbeat's age, the holder's host, whether its process is running where you can tell, and says that **`take over`** releases the plan if the person knows that driver is gone |
 | Different ID, `Heartbeat` stale | Take over: mint a new random ID, write it, continue |
 | No ID, or `-` | Unclaimed. Claim it |
 
-You hold an ID only if you minted it in this session. After compaction you may have forgotten; if you can't establish that you hold it, treat it as someone else's.
+You hold an ID only if you minted it in this session. After compaction you may have forgotten; if you can't establish that you hold it, treat it as someone else's. **A `Driver-Host` that matches your own, host, process and start time, establishes it**: that is the session you are in, so the ID is yours.
+
+**A person's `take over` is the exception to the stop row.** When the instruction you are handling is `take over`, the "report and stop" row does not end the turn: finish Reconcile's reads, write nothing, and go to the confirmation `references/vocabulary.md` describes. Nothing is written, and no phase is touched, until the person confirms. Without this, Reconcile would stop on exactly the claim the person is trying to release.
+
+The same-host row is the only way a heartbeat under 90 minutes is overridden without a person. Anything it cannot check is treated as alive: a different host, a `Driver-Host` of `-` or missing, a process you cannot read. A false "dead" puts two drivers on one phase, which is the outcome this table exists to prevent. A person who knows better says `take over`, as `references/vocabulary.md` describes.
+
+#### Driver-Host
+
+`Driver-Host` records which process holds the plan: `<host> <pid> <start time>`, written in the same write as the claim, as in `Driver-Host: craigs-mbp.local 48542 Tue Nov 17 23:15:56 2026 UTC`. The start time is always in UTC and says so, because `ps` prints local time and two sessions on one machine can run with different `TZ` settings. The pid is the Claude Code session's own process, not the shell a command runs in, which is gone the moment the command ends. A plan written before this field, or a session that cannot name its process, has `-`.
+
+Find your own with this, which runs under macOS's bash 3.2 and on Linux. It prefers `CLAUDE_PID` when Claude Code sets it, otherwise the nearest ancestor named `claude`, and prints `-` when it finds neither:
+
+```sh
+pid=''; p=$$
+while [ -n "$p" ] && [ "$p" -gt 1 ]; do
+  if [ "$p" = "${CLAUDE_PID:-x}" ]; then pid=$p; break; fi
+  case "$(ps -o comm= -p "$p" 2>/dev/null)" in *claude) pid=$p; break ;; esac
+  p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+done
+if [ -n "$pid" ]; then echo "$(uname -n) $pid $(TZ=UTC LC_ALL=C ps -o lstart= -p "$pid" | sed 's/ *$//') UTC"; else echo '-'; fi
+```
+
+Check a holder on this host with `TZ=UTC LC_ALL=C ps -o lstart= -p <pid> | sed 's/ *$//'`, which trims the padding `ps` adds, and compare it with the recorded start time minus its trailing ` UTC`. No output means the process is gone, whatever the clock says. Output that differs from the recorded start time means the pid was reused by something else, and the holder is gone too, **but only when the recorded time ends in `UTC`**. A recorded time without it was written in an unknown time zone, so a difference proves nothing: treat that holder as alive unless its pid has no process at all. Only output equal to the recorded start time means it is still running. `uname -n` must equal the recorded host before any of this means anything: a pid on another machine says nothing about this one.
 
 ## 3. Start phases
 

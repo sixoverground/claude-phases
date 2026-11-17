@@ -202,6 +202,7 @@ Every parallel row names its dependency explicitly. A blank `Depends` means *"th
 - Driver: idle
 - YOLO: off
 - Driver-ID: -
+- Driver-Host: -
 - Active: -
 - UAT-pending: -
 - Heartbeat: -

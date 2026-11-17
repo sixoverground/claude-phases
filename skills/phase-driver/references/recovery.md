@@ -10,7 +10,7 @@ Apply this **per non-terminal row**, not once per plan, plus every `Merged` mile
 |---|---|---|---|
 | `Pending`, stale heartbeat | no branch, no PR | Never started | Start it normally |
 | `Pending` | open PR on that branch | Died after opening the PR, before recording it | Adopt the PR: write `In Review` + `Link`, watch, evaluate the gate |
-| `In Progress`, foreign ID, heartbeat < 90 min | anything | Another driver is live | Stop. Report. Touch nothing |
+| `In Progress`, foreign ID, heartbeat < 90 min | anything | Another driver is live, or one died recently | Stop. Report. Touch nothing. Two ways out, both in SKILL.md's **Driver-ID**: its `Driver-Host` shows a dead process on this host, or a person says `take over` |
 | `In Progress`, stale | no branch | Claimed, died before doing anything | Reset to `Pending`, then start it normally |
 | `In Progress`, stale | branch exists, no PR | Died mid-implementation | See below |
 | `In Progress` | open PR on that branch | Died after opening the PR, before recording it | Write `In Review` + `Link`, adopt |
