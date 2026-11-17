@@ -36,7 +36,7 @@ Run this on every invocation and every wake, including when you think you know t
 
 1. Read the plan: front matter, the PR Sequence Table, the Driver State block.
 2. Check the **Driver-ID** rules below.
-3. For **every** non-terminal row, ask GitHub what's actually true: `list_pull_requests` filtered by that row's head branch in that row's repo, then `pull_request_read{get}` for any match.
+3. For **every** non-terminal row, ask GitHub what's actually true: `list_pull_requests` filtered by that row's head branch in that row's repo, then `pull_request_read{get}` for any match. A milestone row is matched more narrowly, by its [identity](#which-pr-is-a-milestones), and a `Merged` milestone row that is not yet [settled](#settled) is checked too, since its post-merge work can be left unfinished by a crash.
 4. Apply `references/recovery.md` per row. Where the plan and GitHub disagree, **GitHub is the truth**, fix the plan, never assume.
 5. Rewrite `Heartbeat` and, if you took over, `Driver-ID`.
 6. If the plan has no `## For the driver` section, add it in that same write, between the title paragraph and `## PR Sequence`. Plans written before the section existed lack it, and without it a session that loses this file has nothing to send it back.
@@ -65,6 +65,8 @@ You hold an ID only if you minted it in this session. After compaction you may h
 ## 3. Start phases
 
 Startable rows are `Pending`, with every id in `Depends` now `Merged` or `Skipped` (blank `Depends` means the row above), and **no other open phase PR in that row's repo**. Start every startable row. Repos run in parallel, and only declared dependencies serialize anything. Honour `max_concurrent` if set.
+
+**A milestone PR counts as its repo's open PR.** No phase starts in a repo whose milestone row is `In Progress` or `In Review`. A milestone row (an `M<n>` id whose `Branch` is the repo's `target_branch`) is startable by the same test, and is started by [Milestones](#milestones), not by the steps below. A `Merged` milestone satisfies a dependency only once it is also [settled](#settled): a phase that starts before the re-sync branches from a base that is gone or stale. A `Skipped` milestone satisfies it as any skipped row does, since nothing was shipped and there is nothing to settle.
 
 For each, in order:
 
@@ -303,12 +305,12 @@ Without the baseline the stop is a trap rather than a checkpoint. The count is d
 
 When a PR has no outstanding work, evaluate `references/gates.md` against it, using that repo's resolved config. Then:
 
-- **YOLO on.** Re-read the head SHA as your *last* read before merging, with no other calls in between, and merge with that repo's `merge.method`. Then **delete the phase branch**, unless the repo sets `merge.delete_branch: false`.
+- **YOLO on.** Not for a milestone PR, which is never yours to merge; see [Milestones](#milestones). Re-read the head SHA as your *last* read before merging, with no other calls in between, and merge with that repo's `merge.method`. Then **delete the phase branch**, unless the repo sets `merge.delete_branch: false`.
 - **YOLO off.** Do not merge. Tell the user it's ready, with the PR link and a per-gate summary, and set the row's `Note` to `ready to merge`. Re-ping only if the head moves and it passes again. Don't nag on a timer.
 
 **Deleting the branch is yours to do because the API will not.** GitHub's merge endpoint has no equivalent of the UI's "delete branch after merge" checkbox, so a driver that merges and stops leaves a branch behind for every phase it shipped, while phases a human merged get cleaned up. Nobody notices until the branch list is half stale and it is no longer obvious which of them are finished.
 
-Delete only a branch **you** created: it must match that repo's `branch_prefix`, and it must not be the plan branch or any repo's `target_branch`. Those three checks are the whole guard, and skipping them is how a driver deletes the branch its own plan lives on.
+Delete only a branch **you** created: it must match that repo's `branch_prefix`, and it must not be the plan branch or any repo's `target_branch`. Those three checks are the whole guard, and skipping them is how a driver deletes the branch its own plan lives on. The guard has one exception, and only one: the [re-sync](#re-sync) of a milestone row's own branch, after that row's PR is confirmed merged, and never when that branch is the plan branch.
 
 A failed delete is not a failed merge. Branch protection or a ruleset can forbid it, and so can the environment the session runs in: a sandboxed one may permit pushes and PR operations while refusing ref deletion at both the git and API layers. Say so once and carry on, because the phase is merged either way and nothing downstream depends on the branch being gone.
 
@@ -332,11 +334,85 @@ However the PR merged. You, the user from their phone, or anyone else:
 
 A merge always advances the plan. YOLO changes who presses the button, never whether the plan moves.
 
+**When the merged PR is a milestone row's**, the steps run in this order instead: commit `Merged`; [re-sync](#re-sync) the target branch; run that repo's `milestone.after_merge`, if set, and then post its marker comment on the milestone PR (see [Settled](#settled)); tell the user, including anything `after_merge` produced; then start whatever it unblocks, and go to §8 if it was the last row. Re-sync comes before anything starts, because a phase branched from a target branch that is still the pre-merge one, or gone, starts from the wrong base.
+
 Step 5 is the one that gets skipped, so it is worth saying why it exists. Every other transition here is chained: §5 sends a merge to §7, and step 4 sends an unblocked row back to §3. The last merge is the one where step 4 finds nothing to start and the list simply ends, which feels like a completed turn because the previous merges ended the same way. It is not one. Finishing is a transition like any other, and §8 is unreachable from here unless you take it.
+
+## Milestones
+
+A milestone row ships a repo's `target_branch` to its default branch at a point the plan names. It is the integration PR of §8, moved to where a later phase needs the work released, and it keeps that PR's one rule: **the driver opens it and never merges it.**
+
+**Recognise it by both signs together:** an `M<n>` id, and a `Branch` equal to the repo's resolved `target_branch`. A row carrying one sign without the other, an `M` id on a `claude/` branch or a phase id on the target branch, is a plan error. Mark it `Blocked`, say which sign is missing, and leave it for a person. A row that is a milestone where the target branch *is* the default branch is the same error: there is nothing to ship.
+
+### Opening a milestone PR
+
+When a milestone row is startable, in order:
+
+1. **Commit `In Progress`** to the plan branch. The claim, as for a phase.
+2. **Prepare.** If the repo sets `milestone.prepare`, follow it on the target branch and push the result as commits straight to that branch. Where the branch refuses direct pushes, put them through one small PR into it under the ordinary gate, and merge it by the ordinary YOLO rule. If preparation fails, or its own checks do not pass, do not open the PR: mark the row `Blocked` with what failed.
+3. **Open the PR** from the target branch to the default branch, titled `Milestone M1: <scope>`, the GitHub MCP way and for the same reason as a phase PR. The body carries: what ships, phase by phase, each with its PR link; anything the shipped phases recorded as out of scope, and open Carried findings that name them; the assembled UAT script for every id in `UAT-pending` that this milestone ships plus the milestone's own **UAT**, by the rules in §3; and a line saying **a person merges this PR, not the driver.** Clear those ids from `UAT-pending` in the next write.
+4. **Commit `In Review`** and the `Link`, at once, before any wait.
+
+**An explicit milestone row opens its PR with YOLO on or off.** It is a checkpoint the plan's author put in the table, and later phases wait on it. YOLO decides who merges phase PRs and nothing else.
+
+**Never merge it**, in any YOLO state. `merge` and `merge now` do not apply to it; answer that it is the person's to merge.
+
+### Which PR is a milestone's
+
+Every milestone row in a repo has the same head and base, so head and base alone do not say which milestone a PR belongs to. A PR is this row's when:
+
+- it is the PR in the row's `Link`, where the row has one. The link is authoritative; or
+- with no link, its head is the target branch, its base is the default branch, and **its title starts `Milestone <id>:`** with this row's id. The title is set in step 3 and is the one identifier that survives a crash before step 4.
+
+A PR that matches head and base but names another id is that other row's, never this one's. Adopt an open PR only for a row whose dependencies are all `Merged` or `Skipped`: a PR found for a row that is not yet startable is a mismatch to report, not one to adopt. Since a repo has at most one open milestone PR, two rows claiming one PR always means one of them is wrong.
+
+### Working a milestone PR
+
+Between opening and the person's merge, a milestone PR is handled like any PR you opened, by the rules already in §5 and `references/gates.md`, none of them restated here: a failed check is read and fixed, a review is answered under [Answering a review](#answering-a-review) with its outcomes for in scope and right, minor, wrong and out of scope and its treatment of a person's thread, and `stuck.max_cycles`, `stuck.max_review_rounds`, the arbiter and the repo's own stop rules all apply. Four things are particular to it:
+
+- **Scope.** "In scope" means the union of the scopes of the phases the milestone ships, read from their Phase Details, **plus what `milestone.prepare` asked for**. The preparation is your own work on this PR, so a wrong version or a bad changelog line is yours to fix, not to carry. Work none of those covers is out of scope, and goes to Carried findings or an issue as it would on a phase.
+- **Where a fix goes.** A commit pushed straight to the target branch, which is the PR's head, the same as the preparation. No fix PR into the feature branch, unless that branch refuses direct pushes.
+- **The head moving.** Every fix commit moves the head, so the gate result is discarded and re-evaluated against the new head, and gate 6 needs the reviewer at that head, exactly as on a phase PR. Rounds are counted the same way, as reviewed heads, starting from the head the PR opened at, so the preparation's commits are not rounds. `Review-baselines` and `Arbitrations` take the milestone's id, as in `M1:3`. The arbiter's brief names every shipped phase's details.
+- **When the gates pass.** Tell the person it is ready, with the per-gate summary, and set the row's `Note` to `ready to merge`, as for a phase with YOLO off. Then wait. A row that reaches a stop goes `Blocked` like any other.
+
+The implicit final milestone, §8's integration PR, is not worked this way. §8's rule for it stands.
+
+### Re-sync
+
+After a milestone PR is confirmed merged, bring its target branch back in line with the default branch, by these rules and no others. Read both heads with `git ls-remote`, never from remote-tracking refs.
+
+- **No non-terminal row still targets the branch.** Skip the re-sync. Nothing needs it.
+- **The branch is gone**, as when the repo deletes head branches on merge. Re-create it at the default branch's head, with a lease that requires it still to be absent.
+- **It exists, and its head is an ancestor of the default branch**, as after a merge commit. Fast-forward it to the default branch's head, with a plain push, never a forced one.
+- **It exists, is not an ancestor, and its head is exactly the head the milestone PR was merged at**, as after a squash or rebase merge. Move it to the default branch's head, with a lease on that merged head. Nothing is lost: everything on it reached the default branch in that merge.
+- **It holds commits beyond the merged head.** Change nothing. Report it, and start nothing in that repo until a person has sorted it out.
+
+**Every move is conditional on the head you just checked.** Someone can push to the branch between your read and your write, and an unconditional force would delete their commits, which is the one outcome the last case exists to prevent. So the push itself carries the check:
+
+| Case | Push |
+|---|---|
+| Re-create | `git push --force-with-lease=refs/heads/<target_branch>: origin <default sha>:refs/heads/<target_branch>` (an empty lease means "must not exist") |
+| Fast-forward | `git push origin <default sha>:refs/heads/<target_branch>` (a plain push refuses anything but a fast-forward) |
+| Squash or rebase | `git push --force-with-lease=refs/heads/<target_branch>:<merged head sha> origin <default sha>:refs/heads/<target_branch>` |
+
+A push rejected by its lease or as a non-fast-forward means the branch moved under you. Re-read both heads and apply the rules again from the top; you will usually land in the last case.
+
+Any doubt is the last case. Moving a branch is the only force the driver applies to a ref it did not create, so it refuses on anything it cannot prove is safe. A refused update (protection, a ruleset, a sandbox that will not move refs) is reported once, with the matching command from the table, filled in, and nothing in that repo starts until the branch is where it should be. Never hand anyone a bare `--force`. Never re-sync the plan branch: a plan with milestone rows does not live on a branch they ship.
+
+### Settled
+
+A `Merged` milestone row is **settled** when its post-merge work is done, and a row that depends on it starts only then. Two things, each read from GitHub and neither from memory:
+
+1. **The branch is re-synced**, or no non-terminal row still targets it. Re-synced means the branch exists and the milestone PR's merge commit is an ancestor of its head. That holds after every successful re-sync case, and keeps holding as later phases land on top.
+2. **`after_merge` ran**, where the repo sets it: the milestone PR carries a comment whose first line is `<!-- phase-driver:after-merge <id> -->`. Post it right after `after_merge` finishes, saying what it did. A session that died after the `Merged` write and before this comment runs `after_merge` again on the next wake, so write it to be safe to repeat, as updating an installed copy is.
+
+Reconcile checks every `Merged` milestone row that is not settled, finishes whichever of the two is missing, in that order, and only then lets anything in that repo start.
 
 ## 8. Finishing the plan
 
 When every row is `Merged` or `Skipped`, in this order: **open the integration PR if YOLO is on**, then set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
+
+**This section governs a plan with no milestone rows, and its integration PR is the implicit final milestone.** A plan that has milestone rows shipped through them: no integration PR is opened, and finishing is `Driver: idle`, the summary, and the readout of Carried findings and any `UAT-pending` below.
 
 **The summary names every open entry in Carried findings**, alongside outstanding UAT. Those are the things a reviewer raised that no phase did, and the end of the plan is the last moment anyone is looking. A plan that completes with a list nobody read is the same failure as UAT that reaches no one.
 

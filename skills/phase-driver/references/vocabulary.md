@@ -6,7 +6,7 @@ Reconcile before answering anything. A stale answer from memory is worse than a 
 
 | Intent | Do this |
 |---|---|
-| `status`, "how's it going" | Reconcile, then report progress per repo, open PR links, and the gate summary for each. **No writes** |
+| `status`, "how's it going" | Reconcile, then report progress per repo, open PR links, and the gate summary for each. List milestone rows with what each is waiting on: its dependencies, its preparation, its checks or review, or a person's merge. **No writes** |
 | `why`, "what's blocking" | Per-gate PASS/FAIL for the open PR, in the standard shape from `gates.md` |
 | `go`, `next`, "run the next phase" | Start every startable phase now |
 | `check`, "any update" | Force a reconcile: the recovery path when a webhook was missed |
@@ -30,6 +30,8 @@ Reconcile before answering anything. A stale answer from memory is worse than a 
 **Never renumber phases.** When replanning, append or subdivide. `Merged` rows are a historical record. Editing them makes the plan disagree with what actually shipped.
 
 **`merge now` never overrides gates 1 or 2.** A draft PR and a `do-not-merge` label are explicit human signals, not obstacles. If someone insists, tell them to undraft it or remove the label. Those actions take two seconds and leave a record of who decided.
+
+**`merge` and `merge now` never apply to a milestone PR.** A milestone row's PR is merged by a person, every time, whatever YOLO says. Answer that it is theirs to merge, link it, and give the gate summary so they can. If it is the only ready PR, say so rather than merging something else.
 
 **Confirm before anything irreversible.** `Merge now`, `abandon`, or a replan that drops phases. One confirmation, not a negotiation.
 

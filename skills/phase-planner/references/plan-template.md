@@ -24,6 +24,11 @@ phases:
       max_cycles: 5
       max_review_rounds: 3
       arbiter: { model: fable, extra_rounds: 3 }
+    # milestone:                 # only for plans with milestone rows (M1, M2)
+    #   prepare: >               # run on target_branch before a milestone PR opens
+    #     Bump the version and add a CHANGELOG section.
+    #   after_merge: >           # run after a person merges a milestone PR
+    #     Say which version the default branch now carries.
 
   repos:
     OWNER/REPO: {}
