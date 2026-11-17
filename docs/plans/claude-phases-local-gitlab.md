@@ -1083,5 +1083,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T16:24:39Z
-- Note: bootstrap in progress: feature/local-gitlab -> main opened by hand on request; driver paused until resume
+- Heartbeat: 2026-11-17T16:58:43Z
+- Note: bootstrap: #32 merged as 8cf6bf9, v0.10.0 released, feature/local-gitlab re-created at 8cf6bf9. Left: plugin update, restart question, resume in a fresh session
