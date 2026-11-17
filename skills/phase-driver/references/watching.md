@@ -12,7 +12,7 @@ Choose by what the session can do, not by where you think it is running. There i
 
 ## The watcher
 
-A polling loop the driver fills in and runs under the Monitor tool. Every 60 seconds it snapshots each open phase change request, and it prints **one line only when something changed**. A poll where nothing changed prints nothing.
+A polling loop the driver fills in and runs under the Monitor tool. Every 60 seconds it snapshots each open phase change request, and it prints **one line only when something changed**, naming every change request that changed in that poll. A poll where nothing changed prints nothing.
 
 What counts as a change, per change request:
 
@@ -33,7 +33,8 @@ PRS='[open phase PRs, space separated, e.g. acme/web#42 acme/api#7]'
 CHECKIN_MIN=[minutes to the fallback check-in: 45 to 60, or 10 to 15]
 ONCE=[0 under Monitor; 1 for a background command that exits on its first line]
 
-D="${TMPDIR:-/tmp}/phase-driver-watch/$(printf '%s' "$PLAN" | tr -c 'A-Za-z0-9' '_')"
+key() { printf '%s' "$1" | tr -c 'A-Za-z0-9' '_'; printf '_'; printf '%s' "$1" | cksum | cut -d ' ' -f 1; }
+D="${TMPDIR:-/tmp}/phase-driver-watch/$(key "$PLAN")"
 mkdir -p "$D" || exit 1
 WAKE="[phase-driver watcher] Invoke the phase-driver skill, then reconcile $PLAN."
 say() { printf '%s %s\n' "$WAKE" "$1"; if [ "$ONCE" = 1 ]; then exit 0; fi; }
@@ -48,52 +49,49 @@ echo "$due" > "$D/checkin"
 ME=''
 WAIT=60
 while :; do
-  ok=1; lines=''
+  lines=''; up=0
   if [ -z "$ME" ]; then
-    ME=$(gh api user --jq '.login | ascii_downcase' 2>"$D/err") || { ok=0; ME=''; }
+    ME=$(gh api user --jq '.login | ascii_downcase' 2>"$D/err") || ME=''
   fi
   for pr in $PRS; do
-    [ "$ok" = 1 ] || break
-    R=${pr%%#*}; N=${pr##*#}; K=$(printf '%s' "$pr" | tr -c 'A-Za-z0-9' '_')
-    new="$D/$K.new"
-    gh api "repos/$R/pulls/$N" --jq '"state \(.state) merged=\(.merged)", "head \(.head.sha)"' > "$new" 2>"$D/err" || { ok=0; break; }
-    sha=$(sed -n 's/^head //p' "$new")
-    {
-      gh api "repos/$R/commits/$sha/check-runs?per_page=100" --jq '.check_runs[] | "check \(.name)=\(.conclusion // .status)"' &&
-      gh api "repos/$R/commits/$sha/status" --jq '.statuses[] | "check \(.context)=\(.state)"' &&
-      gh api --paginate "repos/$R/issues/$N/comments?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item comment:\(.id)\"" &&
-      gh api --paginate "repos/$R/pulls/$N/comments?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item thread comment:\(.id)\"" &&
-      gh api --paginate "repos/$R/pulls/$N/reviews?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item review:\(.id)\"" &&
-      gh api --paginate "repos/$R/issues/$N/reactions?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item reaction \(.content):\(.id)\""
-    } >> "$new" 2>"$D/err" || { ok=0; break; }
-    LC_ALL=C sort -o "$new" "$new"
-    if [ -f "$D/$K.old" ] && ! cmp -s "$D/$K.old" "$new"; then
-      what=''
-      a=$(sed -n 's/^state //p' "$D/$K.old"); b=$(sed -n 's/^state //p' "$new")
-      [ "$a" != "$b" ] && what="$what; now $b"
-      a=$(sed -n 's/^head //p' "$D/$K.old")
-      [ "$a" != "$sha" ] && what="$what; head moved ${a%"${a#???????}"} -> ${sha%"${sha#???????}"}"
-      c=$(LC_ALL=C comm -13 "$D/$K.old" "$new" | sed -n 's/^check //p' | tr '\n' ',' | sed 's/,$//; s/,/, /g')
-      [ -n "$c" ] && what="$what; checks: $c"
-      i=$(LC_ALL=C comm -13 "$D/$K.old" "$new" | sed -n 's/^item \(.*\):.*/\1/p' | sort | uniq -c | sed 's/^ *\([0-9]*\) \(.*\)/\1 new \2/' | tr '\n' ',' | sed 's/,$//; s/,/, /g')
-      [ -n "$i" ] && what="$what; $i"
-      [ -n "$what" ] && lines="$lines $pr:${what#;}."
+    R=${pr%%#*}; N=${pr##*#}; K=$(key "$pr"); new="$D/$K.new"
+    if [ -n "$ME" ] && {
+      gh api "repos/$R/pulls/$N" --jq '"state \(.state) merged=\(.merged)", "head \(.head.sha)"' > "$new" &&
+      sha=$(sed -n 's/^head //p' "$new") &&
+      gh api --paginate "repos/$R/commits/$sha/check-runs?per_page=100" --jq '.check_runs[] | "check \(.name)=\(.conclusion // .status)"' >> "$new" &&
+      gh api --paginate "repos/$R/commits/$sha/status?per_page=100" --jq '.statuses[] | "check \(.context)=\(.state)"' >> "$new" &&
+      gh api --paginate "repos/$R/issues/$N/comments?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item comment:\(.id)\"" >> "$new" &&
+      gh api --paginate "repos/$R/pulls/$N/comments?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item thread comment:\(.id)\"" >> "$new" &&
+      gh api --paginate "repos/$R/pulls/$N/reviews?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item review:\(.id)\"" >> "$new" &&
+      gh api --paginate "repos/$R/issues/$N/reactions?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item reaction \(.content):\(.id)\"" >> "$new"
+    } 2>"$D/err"; then
+      up=1
+      if [ -f "$D/$K.down" ]; then rm -f "$D/$K.down"; lines="$lines $pr: the forge is answering again."; fi
+      LC_ALL=C sort -o "$new" "$new"
+      if [ -f "$D/$K.old" ] && ! cmp -s "$D/$K.old" "$new"; then
+        what=''
+        a=$(sed -n 's/^state //p' "$D/$K.old"); b=$(sed -n 's/^state //p' "$new")
+        [ "$a" != "$b" ] && what="$what; now $b"
+        a=$(sed -n 's/^head //p' "$D/$K.old")
+        [ "$a" != "$sha" ] && what="$what; head moved ${a%"${a#???????}"} -> ${sha%"${sha#???????}"}"
+        c=$(LC_ALL=C comm -13 "$D/$K.old" "$new" | sed -n 's/^check //p' | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+        [ -n "$c" ] && what="$what; checks: $c"
+        i=$(LC_ALL=C comm -13 "$D/$K.old" "$new" | sed -n 's/^item \(.*\):.*/\1/p' | sort | uniq -c | sed 's/^ *\([0-9]*\) \(.*\)/\1 new \2/' | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+        [ -n "$i" ] && what="$what; $i"
+        [ -n "$what" ] && lines="$lines $pr:${what#;}."
+      fi
+      mv "$new" "$D/$K.old"
+    elif [ ! -f "$D/$K.down" ]; then
+      : > "$D/$K.down"
+      if grep -q 'HTTP 40[134]' "$D/err" && ! grep -qi 'rate limit' "$D/err"; then
+        lines="$lines $pr: the forge refused access ($(grep -o 'HTTP 40[134]' "$D/err" | head -n 1))."
+      else
+        lines="$lines $pr: the forge is unreachable ($(tr '\n' ' ' < "$D/err" | cut -c 1-100)); still polling, backing off to at most five minutes."
+      fi
     fi
-    mv "$new" "$D/$K.old"
   done
-  if [ "$ok" = 1 ]; then
-    WAIT=60
-    if [ -f "$D/down" ]; then rm -f "$D/down"; say "The forge is answering again."; fi
-    [ -n "$lines" ] && say "Changed:$lines"
-  else
-    [ "$WAIT" -lt 300 ] && WAIT=$(( WAIT * 2 )); [ "$WAIT" -gt 300 ] && WAIT=300
-    if grep -q 'HTTP 40[134]' "$D/err" && ! grep -qi 'rate limit' "$D/err"; then
-      msg="The forge refused access ($(grep -o 'HTTP 40[134]' "$D/err" | head -n 1))."
-    else
-      msg="The forge is unreachable ($(tr '\n' ' ' < "$D/err" | cut -c 1-100))."
-    fi
-    if [ ! -f "$D/down" ]; then : > "$D/down"; say "$msg Still polling, backing off to at most five minutes."; fi
-  fi
+  [ -n "$lines" ] && say "Changed:$lines"
+  if [ "$up" = 1 ]; then WAIT=60; else WAIT=$(( WAIT * 2 )); [ "$WAIT" -gt 300 ] && WAIT=300; fi
   if [ "$(now)" -ge "$(cat "$D/checkin")" ]; then
     echo $(( $(now) + CHECKIN_MIN * 60 )) > "$D/checkin"
     say "Fallback check-in, every $CHECKIN_MIN minutes."
@@ -111,7 +109,7 @@ Fill it in:
 | `CHECKIN_MIN` | Minutes to the fallback check-in, below |
 | `ONCE` | `0` under Monitor. `1` only for the fallback without Monitor, below |
 
-It keeps its snapshots in a directory named for the plan under `$TMPDIR`. A re-armed watcher compares against the last one, so a change that lands while no watcher is running still prints on the first poll after re-arming. Arm a new watcher whenever the set of open change requests changes, and stop the old one.
+It keeps its snapshots in a directory named for the plan under `$TMPDIR`, one file per change request, each named from the full identity plus a checksum so that `acme/web-api#1` and `acme/web_api#1` never share one. A re-armed watcher compares against the last one, so a change that lands while no watcher is running still prints on the first poll after re-arming. Arm a new watcher whenever the set of open change requests changes, and stop the old one.
 
 **Skipping the driver's own comments.** The watcher ignores comments, reviews and reactions by the account `gh` is logged in as, so the driver is not woken by its own gate reports. In a local session that account is usually the person's own, so their comments on the change request do not wake the session either. Talk to the session instead.
 
@@ -150,4 +148,4 @@ A session that dies loses its watcher, and nothing is lost with it: the snapshot
 
 ## When the forge stops answering
 
-The watcher prints one line when the forge stops answering, and one when it answers again, never one per failed poll. While it is down it backs off, doubling the interval up to five minutes. A request the forge answered with 401, 403 or 404 prints as refused access rather than unreachable, because the driver treats the two differently: see [The forge is unreachable](recovery.md#the-forge-is-unreachable).
+The watcher says so once per change request when the forge stops answering it, and once when it answers again, never once per failed poll. A change request that fails does not hold up the others: each is polled on its own, and a healthy one still reports its changes while another is refused or unreachable. While nothing answers at all, it backs off, doubling the interval up to five minutes. A request the forge answered with 401, 403 or 404 prints as refused access rather than unreachable, because the driver treats the two differently: see [The forge is unreachable](recovery.md#the-forge-is-unreachable).
