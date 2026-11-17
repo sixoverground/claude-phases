@@ -127,11 +127,12 @@ An entry carrying `rereview: optional` has a second way to be satisfied, for rev
 | State at the head sha | Verdict |
 |---|---|
 | A `logins` review, inline comment, or 👍 at `head.sha` | **PASS**, by the rules above |
+| A completed review-state comment by a `logins` author naming `head.sha` | **PASS**, as [Codex's review-state comment](#codexs-review-state-comment) says |
 | None at head, **at least one sign of that reviewer anywhere on this PR**, and `rereview_grace` has elapsed since the head was pushed | **PASS**, as a decline |
 | None at head, at least one earlier sign, grace not yet elapsed | **BLOCK.** Keep waiting |
 | **No sign of that reviewer anywhere on this PR** | **BLOCK. Never times out** |
 
-A **sign** is a review, an inline comment, or a 👍 by one of the entry's `logins`, at any commit on this PR. Any one of them proves the integration is alive and that this reviewer has this PR.
+A **sign** is a review, an inline comment, or a 👍 by one of the entry's `logins`, at any commit on this PR. Any one of them proves the integration is alive and that this reviewer has this PR. So does a completed [review-state comment](#codexs-review-state-comment) by one of them, naming any commit on this PR.
 
 **When a PR carries no sign at all, check who opened it before you call the integration broken.** Some reviewer integrations attach to an account. Codex reviews the connected user's PRs and ignores a bot's, so a phase PR opened under the wrong identity is never reviewed by design. This applies to an account-scoped `logins` entry; a `check:` entry has no connected user, and a workflow-triggered reviewer runs whoever opened the PR. It presents identically to a dead integration and has a different, one-minute fix: reopen it from the right account. The usual cause is a PR opened with `gh pr create` in a cloud session, which authenticates as the integration rather than as the user. Read the PR's `user.login`, and if it isn't the human whose plan this is, report that as the cause instead of reporting a wait.
 
@@ -156,6 +157,45 @@ A pass carried by a 👍 says which one it was, because the two mean different t
 ```
 6 reviewer     PASS (codex 👍 on the PR, 4m after this head was pushed)
 6 reviewer     PASS (codex 👍 at PR open, no review of 3 commits since, 22m elapsed)
+```
+
+#### Codex's review-state comment
+
+Codex keeps one top-level comment on the PR that records its review's state, and edits it in place as the review runs. Its body carries, on a line of its own:
+
+```
+<!-- codex-review-state:v1 {"code_review":{"commit_sha":"fc7229478f2d711021eb1bf3b4b25a197f576197","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"},"security_review":{...}} -->
+```
+
+The comment's author is attributable through the same tools that read comments, which is what makes it useful: a session that can see only reaction counts can still see this. Codex has not documented the format, so read it strictly and fail closed.
+
+**Proof for a head.** All of these, read from the comment as it is now, never from an earlier reading of it:
+
+- its author is one of the entry's `logins`, matched as everywhere in this gate
+- the line is exactly `<!-- codex-review-state:v1 ` followed by a JSON object and ` -->`, and the JSON parses
+- `code_review.status` is `completed`
+- `code_review.commit_sha` equals the full `head.sha`
+
+Then the entry is satisfied at this head, as a review there would satisfy it.
+
+**A sign** for [`rereview: optional`](#rereview-optional): the same comment with `status` `completed`, naming any commit on this PR.
+
+**Not proof, and not a sign:**
+
+| Found | Why |
+|---|---|
+| `status` anything but `completed`, such as `running` | The review has not finished. This is the comment's 👀 |
+| An author outside `logins` | Anyone can paste the line into a comment |
+| A version other than `v1`, or JSON that does not parse | A format this rule was not written for. Treat the comment as absent |
+| `commit_sha` shorter than the full sha, or naming another head | Proof for that commit at most, as with a marker |
+
+**Never read a verdict from it.** `has_any_findings` and `has_unresolved_findings` are Codex's opinion of its own findings. Gate 6 asks only whether the reviewer looked; its findings are threads, and gate 5 owns those.
+
+**When the reactions endpoint is out of reach**, as in a session whose tools report reaction counts only, say so, and look for this comment before reporting gate 6 as blocked. A 👍 you cannot attribute still counts for nothing.
+
+```
+6 reviewer     PASS (codex review-state comment @ fc72294, completed)
+6 reviewer     BLOCK: codex review-state comment is running for fc72294
 ```
 
 ## Write the plan

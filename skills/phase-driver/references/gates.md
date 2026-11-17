@@ -53,6 +53,7 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 - a review by one of its `logins` of the head commit, or
 - an inline review-thread comment by one of them at that sha, or
 - a **👍 reaction on the PR by one of its `logins`**, created at or after the head commit's committer date. See [The decline reaction](forge-github.md#the-decline-reaction), or
+- a **review-state record by one of its `logins`**, where the forge reference defines one, saying a review of exactly the head sha completed. On GitHub that is [Codex's review-state comment](forge-github.md#codexs-review-state-comment), or
 - for a `marker` entry, **a top-level comment on the change request containing a `v=1` review marker** whose `reviewer` equals the entry's `marker` and whose `sha` equals the head sha, authored by one of the entry's `logins` when it lists any. See [The review marker](#the-review-marker), or
 - a check named by its `check` at that sha, judged by the entry's `proof`:
   - **`output`** (default). Completed, with a conclusion other than skipped or cancelled, **and** with non-empty output.
@@ -60,7 +61,7 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 
 Login matching is case-insensitive, and ignores the suffix the forge adds to an app account's login. [Gate 6](forge-github.md#gate-6-reviewer) gives GitHub's.
 
-**A `marker` entry is satisfied by its marker and nothing else.** The review, inline-comment and 👍 rules above do not apply to it, and its `logins` only say who may author the marker note. A reviewer that posts a finding and then fails before finishing has written no marker, and an inline comment or 👍 from its account must not stand in for one: the marker exists precisely because those signals cannot say a review completed.
+**A `marker` entry is satisfied by its marker and nothing else.** The review, inline-comment, 👍 and review-state rules above do not apply to it, and its `logins` only say who may author the marker note. A reviewer that posts a finding and then fails before finishing has written no marker, and an inline comment or 👍 from its account must not stand in for one: the marker exists precisely because those signals cannot say a review completed.
 
 ### The review marker
 
