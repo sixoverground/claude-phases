@@ -40,6 +40,22 @@ phases:
 | `merge.delete_branch` | `true` | Delete the phase branch after the driver merges it. **YOLO-only**, with YOLO off the driver never merges, so it never deletes. Only applies to merges the driver performs, a human merging in the UI controls their own checkbox. Only ever deletes a branch matching `branch_prefix`, never the plan branch or a `target_branch`. `false` for repos whose rulesets require branches to persist |
 | `plan_writes` | `direct` | `direct`, or `plan-pr` when the plan branch is protected. `default-branch` is accepted as an alias for `direct`. See below |
 | `yolo` | `true` | `false` pins this repo to manual merges regardless of the global toggle. Config can only restrict, never force |
+| `milestone.prepare` | absent | Prose the driver follows on `target_branch` before it opens a [milestone](format.md#milestone-rows) PR: a version bump, a changelog section, anything a release of this repo needs. Committed straight to the branch. Absent means the milestone PR opens with no preparation |
+| `milestone.after_merge` | absent | Prose the driver follows after a person has merged a milestone PR and the branch is back in line with the default branch: updating an installed copy, announcing a release. Absent means nothing runs beyond the re-sync |
+
+Both milestone keys apply only to milestone rows. Neither runs for the implicit final milestone, the integration PR at the end of a plan with no milestone rows, unless it is set.
+
+```yaml
+repos:
+  acme/acme-web:
+    target_branch: feature/calendar
+    milestone:
+      prepare: >
+        Raise the version in package.json by a minor step above main's, and add
+        a CHANGELOG section assembled from the shipped phases' PR bodies.
+      after_merge: >
+        Say which version main now carries.
+```
 
 ### Verification
 
@@ -279,10 +295,15 @@ YOLO controls exactly one thing: **who presses merge.**
 | Evaluate the gates | driver | driver |
 | **Press merge** | **driver, once gates pass** | **you**, the driver pings with the PR link and a gate summary |
 | Start the next phase after merge | driver | **driver** |
+| Open a milestone row's PR | driver | **driver** |
+| Open the integration PR, the implicit final milestone | driver | nobody |
+| **Merge a milestone PR**, explicit or implicit | **you** | **you** |
 
 **The next phase always continues after a merge, in both modes.** Merge from the GitHub mobile app with YOLO off and the driver notices, records it, and starts whatever that unblocks. Turning YOLO off buys a review checkpoint, not a manual pipeline.
 
 **YOLO also decides where UAT checklists go.** With it off, every PR carries its own phase's manual-test checklist, because you're there to read it. With it on, phases merge unattended and UAT is deferred to a single comprehensive test script on the **integration PR** the driver opens when the plan completes, or on the final phase's PR where phases already target the default branch and no integration PR exists. Toggling mid-plan is safe. `UAT-pending` in Driver State tracks what hasn't reached a human, so switching off mid-plan hands you the backlog along with the current phase. See [When UAT reaches a human](format.md#when-uat-reaches-a-human).
+
+**YOLO never merges a milestone.** It decides who presses merge on phase PRs and nothing else. A [milestone row](format.md#milestone-rows) is a checkpoint the plan's author put in the table, so the driver opens its PR in both modes, and a person merges it in both. The integration PR at the end of a plan with no milestone rows keeps its older rule: the driver opens it only under YOLO, because with YOLO off you merged every phase and already know where the branch stands.
 
 It lives in the plan's **Driver State** block, not front matter, because it's runtime state. Say `yolo on` or `yolo off` and it takes effect on the next gate evaluation, including for PRs already open.
 
@@ -298,7 +319,7 @@ The requirement is narrower than "the default branch", though. The plan branch m
 
 ### Feature-branch work
 
-When every phase targets a long-running feature branch and nothing reaches `main` until the feature is whole, the plan belongs on that branch too, so the work travels together:
+When every phase targets a long-running feature branch and nothing reaches `main` until the feature is whole, and the plan has **no milestone rows**, the plan can live on that branch too, so the work travels together:
 
 ```yaml
 phases:
@@ -316,6 +337,18 @@ Two things to get right:
 - **Don't delete it mid-plan.** If the feature branch merges and is deleted before the plan finishes, the plan goes with it. Move the plan file to the default branch first, or leave the branch until the last row is `Merged`.
 
 A feature branch is also usually unprotected, which means `plan_writes` can stay `direct` even when the default branch is locked down.
+
+**With milestone rows, the plan stays on the default branch.** A [milestone](format.md#milestone-rows) ships the feature branch part-way through the plan, and the branch is deleted on merge and re-created from the default branch by the driver. A plan on it would be deleted with it. So leave `plan_branch` at its default, and never set it to a branch a milestone row ships:
+
+```yaml
+phases:
+  home_repo: acme/acme-web
+  # plan_branch left at the default branch
+  defaults:
+    target_branch: feature/calendar
+```
+
+Phase PRs never touch the plan file, so the feature branch never conflicts with it. Check that push-triggered workflows on the default branch ignore plan commits, since every status write now lands there; `[skip ci]` usually covers it.
 
 ### A protected plan branch
 

@@ -21,6 +21,24 @@ Apply this **per non-terminal row**, not once per plan. With several repos in fl
 | `Blocked` | anything | Waiting on a human | Leave it. Only a user instruction clears `Blocked` |
 | all rows `Merged`/`Skipped` | - | Complete | Go to SKILL.md §8 and apply it, including its fallback where no integration PR is due. Where one is, the only reason not to open it is that one is already open, so check rather than assume a previous driver got there. Then `Driver: idle`, summarize, stop |
 
+## Milestone rows
+
+A milestone row is matched to its PR by head equal to the row's branch, which is the repo's `target_branch`, and base equal to the repo's default branch. The same per-row rule applies: GitHub is the truth.
+
+| Plan says | GitHub says | What happened | Do this |
+|---|---|---|---|
+| `Pending`, dependencies merged | no such PR | Ready to ship | Start it, by SKILL.md's Milestones section |
+| `Pending` or `In Progress` | an open PR from that branch to the default branch | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch |
+| `In Progress`, stale | no PR, preparation partly on the branch | Died mid-preparation | Finish the preparation from where the branch stands, by comparing it with `milestone.prepare`, then open the PR |
+| `In Review` | PR open | Normal operation | Work it, by Working a milestone PR. **Never merge** |
+| `In Review` | PR merged | A person merged it | Write `Merged`, re-sync, run `milestone.after_merge`, start what it unblocks |
+| `In Review` | PR closed, not merged | A person closed it | Ask why. Default to `Blocked` |
+| `Merged` | target branch missing or behind, rows still target it | Died between recording the merge and re-syncing | Re-sync before starting anything in that repo |
+
+`In Progress` with no PR and no preparation commits on the branch at all is the first row of the table in disguise: prepare from the start, then open the PR. Where `milestone.prepare` is absent there is nothing to finish, and the third row reduces to opening the PR.
+
+The last row is why re-sync comes before anything starts in §7. A session that dies after writing `Merged` and before moving the branch leaves a target branch that is gone, or still at its pre-merge head, and a phase branched from either starts from a base that is not the default branch.
+
 ## The plan branch is gone
 
 If `plan_branch` names a branch that no longer exists, whether it was deleted after a feature merged, renamed, or never created, **stop and report.** Do not fall back to the default branch, and do not recreate the branch.

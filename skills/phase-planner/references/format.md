@@ -29,7 +29,7 @@ Two invariants make it work:
 - **Status is written to the home repo's plan branch, never inside a phase PR.** A status written inside a PR is invisible until that PR merges, so a fresh session would see `Pending` for a phase that already has an open PR, and start it again.
 - **Phase PRs never modify the plan file.** One writer means a squash merge can never conflict with its own bookkeeping, no matter how far the plan branch has moved.
 
-The **plan branch** is `plan_branch`, defaulting to the home repo's default branch. What the first invariant actually requires is a branch that no phase PR modifies and that is readable without merging one. The default branch is the usual answer, not the only one. Feature-branch work, where every phase targets `feature/x` and nothing reaches `main` until the feature is whole, puts the plan on `feature/x` and satisfies it just as well.
+The **plan branch** is `plan_branch`, defaulting to the home repo's default branch. What the first invariant actually requires is a branch that no phase PR modifies and that is readable without merging one. The default branch is the usual answer, not the only one. Feature-branch work, where every phase targets `feature/x` and nothing reaches `main` until the feature is whole, puts the plan on `feature/x` and satisfies it just as well, unless the plan has [milestone rows](#milestone-rows). A milestone ships `feature/x` and the branch is deleted and re-created when it merges, so a plan with milestone rows stays on the default branch.
 
 ---
 
@@ -98,10 +98,10 @@ Per-repo values deep-merge over `defaults`. A single-repo project lists one repo
 | Column | Required | Meaning |
 |---|---|---|
 | `PR` | yes | Ordinal, for humans reading the table |
-| `Branch` | yes | The phase branch, prefixed with `branch_prefix` |
+| `Branch` | yes | The phase branch, prefixed with `branch_prefix`. On a [milestone row](#milestone-rows), the repo's `target_branch` |
 | `Repo` | yes | `owner/name`. **This is what makes multi-repo work**: each row targets exactly one repo |
 | `Scope` | yes | One line. The detail lives in Phase Details below the table |
-| `Phase` | yes | Phase id, referenced by `Depends`. `3a`/`3b` for splits |
+| `Phase` | yes | Phase id, referenced by `Depends`. `3a`/`3b` for splits. `M1`, `M2` for milestone rows |
 | `Status` | yes | The cursor. See below |
 | `Link` | no | `-` or `owner/repo#42`. A cache only, and always re-derivable from GitHub |
 | `Depends` | no | Comma-separated phase ids. Blank means "the previous row" |
@@ -118,6 +118,32 @@ Per-repo values deep-merge over `defaults`. A single-repo project lists one repo
 
 Phases 2 and 3 both depend only on phase 1, so they run **concurrently** in different repos. Phase 4 waits for both.
 
+### Milestone rows
+
+A milestone row ships a repo's `target_branch` to its default branch at a point the plan names, rather than only at the end. It is the row to use when phases land on a feature branch and a later phase needs some of that work released first.
+
+```markdown
+| PR | Branch            | Repo          | Scope                              | Phase | Status  | Link | Depends |
+|----|-------------------|---------------|------------------------------------|-------|---------|------|---------|
+| 1  | claude/schema     | acme/acme-web | Calendar tables                    | 0     | Merged  | #31  |         |
+| 2  | claude/sync       | acme/acme-web | Two-way sync                       | 1     | Merged  | #33  | 0       |
+| 3  | feature/calendar  | acme/acme-web | Ship schema and sync to `main`     | M1    | Pending | -    | 0, 1    |
+| 4  | claude/sharing    | acme/acme-web | Shared calendars                   | 2     | Pending | -    | M1      |
+```
+
+**It is told apart by two things together, with no new column:** its `Phase` id is `M` followed by a number, and its `Branch` is the repo's `target_branch`. No phase row can have that branch, since phase branches carry `branch_prefix`. A row with one sign and not the other is an error, and the driver stops on it rather than guess which was meant.
+
+- Its PR goes from that branch to the repo's default branch, titled `Milestone M1: <scope>`.
+- Its `Depends` lists the phases it ships.
+- A later phase that needs the work released depends on the milestone row, as phase 2 does above. That dependency is the wait: nothing has to be paused by hand.
+- Milestone rows are appended or inserted like any row and never renumbered.
+
+**The driver opens a milestone PR and never merges it**, with YOLO on or off. A person merges it, every time. The driver then brings the branch back in line with the default branch and starts what the milestone unblocks.
+
+A plan with milestone rows keeps the plan file on the default branch, never on a branch a milestone ships: that branch is deleted on merge and re-created, and the plan would go with it.
+
+**The integration PR is the implicit final milestone.** A plan with no milestone rows ends as it always has: under YOLO, where `target_branch` is not the default branch, the driver opens one PR from it to the default branch and never merges it. A plan that has milestone rows ships through them instead, and no implicit PR is opened.
+
 ### Status vocabulary
 
 | Status | Meaning | Written by |
@@ -128,6 +154,8 @@ Phases 2 and 3 both depend only on phase 1, so they run **concurrently** in diff
 | `Merged` | Merged (terminal success) | driver, after the merge is confirmed |
 | `Blocked` | Needs a human; reason recorded in Phase Details | driver or user |
 | `Skipped` | Dropped (terminal) | user |
+
+A milestone row uses the same words. `In Progress` is claimed and preparing, with no PR yet. `In Review` is the milestone PR open, worked by the driver and waiting on a person to merge it. `Merged` is a person merged it. `Blocked` and `Skipped` mean what they mean for a phase.
 
 Legal transitions:
 
@@ -192,8 +220,8 @@ A plan branch that isn't the default branch often sidesteps this entirely, since
 | `Driver-ID` | Random token identifying the driver instance holding the plan. See below |
 | `Active` | One entry per in-flight phase. A list, so several repos can be in flight at once |
 | `UAT-pending` | Phase ids whose UAT checklist hasn't reached a human yet. See [When UAT reaches a human](#when-uat-reaches-a-human) |
-| `Review-baselines` | `<phase id>:<count>` pairs, written when a user clears a review-round stop with `continue`. The driver subtracts a phase's baseline from its derived reviewed-head count. Per phase, because concurrent phases can each be stopped |
-| `Arbitrations` | `<phase id>:<count>` pairs, written when the driver hands a review loop to the arbiter at `stuck.max_review_rounds`, or sooner when a repo's own stop rule fires, with the reviewed-head count at that moment. An entry above the phase's baseline means this budget has had its arbitration. Written before the arbiter starts, so a session that dies mid-arbitration doesn't start a second one |
+| `Review-baselines` | `<phase id>:<count>` pairs, written when a user clears a review-round stop with `continue`. The driver subtracts a phase's baseline from its derived reviewed-head count. Per phase, because concurrent phases can each be stopped. A milestone row's id works the same way, as in `M1:3` |
+| `Arbitrations` | `<phase id>:<count>` pairs, a milestone row's id included, written when the driver hands a review loop to the arbiter at `stuck.max_review_rounds`, or sooner when a repo's own stop rule fires, with the reviewed-head count at that moment. An entry above the phase's baseline means this budget has had its arbitration. Written before the arbiter starts, so a session that dies mid-arbitration doesn't start a second one |
 | `Heartbeat` | UTC timestamp, rewritten on every turn that touches the plan |
 | `Note` | Free text for the current situation; the place a `Blocked` reason goes |
 
@@ -261,6 +289,27 @@ Below the table, one section per phase:
 
 Acceptance criteria become the PR body checklist, so write them as things that can be checked.
 
+### Milestone sections
+
+A milestone row gets a section of its own shape. It has no acceptance criteria, because the driver writes no code for it beyond the repo's `milestone.prepare`:
+
+```markdown
+### Milestone M1 — Schema and sync (acme/acme-web)
+
+**Ships.** Phases 0 and 1: the calendar tables and two-way sync.
+
+**Review scope.** A finding on this PR is in scope when it falls within the scope of phases 0 and 1, taken together. The driver answers it by its usual rules and commits fixes to `feature/calendar`. Anything beyond those scopes goes to Carried findings.
+
+**Needed by.** Phase 2, which builds sharing on the released sync.
+
+**UAT.**
+- [ ] Connect a real Google calendar, create an event on each side, and see both appear on the other within a minute
+
+**Risks.** The migration runs on `main` for the first time here.
+```
+
+**Ships** also defines what is in scope when the milestone PR is reviewed. **UAT** is for the end-to-end flows that only exist once the shipped phases are together; the phases' own UAT reaches the PR through `UAT-pending`, below.
+
 ### Acceptance criteria vs UAT
 
 They are different audiences and must not be merged.
@@ -286,6 +335,8 @@ Which PR carries the checklist depends on YOLO, because YOLO determines whether 
 **`UAT-pending` in Driver State tracks what hasn't been surfaced yet.** When a phase merges under YOLO on, its id is appended. When a PR carries a UAT checklist, the ids it covered are removed. This is what makes toggling safe: turn YOLO off after three auto-merged phases and the next PR carries its own UAT *plus* the three that nobody has verified. Turn it back on and they accumulate again.
 
 Without that list, a mid-plan toggle silently loses UAT for every phase that merged while YOLO was on. The failure would be invisible, because the plan would look complete.
+
+**A milestone PR is where UAT reaches a human, in either mode.** It carries the assembled script for every id in `UAT-pending` that it ships, plus the milestone's own UAT, and those ids are cleared when it opens. With YOLO on, that makes each milestone a point where the backlog is handed over rather than only the end of the plan. The integration PR in the table above is the implicit final milestone, and the same rule is what puts the cumulative script on it.
 
 **The final phase** is the last non-`Skipped` row in table order. Under YOLO it is merged by the driver within minutes of opening, which is why the cumulative checklist belongs on the integration PR wherever one exists: a checklist on a PR nobody had to read is a record, not a prompt.
 
@@ -321,6 +372,18 @@ What a driver does when the plan and GitHub disagree, which is the situation aft
 | `In Review` | PR open | Normal | Re-subscribe, re-evaluate gates |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, advance |
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
-| all rows terminal | - | Complete | With YOLO on, open the integration PR if `target_branch` is not the default branch. Then set `Driver: idle` and report |
+| all rows terminal | - | Complete | With no milestone rows and YOLO on, open the integration PR if `target_branch` is not the default branch. Then set `Driver: idle` and report |
 
 Applied **per row**, not once per plan. With several repos in flight, each recovers independently.
+
+A milestone row is matched to its PR by head equal to the row's branch and base equal to the repo's default branch:
+
+| Plan says | GitHub says | What happened | Action |
+|---|---|---|---|
+| `Pending`, dependencies merged | no such PR | Ready to ship | Start it |
+| `Pending` or `In Progress` | an open PR from that branch to the default branch | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch |
+| `In Progress`, stale | no PR, preparation partly on the branch | Died mid-preparation | Finish the preparation from where the branch stands, then open the PR |
+| `In Review` | PR open | Normal | Work it. Never merge |
+| `In Review` | PR merged | A person merged it | Write `Merged`, re-sync the branch, run `milestone.after_merge`, start what it unblocks |
+| `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
+| `Merged` | target branch missing or behind, rows still target it | Died before re-syncing | Re-sync before starting anything in that repo |
