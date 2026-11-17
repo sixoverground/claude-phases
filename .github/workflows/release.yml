@@ -7,6 +7,16 @@ name: Release
 # existing install already believes it has the change and no update is ever
 # offered. v0.2.0, v0.2.1 and v0.2.2 all shipped that way.
 #
+# Only on a PR into main, though. The version matters at the moment something
+# reaches main, because main is what the marketplace serves, and at no other.
+# A PR into a feature branch is one step of work that reaches main later in one
+# piece, and the PR that carries it there is the one that bumps. Requiring a
+# bump per step would mean a release per step, which is what a feature branch
+# exists to avoid. The condition is on the job rather than a branch filter on
+# the trigger so the check still appears on those PRs, as skipped, which says
+# the omission is deliberate where an absent check would look like CI that
+# stopped reporting.
+#
 # On merge: create the tag and release for whatever version plugin.json now
 # declares. Deriving the tag from the manifest is what makes the two incapable
 # of disagreeing, and it retires the hand-run `gh release create`.
@@ -35,7 +45,7 @@ permissions:
 jobs:
   version-bumped:
     name: Version bumped
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

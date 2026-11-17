@@ -136,6 +136,8 @@ It is also the first thing in the entire plan a human has to act on, which makes
 
 With YOLO off none of this happens, and shouldn't. You merged every phase yourself and read each checklist as it came, so you already know where the branch stands. The handoff exists because YOLO means nobody was watching.
 
+**Milestones** do the same thing part-way through. When a later phase needs earlier work released, deployed or installed, the plan carries a milestone row (`M1`) that depends on the phases it ships, and the later phase depends on the milestone. When those phases have merged, the driver runs the repo's release preparation on the feature branch, opens a PR to the default branch with the UAT so far, fixes its checks and answers its review, and leaves the merge to you, with YOLO on or off. After you merge, it brings the feature branch back in line and starts what was waiting. The integration PR above is the implicit final milestone of a plan that has no milestone rows. A plan that has them ships through them instead, and keeps its plan file on the default branch, since the feature branch is deleted and re-created at each one.
+
 ## Multi-repo
 
 A project can span a web app, an iOS app, and an Android app. One plan file in the home repo covers all of them, and one session drives all of them.
@@ -243,7 +245,7 @@ Treat the first plan you drive as a test, and read [SECURITY.md](SECURITY.md) be
 - [Configuration](skills/phase-planner/references/configuration.md). Every key, its default, and its off switch.
 - [Reviewer setup](docs/review-setup.md). Managed Code Review, Actions, Copilot, or none.
 - [Design notes](docs/design.md). Why the rules are what they are, and what a green check doesn't tell you.
-- [Examples](examples/). A two-phase single repo, and a four-repo cross-platform plan.
+- [Examples](examples/). A two-phase single repo, a four-repo cross-platform plan, and a feature-branch plan with a milestone.
 - [Profiles](profiles/). Copy-paste config for common CI and review setups.
 - [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md).
 

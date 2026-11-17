@@ -18,7 +18,7 @@ The failure is not hypothetical: a phase in this project's own first real plan w
 
 Read it from the repository. Never assume `main`: `develop`, `master`, and `trunk` are all in the wild, and getting it wrong means every phase branches from the wrong place.
 
-Ask whether phases should target the default branch at all. Work that must land as a unit, a feature nobody wants half-shipped. Targets a long-running feature branch instead. When they say yes, confirm the branch exists in every repo, set `target_branch` on each, and set `plan_branch` to match in the home repo so the plan travels with the feature. See [Where the plan lives](configuration.md#where-the-plan-lives).
+Ask whether phases should target the default branch at all. Work that must land as a unit, a feature nobody wants half-shipped. Targets a long-running feature branch instead. When they say yes, confirm the branch exists in every repo and set `target_branch` on each. Set `plan_branch` to match in the home repo so the plan travels with the feature, **unless the plan will have milestone rows**, in which case the plan stays on the default branch. See [Where the plan lives](configuration.md#where-the-plan-lives).
 
 ## Trigger filters → whether required checks can fire at all
 
@@ -105,6 +105,32 @@ Compare the cap with what the plan allows. With an arbiter, the driver makes up 
 | A rule to stop and escalate to a person | Say in the handoff that the driver treats the arbiter as that escalation and goes to a person only when the arbiter's rounds run out. If they want the person first, set `stuck.arbiter: null`. Suggest the repo's rule name the arbiter itself, so a session that reads the rule without this skill reads the same thing |
 
 **The rule usually predates the arbiter.** A repo that wrote "escalate to the owner" before it had an arbiter meant the only escalation it had. Read literally at round 3, it stops a phase the plan set up to arbitrate. That is the observed failure behind this section: a plan configured a Fable arbiter at 3, the repo's `CLAUDE.md` said to escalate on follow-ups "whatever the round count", and the driver stopped for a person instead of arbitrating.
+
+## Release conventions → `milestone.prepare`
+
+Only for a repo that will have a milestone row. A milestone PR is a merge to the default branch, and in many repos that is a release, so it has to carry whatever a release of that repo needs. `milestone.prepare` says what that is, and the driver follows it on the feature branch before it opens the PR.
+
+Read, in this order:
+
+- `CONTRIBUTING.md` and any release section of the README
+- release scripts, under `scripts/`, `bin/` or a `Makefile` target
+- a changelog, and the shape of its latest entry
+- any check that fails a PR into the default branch for a missing version bump, and what that check reads
+
+| Observed | Set |
+|---|---|
+| A version field a check enforces on PRs into the default branch | `prepare` raises it, naming the file and the field the check reads, and runs that check before the PR opens |
+| Other copies of the version that a check keeps in sync | `prepare` updates each copy, and runs that check too |
+| A changelog with a section per version | `prepare` adds one section in the file's voice, assembled from the shipped phases' PR bodies. Ask phases to carry a sentence or two for it |
+| A release script with a dry run | `prepare` runs the dry run and does not open the PR unless it passes |
+| A release that happens on merge (a tag derived from the manifest) | Nothing extra in `prepare`. Say in the handoff that each milestone is a release |
+| No release convention at all | Leave `milestone.prepare` out. The milestone PR opens with no preparation |
+
+**Quote the source for every step** you put in `prepare`: the file and line, or the check's name. A step with no source is a guess about someone else's release process.
+
+**Check whether the version check also fires on PRs into the feature branch.** A check that runs on every PR whatever its base demands a bump per phase, which is a release per phase and the opposite of what a feature branch is for. Scope it to PRs whose base is the default branch first, as its own phase before any other, with a job-level condition so the check shows as skipped rather than vanishing. Until then every phase PR fails it.
+
+`milestone.after_merge` is rarer. Set it only when something has to happen after a person merges and before later phases can use the release: updating an installed copy, or confirming a deploy. Ask rather than infer; nothing in the repo says what the person does after merging.
 
 ## Toolchain → `verify`
 

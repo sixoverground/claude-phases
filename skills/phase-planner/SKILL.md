@@ -1,6 +1,6 @@
 ---
 name: phase-planner
-description: Write a phased implementation plan to a docs/plans markdown file named for the project. Break work into one-PR phases, detect each repo's CI and review setup, and propose matching configuration. Use when asked to plan a project, break work into phases, set up a phased plan, or create a plan for phase-driver to execute. Also use when revising an existing plan's phases or configuration. This copy is claude-phases 0.9.3.
+description: Write a phased implementation plan to a docs/plans markdown file named for the project. Break work into one-PR phases, detect each repo's CI and review setup, and propose matching configuration. Use when asked to plan a project, break work into phases, set up a phased plan, or create a plan for phase-driver to execute. Also use when revising an existing plan's phases or configuration. This copy is claude-phases 0.10.0.
 model: fable
 ---
 
@@ -66,6 +66,15 @@ The same applies to checks you *can't* read: CodeQL default setup and external p
 
 **Also warn** when a reviewer is configured but is only known to post top-level comments. `threads_must_resolve` needs diff-anchored comments to mean anything.
 
+**Milestone rows have four refusals of their own.** Each produces a plan the driver either stops on or that destroys its own state:
+
+- **`plan_branch` is a branch a milestone row ships.** The branch is deleted on merge and re-created, and the plan goes with it. Change: leave `plan_branch` at the default branch.
+- **A milestone row in a repo whose `target_branch` is its default branch.** There is nothing to ship. Change: drop the row, or target a feature branch in that repo.
+- **A milestone whose `Depends` names a phase in another repo.** A milestone ships one repo's branch, so another repo's phase cannot be part of it. Change: give that repo its own milestone row, and have the later phase depend on both.
+- **A phase that depends on a milestone in a repo it does not use, with no stated reason.** Usually a typo for the right milestone, or a dependency on a release that this phase never touches. Change: name the right row, or write the reason in the phase's **Depends on.**
+
+**Warn** when a plan with any milestone row leaves work on a feature branch with nothing to ship it. A plan that has milestone rows opens no implicit integration PR in **any** repo, not only in the repos that have milestones. So check every repo whose `target_branch` is not its default branch: a repo with phases after its last milestone row, and a repo with phases and no milestone row at all, would both end the plan with that work never having reached the default branch. Change: add a final milestone row in that repo covering what remains, or record in the plan that leaving it on the feature branch is intended.
+
 ## 4. Design the phases
 
 The rules that make a phased plan work. They're carried over from cpm, where they're already proven:
@@ -80,6 +89,21 @@ The rules that make a phased plan work. They're carried over from cpm, where the
 
 For multi-repo work, order by what genuinely blocks what. Usually the API before the clients that call it. When platforms must ship together, don't pretend a simultaneous merge exists: add a dependency plus an explicit cutover phase.
 
+### Milestones: only for a named need
+
+A [milestone row](references/format.md#milestone-rows) ships a feature branch to the default branch part-way through a plan, and a person merges it. **Propose one only when phases target a feature branch and a later phase needs earlier work released, deployed or installed to do its job.** A phase that calls a deployed API, runs against a published package, or is driven by an installed copy of what earlier phases built is the usual case.
+
+That need cannot be read from the repo, so ask it, once, through `AskUserQuestion`: *does any phase need earlier work to be live on the default branch, deployed or installed before it can start?* With a yes, ask which phase and what it needs.
+
+Then:
+
+- **Choose the fewest milestones the real dependencies allow.** Each one is a merge to the default branch, which in many repos is a release. Two phases that need the same earlier work share one milestone.
+- **Say what each milestone is needed by**, in its section's **Needed by.** A milestone with nothing named there has no reason to exist.
+- **The later phase depends on the milestone row**, not on the phases it ships. That dependency is the wait; nothing has to be paused by hand.
+- **The default is none.** A plan in which nothing needs an early release gets no milestone row and no `milestone` key, and ends as plans always have, with the integration PR under YOLO. Once any repo has a milestone row, that end is gone for every repo, so each feature-branch repo needs a final milestone of its own; the warning in §3 catches the one that lacks it.
+
+A planner that proposes milestones readily turns every plan into a series of releases. Start from the named need, every time.
+
 ### Write the details
 
 Each phase gets scope, `Depends on`, acceptance criteria, UAT, and risks.
@@ -92,7 +116,9 @@ Each phase gets scope, `Depends on`, acceptance criteria, UAT, and risks.
 
 To `docs/plans/<project>.md` in the home repo, **committed directly to the plan branch**. Not through a PR. The driver reads it from there, and a plan sitting in an unmerged PR is invisible to it.
 
-The plan branch is the home repo's default branch unless you set `plan_branch`. Propose setting it when every repo's `target_branch` is the same non-default branch: that's feature-branch work, and the plan belongs with the feature rather than on a `main` the feature hasn't reached. Set both keys, and confirm the branch exists in the home repo before writing.
+The plan branch is the home repo's default branch unless you set `plan_branch`. Propose setting it when every repo's `target_branch` is the same non-default branch **and the plan has no milestone rows**: that's feature-branch work, and the plan belongs with the feature rather than on a `main` the feature hasn't reached. Set both keys, and confirm the branch exists in the home repo before writing.
+
+**With milestone rows, leave `plan_branch` at the default branch**, and say why in the front matter: a milestone ships the feature branch, which is deleted and re-created when it merges, and a plan on it would go too. Then write `milestone.prepare` for each repo with a milestone row, from what [detection](references/detection.md#release-conventions--milestoneprepare) found, and `milestone.after_merge` only where something has to happen after a person merges. Leave either key out where there is nothing to say.
 
 **If the plan branch rejects the commit**, branch protection is on. `plan_writes: plan-pr` doesn't rescue this. That key lives inside the plan file, so the commit that would deliver it is the one being refused. Instead: open a PR with the plan file, tell the user it must merge before the driver can start, and set `plan_writes: plan-pr` in the front matter so the driver uses the same path for every later status write. Don't hand off until it's merged; a driver pointed at a plan that isn't on the plan branch will report the project as unstarted.
 
