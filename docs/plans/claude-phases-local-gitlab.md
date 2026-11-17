@@ -81,7 +81,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 3  | claude/milestones-planner | sixoverground/claude-phases | Planner proposes milestones and writes `milestone.prepare`; refusals, hygiene, README and design notes | 0c | Merged | [#30](https://github.com/sixoverground/claude-phases/pull/30) | 0b |
 | 4  | claude/release-milestones | sixoverground/claude-phases | Bootstrap release prep: version bump, CHANGELOG, descriptions. The maintainer then ships it to `main` by hand, the one time | 0d | Merged | [#31](https://github.com/sixoverground/claude-phases/pull/31) | 0c |
 | 5  | claude/review-marker-contract | sixoverground/claude-phases | Review contract v1: `docs/review-contract.md`, the forge-neutral `marker` entry in `review.required`, gate 6 reads it | 1 | Merged | [#33](https://github.com/sixoverground/claude-phases/pull/33) | 0d |
-| 6  | claude/forge-neutral-driver | sixoverground/claude-phases | Behaviour-neutral: move GitHub specifics out of driver `SKILL.md` into `references/forge-github.md` | 2a | Blocked | [#34](https://github.com/sixoverground/claude-phases/pull/34) | 1 |
+| 6  | claude/forge-neutral-driver | sixoverground/claude-phases | Behaviour-neutral: move GitHub specifics out of driver `SKILL.md` into `references/forge-github.md` | 2a | Merged | [#34](https://github.com/sixoverground/claude-phases/pull/34) | 1 |
 | 7  | claude/forge-neutral-gates | sixoverground/claude-phases | Behaviour-neutral: split `gates.md` and `recovery.md` into forge-neutral rules plus the GitHub mapping | 2b | Pending | - | 2a |
 | 8  | claude/local-watcher | sixoverground/claude-phases | Local sessions: `references/watching.md`, the polling watcher, and "forge unreachable is not Blocked" | 3 | Pending | - | 2b |
 | 9  | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the review contract, the forge-neutral driver and local running to `main` | M1 | Pending | - | 1, 2a, 2b, 3 |
@@ -1083,5 +1083,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T17:50:26Z
-- Note: 2a Blocked: Codex declined to review #34 at 17:19Z, 'create an environment for this repo'; it reviewed #33 at 17:04Z. Needs the Codex environment for sixoverground/claude-phases restored, then @codex review on #34
+- Heartbeat: 2026-11-17T19:30:00Z
+- Note: -
