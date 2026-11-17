@@ -81,7 +81,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 3  | claude/milestones-planner | sixoverground/claude-phases | Planner proposes milestones and writes `milestone.prepare`; refusals, hygiene, README and design notes | 0c | Merged | [#30](https://github.com/sixoverground/claude-phases/pull/30) | 0b |
 | 4  | claude/release-milestones | sixoverground/claude-phases | Bootstrap release prep: version bump, CHANGELOG, descriptions. The maintainer then ships it to `main` by hand, the one time | 0d | Merged | [#31](https://github.com/sixoverground/claude-phases/pull/31) | 0c |
 | 5  | claude/review-marker-contract | sixoverground/claude-phases | Review contract v1: `docs/review-contract.md`, the forge-neutral `marker` entry in `review.required`, gate 6 reads it | 1 | Merged | [#33](https://github.com/sixoverground/claude-phases/pull/33) | 0d |
-| 6  | claude/forge-neutral-driver | sixoverground/claude-phases | Behaviour-neutral: move GitHub specifics out of driver `SKILL.md` into `references/forge-github.md` | 2a | Pending | - | 1 |
+| 6  | claude/forge-neutral-driver | sixoverground/claude-phases | Behaviour-neutral: move GitHub specifics out of driver `SKILL.md` into `references/forge-github.md` | 2a | In Progress | - | 1 |
 | 7  | claude/forge-neutral-gates | sixoverground/claude-phases | Behaviour-neutral: split `gates.md` and `recovery.md` into forge-neutral rules plus the GitHub mapping | 2b | Pending | - | 2a |
 | 8  | claude/local-watcher | sixoverground/claude-phases | Local sessions: `references/watching.md`, the polling watcher, and "forge unreachable is not Blocked" | 3 | Pending | - | 2b |
 | 9  | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the review contract, the forge-neutral driver and local running to `main` | M1 | Pending | - | 1, 2a, 2b, 3 |
@@ -90,7 +90,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 12 | claude/gitlab-gates | sixoverground/claude-phases | `references/forge-gitlab.md` part 2: the six gates, job traces, discussions, the watcher command | 5b | Pending | - | 5a |
 | 13 | claude/gitlab-planner | sixoverground/claude-phases | Planner: `references/detection-gitlab.md`, four new refusals, hygiene items, `profiles/ci-gitlab-runner-macos.yml` | 6 | Pending | - | 5b |
 | 14 | claude/local-docs-verify | sixoverground/claude-phases | `docs/running-locally.md`, README local sections, `verify: local` for iOS on a Mac | 7 | Pending | - | 6 |
-| 15 | claude/tool-scaffold | sixoverground/codex-mr-review | Node CLI skeleton, tests, lint, GitHub Actions CI, `AGENTS.md` | 8 | Pending | - | 1 |
+| 15 | claude/tool-scaffold | sixoverground/codex-mr-review | Node CLI skeleton, tests, lint, GitHub Actions CI, `AGENTS.md` | 8 | In Progress | - | 1 |
 | 16 | claude/review-runner | sixoverground/codex-mr-review | Run `codex exec review` read-only, normalise findings into cloud Codex's shape, print them with `--dry-run` | 9 | Pending | - | 8, M1 |
 | 17 | claude/gitlab-posting | sixoverground/codex-mr-review | Post findings as MR discussions, summary note, script-owned marker, fingerprint dedupe | 10 | Pending | - | 9 |
 | 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Pending | - | 10 |
@@ -1079,7 +1079,7 @@ After merging:
 - Driver: running
 - YOLO: off
 - Driver-ID: drv-550f5e23
-- Active: 1 — sixoverground/claude-phases
+- Active: 2a — sixoverground/claude-phases; 8 — sixoverground/codex-mr-review
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
