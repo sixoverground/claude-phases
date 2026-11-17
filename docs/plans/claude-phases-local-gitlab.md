@@ -91,7 +91,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 13 | claude/gitlab-planner | sixoverground/claude-phases | Planner: `references/detection-gitlab.md`, four new refusals, hygiene items, `profiles/ci-gitlab-runner-macos.yml` | 6 | Pending | - | 5b |
 | 14 | claude/local-docs-verify | sixoverground/claude-phases | `docs/running-locally.md`, README local sections, `verify: local` for iOS on a Mac | 7 | Pending | - | 6 |
 | 15 | claude/tool-scaffold | sixoverground/codex-mr-review | Node CLI skeleton, tests, lint, GitHub Actions CI, `AGENTS.md` | 8 | Merged | [sixoverground/codex-mr-review#1](https://github.com/sixoverground/codex-mr-review/pull/1) | 1 |
-| 16 | claude/review-runner | sixoverground/codex-mr-review | Run `codex exec review` read-only, normalise findings into cloud Codex's shape, print them with `--dry-run` | 9 | In Progress | - | 8, M1 |
+| 16 | claude/review-runner | sixoverground/codex-mr-review | Run `codex exec review` read-only, normalise findings into cloud Codex's shape, print them with `--dry-run` | 9 | In Review | [sixoverground/codex-mr-review#2](https://github.com/sixoverground/codex-mr-review/pull/2) | 8, M1 |
 | 17 | claude/gitlab-posting | sixoverground/codex-mr-review | Post findings as MR discussions, summary note, script-owned marker, fingerprint dedupe | 10 | Pending | - | 9 |
 | 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Pending | - | 10 |
 | 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | Pending | - | 7, 11 |
@@ -1154,7 +1154,7 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T23:33:51Z
+- Heartbeat: 2026-11-17T23:41:43Z
 - Note: 15 ready to merge (#38, 76da3c8)
 
 ## Carried findings
