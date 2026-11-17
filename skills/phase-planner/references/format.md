@@ -298,7 +298,7 @@ A milestone row gets a section of its own shape. It has no acceptance criteria, 
 
 **Ships.** Phases 0 and 1: the calendar tables and two-way sync.
 
-**Review scope.** A finding on this PR is in scope when it falls within the scope of phases 0 and 1, taken together. The driver answers it by its usual rules and commits fixes to `feature/calendar`. Anything beyond those scopes goes to Carried findings.
+**Review scope.** A finding on this PR is in scope when it falls within the scope of phases 0 and 1, taken together, or within what `milestone.prepare` produced. The driver answers it by its usual rules and commits fixes to `feature/calendar`. Anything beyond those goes to Carried findings.
 
 **Needed by.** Phase 2, which builds sharing on the released sync.
 
@@ -308,7 +308,7 @@ A milestone row gets a section of its own shape. It has no acceptance criteria, 
 **Risks.** The migration runs on `main` for the first time here.
 ```
 
-**Ships** also defines what is in scope when the milestone PR is reviewed. **UAT** is for the end-to-end flows that only exist once the shipped phases are together; the phases' own UAT reaches the PR through `UAT-pending`, below.
+**Ships** also defines what is in scope when the milestone PR is reviewed, together with the preparation the driver did for it: a wrong version or changelog line is the driver's to fix, not to carry. **UAT** is for the end-to-end flows that only exist once the shipped phases are together; the phases' own UAT reaches the PR through `UAT-pending`, below.
 
 ### Acceptance criteria vs UAT
 
@@ -376,14 +376,15 @@ What a driver does when the plan and GitHub disagree, which is the situation aft
 
 Applied **per row**, not once per plan. With several repos in flight, each recovers independently.
 
-A milestone row is matched to its PR by head equal to the row's branch and base equal to the repo's default branch:
+Every milestone in a repo shares one head and base, so a milestone row is matched to its PR by its `Link` where it has one, and otherwise by head equal to the row's branch, base equal to the repo's default branch, **and a title starting `Milestone <id>:`** with the row's id. Recovery also looks at `Merged` milestone rows until they are **settled**: the branch re-synced, and `milestone.after_merge` recorded as done by a marker comment on the PR.
 
 | Plan says | GitHub says | What happened | Action |
 |---|---|---|---|
-| `Pending`, dependencies merged | no such PR | Ready to ship | Start it |
-| `Pending` or `In Progress` | an open PR from that branch to the default branch | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch |
+| `Pending`, dependencies merged | no PR with this row's identity | Ready to ship | Start it |
+| `Pending` or `In Progress`, dependencies merged | an open PR with this row's identity | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch. Never adopt for a row whose dependencies are unmet |
 | `In Progress`, stale | no PR, preparation partly on the branch | Died mid-preparation | Finish the preparation from where the branch stands, then open the PR |
 | `In Review` | PR open | Normal | Work it. Never merge |
 | `In Review` | PR merged | A person merged it | Write `Merged`, re-sync the branch, run `milestone.after_merge`, start what it unblocks |
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
-| `Merged` | target branch missing or behind, rows still target it | Died before re-syncing | Re-sync before starting anything in that repo |
+| `Merged`, not settled | branch gone or lacking the milestone's merge commit, rows still target it | Died before re-syncing | Re-sync before starting anything in that repo |
+| `Merged`, not settled | branch re-synced, no `after_merge` marker while the key is set | Died before finishing `after_merge` | Run it, post the marker, then start what it unblocks |

@@ -2,7 +2,7 @@
 
 What to do when the plan and GitHub disagree. That's the normal state after a session dies, not an error.
 
-Apply this **per non-terminal row**, not once per plan. With several repos in flight, each recovers independently.
+Apply this **per non-terminal row**, not once per plan, plus every `Merged` milestone row that is not yet settled (see [Milestone rows](#milestone-rows)). With several repos in flight, each recovers independently.
 
 **GitHub is the truth.** The plan records what a driver intended; GitHub records what happened. Where they differ, fix the plan.
 
@@ -23,17 +23,20 @@ Apply this **per non-terminal row**, not once per plan. With several repos in fl
 
 ## Milestone rows
 
-A milestone row is matched to its PR by head equal to the row's branch, which is the repo's `target_branch`, and base equal to the repo's default branch. The same per-row rule applies: GitHub is the truth.
+Every milestone row in a repo has the same head and base, so a milestone row is matched to its PR by SKILL.md's **Which PR is a milestone's**: the row's `Link` where it has one, and otherwise head equal to the target branch, base equal to the default branch, **and a title starting `Milestone <id>:`** with this row's id. A PR naming another id is never this row's, not even a merged one from an earlier milestone. The same per-row rule applies: GitHub is the truth.
 
 | Plan says | GitHub says | What happened | Do this |
 |---|---|---|---|
-| `Pending`, dependencies merged | no such PR | Ready to ship | Start it, by SKILL.md's Milestones section |
-| `Pending` or `In Progress` | an open PR from that branch to the default branch | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch |
+| `Pending`, dependencies merged | no PR with this row's identity | Ready to ship | Start it, by SKILL.md's Milestones section |
+| `Pending` or `In Progress`, dependencies merged | an open PR with this row's identity | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch. A row whose dependencies are not all merged never adopts a PR: report the mismatch |
 | `In Progress`, stale | no PR, preparation partly on the branch | Died mid-preparation | Finish the preparation from where the branch stands, by comparing it with `milestone.prepare`, then open the PR |
 | `In Review` | PR open | Normal operation | Work it, by Working a milestone PR. **Never merge** |
 | `In Review` | PR merged | A person merged it | Write `Merged`, re-sync, run `milestone.after_merge`, start what it unblocks |
 | `In Review` | PR closed, not merged | A person closed it | Ask why. Default to `Blocked` |
-| `Merged` | target branch missing or behind, rows still target it | Died between recording the merge and re-syncing | Re-sync before starting anything in that repo |
+| `Merged`, not settled | the branch lacks the milestone PR's merge commit, or is gone, and rows still target it | Died between recording the merge and re-syncing | Re-sync before starting anything in that repo |
+| `Merged`, not settled | branch re-synced, but no `<!-- phase-driver:after-merge <id> -->` comment on the PR while `after_merge` is set | Died between re-syncing and finishing `after_merge` | Run `after_merge`, post the marker, then start what it unblocks |
+
+The `Merged` rows are why reconcile looks past terminal rows for milestones: a `Merged` milestone looks finished from the table alone, and its dependents would otherwise start on a stale or missing base.
 
 `In Progress` with no PR and no preparation commits on the branch at all is the first row of the table in disguise: prepare from the start, then open the PR. Where `milestone.prepare` is absent there is nothing to finish, and the third row reduces to opening the PR.
 
