@@ -42,7 +42,17 @@ Turn it on regardless of how you plan to run. It also covers the case the driver
 
 **Branch protection.** If the plan branch rejects direct pushes, the driver can't write plan status normally. Either allow the driver's identity to push, or set `plan_writes: plan-pr` so each status change becomes a small auto-merging PR. Detect this before the first phase rather than discovering it mid-run. A feature branch used as `plan_branch` is usually unprotected, which sidesteps this even when the default branch is locked down.
 
-**Don't delete the plan branch while a plan is running.** With `plan_branch` on a feature branch, merging that feature and letting GitHub auto-delete the branch takes the plan with it, and the driver stops rather than guessing. Finish the plan first, or move the plan file to the default branch before the feature merges.
+**Don't delete the plan branch while a plan is running.** With `plan_branch` on a feature branch, merging that feature and letting GitHub auto-delete the branch takes the plan with it, and the driver stops rather than guessing. Finish the plan first, or move the plan file to the default branch before the feature merges. A plan with milestone rows avoids this by living on the default branch from the start.
+
+## Milestones
+
+Only for a plan with milestone rows.
+
+**Auto-delete and a milestone's branch.** With *Automatically delete head branches* on, merging a milestone PR deletes the feature branch, since it is that PR's head. That is expected. The driver re-creates it from the default branch before anything else starts in that repo. Leave the setting on; nothing needs changing. Without it, the driver fast-forwards or moves the branch instead.
+
+**A protected feature branch.** The driver commits a milestone's preparation, and any fix to the milestone PR, straight to the feature branch. If that branch rejects direct pushes, each of those becomes a small PR into it under the ordinary gate, which costs a review round apiece. Allow the driver's identity to push to the feature branch, or accept the extra rounds and say so in the plan.
+
+**Version checks scoped to the default branch.** A check that fails any PR without a version bump fires on phase PRs into the feature branch too, and forces a bump per phase. Scope it to PRs whose base is the default branch, with a job-level `if` so it shows as skipped elsewhere. That is a workflow edit and a phase of its own, the first one.
 
 ## Makes local verification possible
 

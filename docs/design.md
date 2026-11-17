@@ -270,6 +270,22 @@ GitHub's merge API has no equivalent of the UI's "delete branch after merge" che
 
 The guard is narrow on purpose. The branch must match `branch_prefix`, and must not be the plan branch or any `target_branch`. A driver that deletes the branch its own plan lives on has destroyed its own memory, which is the one failure in this system with no recovery path.
 
+### Milestones generalise the integration PR
+
+The integration PR is the driver opening a PR from the feature branch to the default branch, and never merging it. A **milestone row** is the same act at a point the plan names rather than only at the end. The rule that made the integration PR safe carries over unchanged: the driver opens it, a person merges it, whatever YOLO says. A plan with no milestone rows behaves as before, its integration PR being the one implicit, final milestone.
+
+They exist because "nothing reaches the default branch until the feature is whole" is sometimes false in practice. A later phase may need the earlier ones deployed, published or installed before it can be built or tested at all. The first plan to need this was this project's own: it builds a feature into the driver and then needs the *installed* driver to have it, and the marketplace serves only the default branch.
+
+An explicit milestone opens with YOLO on or off, where the implicit one opens only under YOLO. A row someone put in the table is a checkpoint they planned, and later phases wait on it. YOLO only ever decided who merges phase PRs.
+
+**A dependency replaces a pause.** The obvious way to make a later phase wait for a release is to tell the driver `pause`, ship by hand, and say `resume`. That works once, in the session where someone remembers to do it, and fails silently in the next. A phase that depends on the milestone row cannot start until the row is `Merged`, and the wait is in the table where any session can read it.
+
+**Preparation is committed straight to the feature branch.** A version bump and a changelog section are not a phase, and a PR of their own into the feature branch would buy a review round for a diff that is reviewed again minutes later as part of the milestone PR. The milestone PR is their review, and a person merges it. Fixes to the milestone PR go the same way, and each one moves its head, so the reviewer and the checks see it again before anyone is told it is ready.
+
+**The plan may not live on a branch a milestone ships.** A repo that deletes head branches on merge deletes the feature branch when the milestone merges, and the driver re-creates it from the default branch. A plan there would be deleted with it, and a driver whose plan has gone has lost its only memory. So a plan with milestone rows stays on the default branch, which narrows the older advice to keep a feature-branch plan on the feature branch.
+
+**The re-sync moves a branch only when nothing can be lost.** It is the one place the driver applies force to a ref it did not create, so it refuses on any doubt. It re-creates a deleted branch, fast-forwards one that is behind, and moves one after a squash only if its head is exactly the head that was merged, with a lease on that head so a concurrent push is never overwritten. Anything else is left alone and reported.
+
 ## Things deliberately not done
 
 **Writing status inside the phase PR.** Breaks resume. Non-negotiable.
