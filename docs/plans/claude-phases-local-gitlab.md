@@ -1083,5 +1083,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T15:45:04Z
-- Note: -
+- Heartbeat: 2026-11-17T16:15:47Z
+- Note: 0c ready to merge (#30 @ 6b3d1d0, codex declined re-review)
