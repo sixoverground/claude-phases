@@ -1083,5 +1083,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T19:43:14Z
-- Note: -
+- Heartbeat: 2026-11-17T19:59:08Z
+- Note: 3 ready to merge (#36, a7ea26f)
