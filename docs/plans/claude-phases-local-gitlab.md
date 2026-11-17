@@ -79,7 +79,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 1  | claude/scope-version-check | sixoverground/claude-phases | `.github/workflows/release.yml`: run `Version bumped` only for PRs into `main` | 0a | Merged | [#28](https://github.com/sixoverground/claude-phases/pull/28) |  |
 | 2  | claude/milestones-driver | sixoverground/claude-phases | Milestone rows: format, `milestone.prepare` and `milestone.after_merge`, driver behaviour, recovery; the integration PR becomes the implicit final milestone | 0b | Merged | [#29](https://github.com/sixoverground/claude-phases/pull/29) | 0a |
 | 3  | claude/milestones-planner | sixoverground/claude-phases | Planner proposes milestones and writes `milestone.prepare`; refusals, hygiene, README and design notes | 0c | Merged | [#30](https://github.com/sixoverground/claude-phases/pull/30) | 0b |
-| 4  | claude/release-milestones | sixoverground/claude-phases | Bootstrap release prep: version bump, CHANGELOG, descriptions. The maintainer then ships it to `main` by hand, the one time | 0d | In Progress | - | 0c |
+| 4  | claude/release-milestones | sixoverground/claude-phases | Bootstrap release prep: version bump, CHANGELOG, descriptions. The maintainer then ships it to `main` by hand, the one time | 0d | In Review | [#31](https://github.com/sixoverground/claude-phases/pull/31) | 0c |
 | 5  | claude/review-marker-contract | sixoverground/claude-phases | Review contract v1: `docs/review-contract.md`, the forge-neutral `marker` entry in `review.required`, gate 6 reads it | 1 | Pending | - | 0d |
 | 6  | claude/forge-neutral-driver | sixoverground/claude-phases | Behaviour-neutral: move GitHub specifics out of driver `SKILL.md` into `references/forge-github.md` | 2a | Pending | - | 1 |
 | 7  | claude/forge-neutral-gates | sixoverground/claude-phases | Behaviour-neutral: split `gates.md` and `recovery.md` into forge-neutral rules plus the GitHub mapping | 2b | Pending | - | 2a |
@@ -1083,5 +1083,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T16:19:15Z
+- Heartbeat: 2026-11-17T16:20:13Z
 - Note: -
