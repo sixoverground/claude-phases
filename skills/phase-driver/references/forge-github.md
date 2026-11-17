@@ -46,6 +46,118 @@ Subscribe to PR activity for each open phase PR. Webhooks don't reliably deliver
 
 The core's rule that resolving a thread does not clear gate 4 asks the reviewer for a newer review "where the integration has a way". On GitHub that is re-requesting the review, or its trigger comment such as `@codex review`.
 
+## The gates
+
+`gates.md` asks each of the six gates as a question any forge can answer. This is how GitHub answers it.
+
+### Gate 1: draft
+
+The PR passes when `draft == false`.
+
+### Gate 2: labels
+
+The PR's own labels, compared with `blocking_labels`.
+
+### Gate 3: checks
+
+Read check runs and commit statuses for the head commit. Legacy integrations post statuses rather than check runs, so read both.
+
+**Passing conclusions: `success`, `skipped`, `neutral`.** Everything else blocks: `failure`, `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`. A check still running blocks until it finishes, wait, don't fail.
+
+`neutral` passes because GitHub itself treats it as non-blocking, and advisory tools use it precisely so they never block a merge. Treating it as a failure deadlocks every merge on any repo with an advisory reporter.
+
+#### Reading a failure
+
+Per the repo's `ci.logs`:
+
+- **`actions`**. Fetch the failed jobs' logs for the run and read the actual error. Same fix loop as local, just slower.
+- **`check-output`**. Read the check run's `output.title`, `output.summary`, and `details_url`. Often enough to name the failing test; sometimes only enough to know it failed.
+- **`auto`**. Actions logs when the check belongs to an Actions run, otherwise check output.
+
+A check run's own page, the one to link when its output does not say why it failed, is its `details_url`.
+
+### Gate 4: changes requested
+
+A review's states include `APPROVED`, `CHANGES_REQUESTED` and `COMMENTED`. A request for changes is the latest review of one author being `CHANGES_REQUESTED`; a later `APPROVED` or `COMMENTED` review by the same author supersedes it.
+
+### Gate 5: threads
+
+A review thread is resolved when `isResolved == true`.
+
+### Gate 6: reviewer
+
+A review is of the head commit when its `commit_id == head.sha`, and the head sha is the PR's `head.sha`.
+
+For a check run judged by `proof`, *completed* is `status == completed`, *skipped or cancelled* are those two conclusions, and *non-empty output* is a non-empty `output.title` or `output.summary`.
+
+App accounts' logins carry a trailing `[bot]`, which login matching ignores.
+
+A `marker` entry's comments are the PR's top-level ones. On GitHub those are the PR's issue comments (`gh api repos/{owner}/{repo}/issues/{number}/comments`), not its review comments.
+
+The two sections below are GitHub's own, and "the rules above" in them means gate 6's satisfiers in `gates.md`.
+
+#### The decline reaction
+
+Some reviewers answer "this PR doesn't need a review" with a reaction rather than a review. Codex on **smart detect** leaves a 👍 on the PR and posts nothing else. It has evaluated the PR; it is telling you the verdict in the only place it writes.
+
+A 👍 by one of the entry's `logins` **created at or after the head commit's committer date** is proof it evaluated this head, and gate 6 asks nothing more than that. An older one is not: GitHub allows one reaction per login per content, so the 👍 left at PR open cannot be left again for the commit you're about to merge, and its timestamp still points at the first evaluation. A stale 👍 proves only that the integration is alive, which is what [`rereview: optional`](#rereview-optional) does with it.
+
+**Read it attributed, or not at all:**
+
+```
+gh api repos/{owner}/{repo}/issues/{number}/reactions --jq '.[] | {login: .user.login, content, created_at}'
+```
+
+PR body reactions live on the *issues* endpoint; that is not a typo. A reaction can also sit on a comment rather than the PR body, and those come from that comment's own `reactions` endpoint.
+
+**Only 👍 is a verdict. The same reviewer uses other reactions to mean other things.** Codex answers a `@codex review this pr` comment with 👀 within seconds, meaning it has picked the job up. Observed on this repository, ten seconds after the request and with no review for minutes afterwards. Reading any reaction from a configured login as proof would merge on "I have started reading", which is worse than the silence it replaced because it arrives fast and looks like an answer. Match on the content, not on the presence of a reaction.
+
+| Reaction from a `logins` entry | Means |
+|---|---|
+| 👍 `+1` | Evaluated; no review needed. A verdict |
+| 👀 `eyes` | Picked it up, working. **Not** a verdict, and not a sign the PR was evaluated |
+| Anything else | Nothing you can act on |
+
+**The trap: `issue_read` reports reaction counts, not who reacted.** A `"+1": 1` in that payload looks like the answer and isn't, because a teammate giving the PR a thumbs up produces the identical field. Counting reactions instead of attributing them turns any human's 👍 into a merge, which is the silent false pass this gate exists to prevent. If you cannot reach the reactions endpoint, say so and fall back to the other rules. Never infer a reviewer's verdict from a count.
+
+#### `rereview: optional`
+
+An entry carrying `rereview: optional` has a second way to be satisfied, for reviewers that review a PR once and then decide per push whether to look again (OpenAI's Codex **smart detect**).
+
+| State at the head sha | Verdict |
+|---|---|
+| A `logins` review, inline comment, or 👍 at `head.sha` | **PASS**, by the rules above |
+| None at head, **at least one sign of that reviewer anywhere on this PR**, and `rereview_grace` has elapsed since the head was pushed | **PASS**, as a decline |
+| None at head, at least one earlier sign, grace not yet elapsed | **BLOCK.** Keep waiting |
+| **No sign of that reviewer anywhere on this PR** | **BLOCK. Never times out** |
+
+A **sign** is a review, an inline comment, or a 👍 by one of the entry's `logins`, at any commit on this PR. Any one of them proves the integration is alive and that this reviewer has this PR.
+
+**When a PR carries no sign at all, check who opened it before you call the integration broken.** Some reviewer integrations attach to an account. Codex reviews the connected user's PRs and ignores a bot's, so a phase PR opened under the wrong identity is never reviewed by design. This applies to an account-scoped `logins` entry; a `check:` entry has no connected user, and a workflow-triggered reviewer runs whoever opened the PR. It presents identically to a dead integration and has a different, one-minute fix: reopen it from the right account. The usual cause is a PR opened with `gh pr create` in a cloud session, which authenticates as the integration rather than as the user. Read the PR's `user.login`, and if it isn't the human whose plan this is, report that as the cause instead of reporting a wait.
+
+That last row is load-bearing. Smart detect always evaluates a PR once, so a PR carrying no sign at all is a broken integration, not a decline, and it must never age into a pass. Drop the precondition and `optional` becomes "wait fifteen minutes, then merge unreviewed."
+
+**Counting the 👍 as a sign is what fixes the case where smart detect declines from the very first commit.** Its evaluation of a small PR can be "nothing here worth reviewing", and then the reaction is the only thing it ever writes. Reading signs as reviews-only, that PR looks identical to a dead integration and blocks forever, which is the state this rule was found in: a real project, YOLO on, a phase wedged behind a reviewer that had already answered.
+
+**Measure the grace from the head commit's committer date**, which GitHub stamps at push. Measuring from when you started waiting means a driver that wakes an hour after the push times out on its first look, before the reviewer has had any chance at all.
+
+`rereview_grace` defaults to `15m`.
+
+**Say so when a pass came from a decline.** Under YOLO this is a merge with no fresh review, and it has to be legible afterward:
+
+```
+6 reviewer     PASS (codex @ a1b2c3d, declined re-review of 2 later commits, 18m elapsed)
+```
+
+Post the same line on the PR before merging. A decline recorded nowhere is indistinguishable from a review that happened, which is the exact failure the rest of this gate is built to avoid.
+
+A pass carried by a 👍 says which one it was, because the two mean different things. A fresh reaction is the reviewer's verdict on this commit; a stale one is a decline inferred from silence:
+
+```
+6 reviewer     PASS (codex 👍 on the PR, 4m after this head was pushed)
+6 reviewer     PASS (codex 👍 at PR open, no review of 3 commits since, 22m elapsed)
+```
+
 ## Write the plan
 
 `create_or_update_file` against `home_repo` on the plan branch, passing the `sha` you read at the start of the transition. Message: `chore(plan): <project> phase <N> -> <Status> [skip ci]`.

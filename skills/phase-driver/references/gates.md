@@ -4,18 +4,20 @@ Six gates. All must pass before a merge. Evaluate them against a specific commit
 
 Use the row's repo's resolved config (its entry deep-merged over `defaults`).
 
-| # | Gate | Passes when | Off switch |
-|---|---|---|---|
-| 1 | Not a draft | `draft == false` | none: a draft is an explicit "not ready" |
-| 2 | No blocking label | No label in `blocking_labels` (default `do-not-merge`, `wip`, `blocked`) | `blocking_labels: []` |
-| 3 | Checks green | Every counted check concluded `success`, `skipped`, or `neutral` | `ci.allow_none: true` covers the zero-checks case |
-| 4 | No changes requested | For each reviewer, their *latest* review is not `CHANGES_REQUESTED` | `review.changes_requested_blocks: false` |
-| 5 | Threads resolved | Every review thread has `isResolved == true` | `review.threads_must_resolve: false` |
-| 6 | Reviewer saw this commit | Every entry in `review.required` is satisfied at the head SHA, or declined it under `rereview: optional` | `review.required: []` (the default) |
+Each gate is a question any forge can answer. How GitHub answers it, field by field, is in [`forge-github.md`](forge-github.md#the-gates), under a heading per gate.
+
+| # | Gate | Passes when | Off switch | On GitHub |
+|---|---|---|---|---|
+| 1 | Not a draft | The change request is not a draft | none: a draft is an explicit "not ready" | [Gate 1](forge-github.md#gate-1-draft) |
+| 2 | No blocking label | No label in `blocking_labels` (default `do-not-merge`, `wip`, `blocked`) | `blocking_labels: []` | [Gate 2](forge-github.md#gate-2-labels) |
+| 3 | Checks green | Every counted check passed | `ci.allow_none: true` covers the zero-checks case | [Gate 3](forge-github.md#gate-3-checks) |
+| 4 | No changes requested | For each reviewer, their *latest* review does not request changes | `review.changes_requested_blocks: false` | [Gate 4](forge-github.md#gate-4-changes-requested) |
+| 5 | Threads resolved | Every review thread is resolved | `review.threads_must_resolve: false` | [Gate 5](forge-github.md#gate-5-threads) |
+| 6 | Reviewer saw this commit | Every entry in `review.required` is satisfied at the head SHA, or declined it under `rereview: optional` | `review.required: []` (the default) | [Gate 6](forge-github.md#gate-6-reviewer) |
 
 ## Gate 3: checks
 
-Read check runs and commit statuses for the head commit. Legacy integrations post statuses rather than check runs, so read both.
+Read every check the forge reports for the head commit. [Gate 3](forge-github.md#gate-3-checks) in the forge reference says where they come from on GitHub.
 
 **Which checks count**, in precedence order:
 
@@ -24,22 +26,17 @@ Read check runs and commit statuses for the head commit. Legacy integrations pos
 3. minus anything in `ci.ignore_checks`,
 4. minus any check named in `review.required[].check`. A reviewer's own check never gates the merge unless you explicitly put it in `ci.required`.
 
-**Passing conclusions: `success`, `skipped`, `neutral`.** Everything else blocks: `failure`, `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`. A check still running blocks until it finishes, wait, don't fail.
-
-`neutral` passes because GitHub itself treats it as non-blocking, and advisory tools use it precisely so they never block a merge. Treating it as a failure deadlocks every merge on any repo with an advisory reporter.
+**Every check either passed, blocked, or is still running.** Which conclusions pass and which block is the forge's vocabulary, listed under [Gate 3](forge-github.md#gate-3-checks). A check still running blocks until it finishes, wait, don't fail.
 
 **Zero checks blocks** unless `ci.allow_none: true`. A repo whose CI silently stopped running looks identical to a repo with no CI, and the failsafe direction is to stop.
 
 ### Reading a failure
 
-Per the repo's `ci.logs`:
+Per the repo's `ci.logs`. The values that fetch something are the forge's, and [Reading a failure](forge-github.md#reading-a-failure) says what each one reads on GitHub. One value is the same everywhere:
 
-- **`actions`**. Fetch the failed jobs' logs for the run and read the actual error. Same fix loop as local, just slower.
-- **`check-output`**. Read the check run's `output.title`, `output.summary`, and `details_url`. Often enough to name the failing test; sometimes only enough to know it failed.
 - **`none`.** Don't guess.
-- **`auto`**. Actions logs when the check belongs to an Actions run, otherwise check output.
 
-**When the output doesn't tell you why it failed, say so and link `details_url`.** Do not push a speculative fix. Three guesses cost more than one honest question, and a wrong guess that turns CI green is worse than a red build.
+**When the output doesn't tell you why it failed, say so and link the check's own page.** Do not push a speculative fix. Three guesses cost more than one honest question, and a wrong guess that turns CI green is worse than a red build.
 
 ### Flakes
 
@@ -47,47 +44,23 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 
 ## Gates 4, 5, 6: review
 
-**Gate 4.** Group reviews by author, take each author's most recent. A `CHANGES_REQUESTED` that the same reviewer later superseded with an approval or a comment no longer blocks.
+**Gate 4.** Group reviews by author, take each author's most recent. A request for changes that the same reviewer later superseded with an approval or a comment no longer blocks.
 
 **Gate 5.** Every review thread resolved. Only diff-anchored comments form resolvable threads, so this does nothing for a reviewer that posts only top-level comments. Resolve a thread only when you've actually addressed it: fixed it, declined it as out of scope and said where it went, or, on a review bot's thread, answered it with checkable reasoning that it is wrong or not worth a round. A thread a person opened is resolved only for the first two. See *Answering a review* in the skill.
 
 **Gate 6.** Each entry in `review.required` needs proof it evaluated **this** commit. An entry is satisfied by any of:
 
-- a review by one of its `logins` with `commit_id == head.sha`, or
+- a review by one of its `logins` of the head commit, or
 - an inline review-thread comment by one of them at that sha, or
-- a **👍 reaction on the PR by one of its `logins`**, created at or after the head commit's committer date. See [The decline reaction](#the-decline-reaction), or
-- for a `marker` entry, **a top-level comment on the change request containing a `v=1` review marker** whose `reviewer` equals the entry's `marker` and whose `sha` equals `head.sha`, authored by one of the entry's `logins` when it lists any. See [The review marker](#the-review-marker), or
-- a check run named by its `check` at that sha, judged by the entry's `proof`:
-  - **`output`** (default). `status == completed`, conclusion not `skipped` or `cancelled`, **and** a non-empty `output.title` or `output.summary`.
-  - **`completed`.** `status == completed`, conclusion not `skipped` or `cancelled`.
+- a **👍 reaction on the PR by one of its `logins`**, created at or after the head commit's committer date. See [The decline reaction](forge-github.md#the-decline-reaction), or
+- for a `marker` entry, **a top-level comment on the change request containing a `v=1` review marker** whose `reviewer` equals the entry's `marker` and whose `sha` equals the head sha, authored by one of the entry's `logins` when it lists any. See [The review marker](#the-review-marker), or
+- a check named by its `check` at that sha, judged by the entry's `proof`:
+  - **`output`** (default). Completed, with a conclusion other than skipped or cancelled, **and** with non-empty output.
+  - **`completed`.** Completed, with a conclusion other than skipped or cancelled.
 
-Login matching is case-insensitive and ignores a trailing `[bot]`.
+Login matching is case-insensitive, and ignores the suffix the forge adds to an app account's login. [Gate 6](forge-github.md#gate-6-reviewer) gives GitHub's.
 
 **A `marker` entry is satisfied by its marker and nothing else.** The review, inline-comment and 👍 rules above do not apply to it, and its `logins` only say who may author the marker note. A reviewer that posts a finding and then fails before finishing has written no marker, and an inline comment or 👍 from its account must not stand in for one: the marker exists precisely because those signals cannot say a review completed.
-
-### The decline reaction
-
-Some reviewers answer "this PR doesn't need a review" with a reaction rather than a review. Codex on **smart detect** leaves a 👍 on the PR and posts nothing else. It has evaluated the PR; it is telling you the verdict in the only place it writes.
-
-A 👍 by one of the entry's `logins` **created at or after the head commit's committer date** is proof it evaluated this head, and gate 6 asks nothing more than that. An older one is not: GitHub allows one reaction per login per content, so the 👍 left at PR open cannot be left again for the commit you're about to merge, and its timestamp still points at the first evaluation. A stale 👍 proves only that the integration is alive, which is what [`rereview: optional`](#rereview-optional) does with it.
-
-**Read it attributed, or not at all:**
-
-```
-gh api repos/{owner}/{repo}/issues/{number}/reactions --jq '.[] | {login: .user.login, content, created_at}'
-```
-
-PR body reactions live on the *issues* endpoint; that is not a typo. A reaction can also sit on a comment rather than the PR body, and those come from that comment's own `reactions` endpoint.
-
-**Only 👍 is a verdict. The same reviewer uses other reactions to mean other things.** Codex answers a `@codex review this pr` comment with 👀 within seconds, meaning it has picked the job up. Observed on this repository, ten seconds after the request and with no review for minutes afterwards. Reading any reaction from a configured login as proof would merge on "I have started reading", which is worse than the silence it replaced because it arrives fast and looks like an answer. Match on the content, not on the presence of a reaction.
-
-| Reaction from a `logins` entry | Means |
-|---|---|
-| 👍 `+1` | Evaluated; no review needed. A verdict |
-| 👀 `eyes` | Picked it up, working. **Not** a verdict, and not a sign the PR was evaluated |
-| Anything else | Nothing you can act on |
-
-**The trap: `issue_read` reports reaction counts, not who reacted.** A `"+1": 1` in that payload looks like the answer and isn't, because a teammate giving the PR a thumbs up produces the identical field. Counting reactions instead of attributing them turns any human's 👍 into a merge, which is the silent false pass this gate exists to prevent. If you cannot reach the reactions endpoint, say so and fall back to the other rules. Never infer a reviewer's verdict from a count.
 
 ### The review marker
 
@@ -97,11 +70,11 @@ A `{ marker: "<reviewer>" }` entry is satisfied by a reviewer that meets the [re
 <!-- phases:review v=1 reviewer=<name> sha=<full 40-character sha> -->
 ```
 
-The rule needs only what every forge has: the change request's top-level comments, their text, and their author. On GitHub those are the PR's issue comments (`gh api repos/{owner}/{repo}/issues/{number}/comments`), not its review comments.
+The rule needs only what every forge has: the change request's top-level comments, their text, and their author. Where to find those comments is the forge's, under [Gate 6](forge-github.md#gate-6-reviewer).
 
 **It is proof for the sha it names, and only that one.** Match it exactly:
 
-- `reviewer` equals the entry's `marker`, and `sha` equals the full `head.sha`. A marker for an earlier head says nothing about this one.
+- `reviewer` equals the entry's `marker`, and `sha` equals the full head sha. A marker for an earlier head says nothing about this one.
 - When the entry lists `logins`, the comment's author is one of them, matched as everywhere else in this gate. Without `logins`, any author counts, so on a repo where outsiders can comment the entry is forgeable by anyone; the planner warns about this.
 
 **Four things that look like a marker and are not proof:**
@@ -122,41 +95,7 @@ The rule needs only what every forge has: the change request's top-level comment
 
 ### `rereview: optional`
 
-An entry carrying `rereview: optional` has a second way to be satisfied, for reviewers that review a PR once and then decide per push whether to look again (OpenAI's Codex **smart detect**).
-
-| State at the head sha | Verdict |
-|---|---|
-| A `logins` review, inline comment, or 👍 at `head.sha` | **PASS**, by the rules above |
-| None at head, **at least one sign of that reviewer anywhere on this PR**, and `rereview_grace` has elapsed since the head was pushed | **PASS**, as a decline |
-| None at head, at least one earlier sign, grace not yet elapsed | **BLOCK.** Keep waiting |
-| **No sign of that reviewer anywhere on this PR** | **BLOCK. Never times out** |
-
-A **sign** is a review, an inline comment, or a 👍 by one of the entry's `logins`, at any commit on this PR. Any one of them proves the integration is alive and that this reviewer has this PR.
-
-**When a PR carries no sign at all, check who opened it before you call the integration broken.** Some reviewer integrations attach to an account. Codex reviews the connected user's PRs and ignores a bot's, so a phase PR opened under the wrong identity is never reviewed by design. This applies to an account-scoped `logins` entry; a `check:` entry has no connected user, and a workflow-triggered reviewer runs whoever opened the PR. It presents identically to a dead integration and has a different, one-minute fix: reopen it from the right account. The usual cause is a PR opened with `gh pr create` in a cloud session, which authenticates as the integration rather than as the user. Read the PR's `user.login`, and if it isn't the human whose plan this is, report that as the cause instead of reporting a wait.
-
-That last row is load-bearing. Smart detect always evaluates a PR once, so a PR carrying no sign at all is a broken integration, not a decline, and it must never age into a pass. Drop the precondition and `optional` becomes "wait fifteen minutes, then merge unreviewed."
-
-**Counting the 👍 as a sign is what fixes the case where smart detect declines from the very first commit.** Its evaluation of a small PR can be "nothing here worth reviewing", and then the reaction is the only thing it ever writes. Reading signs as reviews-only, that PR looks identical to a dead integration and blocks forever, which is the state this rule was found in: a real project, YOLO on, a phase wedged behind a reviewer that had already answered.
-
-**Measure the grace from the head commit's committer date**, which GitHub stamps at push. Measuring from when you started waiting means a driver that wakes an hour after the push times out on its first look, before the reviewer has had any chance at all.
-
-`rereview_grace` defaults to `15m`.
-
-**Say so when a pass came from a decline.** Under YOLO this is a merge with no fresh review, and it has to be legible afterward:
-
-```
-6 reviewer     PASS (codex @ a1b2c3d, declined re-review of 2 later commits, 18m elapsed)
-```
-
-Post the same line on the PR before merging. A decline recorded nowhere is indistinguishable from a review that happened, which is the exact failure the rest of this gate is built to avoid.
-
-A pass carried by a 👍 says which one it was, because the two mean different things. A fresh reaction is the reviewer's verdict on this commit; a stale one is a decline inferred from silence:
-
-```
-6 reviewer     PASS (codex 👍 on the PR, 4m after this head was pushed)
-6 reviewer     PASS (codex 👍 at PR open, no review of 3 commits since, 22m elapsed)
-```
+An entry carrying `rereview: optional` can also pass as a decline, for reviewers that review once and then decide per push whether to look again. The rule, its four states, and why its last row never times out, are in [`rereview: optional`](forge-github.md#rereview-optional) in the forge reference.
 
 ### Why gate 6 is written so carefully
 
@@ -185,7 +124,7 @@ When a gate blocks because a reviewer produced no artifact, say exactly that. "T
 
 ## Merging
 
-Re-read the head SHA as your **last** read before merging, with no other calls in between. The merge API takes no expected-SHA, so this window can be narrowed but not closed. If the head moved, start the gate over.
+Re-read the head SHA as your **last** read before merging, with no other calls in between. Where the forge's merge cannot be told which head to merge, as the forge reference's [Merge](forge-github.md#merge) says of GitHub, this window can be narrowed but not closed. If the head moved, start the gate over.
 
 ## Reporting
 

@@ -9,7 +9,7 @@ Reconcile before answering anything. A stale answer from memory is worse than a 
 | `status`, "how's it going" | Reconcile, then report progress per repo, open PR links, and the gate summary for each. List milestone rows with what each is waiting on: its dependencies, its preparation, its checks or review, or a person's merge. **No writes** |
 | `why`, "what's blocking" | Per-gate PASS/FAIL for the open PR, in the standard shape from `gates.md` |
 | `go`, `next`, "run the next phase" | Start every startable phase now |
-| `check`, "any update" | Force a reconcile: the recovery path when a webhook was missed |
+| `check`, "any update" | Force a reconcile: the recovery path when a wake was missed |
 | `merge` | Merge the ready PR. The normal action when YOLO is off and the gates have passed. Name the phase if more than one is ready |
 | `merge now` | Force merge. Confirm once, then override gates 3–6: **never 1 or 2**. Record the override in a PR comment and in the row's `Note` |
 | `yolo on` / `yolo off` | Flip `YOLO` in Driver State. Takes effect at the next gate evaluation, including for PRs already open |
@@ -45,4 +45,4 @@ You're writing to someone glancing at a phone. Lead with the state, then the det
 
 Not a wall of tool output, and not "I checked and everything looks good" either, which says nothing.
 
-**Push state changes without being asked.** Phase started, PR opened, CI failed, merged, blocked. Those become notifications, and they're the actual interface. But don't narrate every fix, and never report progress you haven't verified against GitHub.
+**Push state changes without being asked.** Phase started, PR opened, CI failed, merged, blocked. Those become notifications, and they're the actual interface. But don't narrate every fix, and never report progress you haven't verified against the forge.
