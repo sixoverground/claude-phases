@@ -73,7 +73,7 @@ The same applies to checks you *can't* read: CodeQL default setup and external p
 - **A milestone whose `Depends` names a phase in another repo.** A milestone ships one repo's branch, so another repo's phase cannot be part of it. Change: give that repo its own milestone row, and have the later phase depend on both.
 - **A phase that depends on a milestone in a repo it does not use, with no stated reason.** Usually a typo for the right milestone, or a dependency on a release that this phase never touches. Change: name the right row, or write the reason in the phase's **Depends on.**
 
-**Warn** when phases would merge after the plan's last milestone row in that repo. With explicit milestone rows no implicit integration PR is opened, so that work never reaches the default branch through the plan. Change: add a final milestone row, or say that leaving it on the feature branch is intended.
+**Warn** when a plan with any milestone row leaves work on a feature branch with nothing to ship it. A plan that has milestone rows opens no implicit integration PR in **any** repo, not only in the repos that have milestones. So check every repo whose `target_branch` is not its default branch: a repo with phases after its last milestone row, and a repo with phases and no milestone row at all, would both end the plan with that work never having reached the default branch. Change: add a final milestone row in that repo covering what remains, or record in the plan that leaving it on the feature branch is intended.
 
 ## 4. Design the phases
 
@@ -100,7 +100,7 @@ Then:
 - **Choose the fewest milestones the real dependencies allow.** Each one is a merge to the default branch, which in many repos is a release. Two phases that need the same earlier work share one milestone.
 - **Say what each milestone is needed by**, in its section's **Needed by.** A milestone with nothing named there has no reason to exist.
 - **The later phase depends on the milestone row**, not on the phases it ships. That dependency is the wait; nothing has to be paused by hand.
-- **The default is none.** A plan in which nothing needs an early release gets no milestone row and no `milestone` key, and ends as plans always have, with the integration PR under YOLO.
+- **The default is none.** A plan in which nothing needs an early release gets no milestone row and no `milestone` key, and ends as plans always have, with the integration PR under YOLO. Once any repo has a milestone row, that end is gone for every repo, so each feature-branch repo needs a final milestone of its own; the warning in §3 catches the one that lacks it.
 
 A planner that proposes milestones readily turns every plan into a series of releases. Start from the named need, every time.
 
