@@ -51,7 +51,7 @@ Then say what you inferred, and ask whether it holds, through `AskUserQuestion` 
 Before writing, check the config you're about to produce against what you observed. Refuse and explain if:
 
 - a name in `ci.required` matches no check seen on any recent PR
-- a login in `review.required` has never reviewed in that repo
+- a login in `review.required` has never reviewed in that repo. For a `marker` entry, check its `logins` against the authors of marker notes instead: a reviewer that has only ever found nothing has posted markers and no reviews, and is set up correctly
 - a `check` in `review.required` matches no check run you've seen
 - `ci.allow_none: false` on a repo with no CI at all
 - `target_branch` names a branch that doesn't exist

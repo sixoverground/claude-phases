@@ -63,6 +63,8 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
 
+**A `marker` entry is satisfied by its marker and nothing else.** The review, inline-comment and 👍 rules above do not apply to it, and its `logins` only say who may author the marker note. A reviewer that posts a finding and then fails before finishing has written no marker, and an inline comment or 👍 from its account must not stand in for one: the marker exists precisely because those signals cannot say a review completed.
+
 ### The decline reaction
 
 Some reviewers answer "this PR doesn't need a review" with a reaction rather than a review. Codex on **smart detect** leaves a 👍 on the PR and posts nothing else. It has evaluated the PR; it is telling you the verdict in the only place it writes.

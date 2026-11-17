@@ -141,7 +141,7 @@ Each entry is satisfied when **any** of these is true for the current head commi
 - a review by one of its `logins` at that commit, or
 - an inline review-thread comment by one of them at that commit, or
 - a 👍 reaction on the PR by one of its `logins`, left at or after that commit was pushed, or
-- for a `marker` entry, a top-level comment on the PR carrying a review marker for that commit, by one of its `logins` when it lists any (see [The `marker` entry](#the-marker-entry)), or
+- for a `marker` entry, a top-level comment on the PR carrying a review marker for that commit, by one of its `logins` when it lists any (see [The `marker` entry](#the-marker-entry)). This is the **only** way a `marker` entry is satisfied; the other three rules here are for `logins` and `check` entries, or
 - a check run named by its `check` at that commit, judged by that entry's `proof` setting.
 
 Login matching is case-insensitive and ignores a trailing `[bot]`.
@@ -164,7 +164,7 @@ For any reviewer that meets the [review contract](https://github.com/sixovergrou
 | Key | Default | Meaning |
 |---|---|---|
 | `marker` | *required* | The reviewer's name, as it writes it in the marker. `[a-z0-9-]+` |
-| `logins` | none | When set, only a note authored by one of these accounts counts. **Set it on any repo where people outside the project can comment**: a marker is plain text, and without `logins` anyone can type one |
+| `logins` | none | When set, only a marker note authored by one of these accounts counts. Here it authenticates the marker's author and nothing more: a review, inline comment or 👍 from these accounts does **not** satisfy a `marker` entry, as it would a `logins` entry. **Set it on any repo where people outside the project can comment**: a marker is plain text, and without `logins` anyone can type one |
 
 `proof` and `rereview` are ignored on a `marker` entry. A marker is written by the reviewer's code only once a review has completed, so there is no empty-check case for `proof` to tune. And a reviewer that skips a commit posts no marker for it, so the gate blocks, which is the right answer for an unreviewed commit.
 
