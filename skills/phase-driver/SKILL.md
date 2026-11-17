@@ -66,7 +66,7 @@ You hold an ID only if you minted it in this session. After compaction you may h
 
 Startable rows are `Pending`, with every id in `Depends` now `Merged` or `Skipped` (blank `Depends` means the row above), and **no other open phase PR in that row's repo**. Start every startable row. Repos run in parallel, and only declared dependencies serialize anything. Honour `max_concurrent` if set.
 
-**A milestone PR counts as its repo's open PR.** No phase starts in a repo whose milestone row is `In Progress` or `In Review`. A milestone row (an `M<n>` id whose `Branch` is the repo's `target_branch`) is startable by the same test, and is started by [Milestones](#milestones), not by the steps below. A row that depends on a milestone needs that milestone `Merged` **and** [settled](#settled): a phase that starts before the re-sync branches from a base that is gone or stale.
+**A milestone PR counts as its repo's open PR.** No phase starts in a repo whose milestone row is `In Progress` or `In Review`. A milestone row (an `M<n>` id whose `Branch` is the repo's `target_branch`) is startable by the same test, and is started by [Milestones](#milestones), not by the steps below. A `Merged` milestone satisfies a dependency only once it is also [settled](#settled): a phase that starts before the re-sync branches from a base that is gone or stale. A `Skipped` milestone satisfies it as any skipped row does, since nothing was shipped and there is nothing to settle.
 
 For each, in order:
 

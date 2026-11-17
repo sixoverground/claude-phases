@@ -380,8 +380,8 @@ Every milestone in a repo shares one head and base, so a milestone row is matche
 
 | Plan says | GitHub says | What happened | Action |
 |---|---|---|---|
-| `Pending`, dependencies merged | no PR with this row's identity | Ready to ship | Start it |
-| `Pending` or `In Progress`, dependencies merged | an open PR with this row's identity | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch. Never adopt for a row whose dependencies are unmet |
+| `Pending`, dependencies `Merged` or `Skipped` | no PR with this row's identity | Ready to ship | Start it |
+| `Pending` or `In Progress`, dependencies `Merged` or `Skipped` | an open PR with this row's identity | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch. Never adopt for a row with a dependency that is neither `Merged` nor `Skipped` |
 | `In Progress`, stale | no PR, preparation partly on the branch | Died mid-preparation | Finish the preparation from where the branch stands, then open the PR |
 | `In Review` | PR open | Normal | Work it. Never merge |
 | `In Review` | PR merged | A person merged it | Write `Merged`, re-sync the branch, run `milestone.after_merge`, start what it unblocks |

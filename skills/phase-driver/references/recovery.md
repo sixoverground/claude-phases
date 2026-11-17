@@ -27,8 +27,8 @@ Every milestone row in a repo has the same head and base, so a milestone row is 
 
 | Plan says | GitHub says | What happened | Do this |
 |---|---|---|---|
-| `Pending`, dependencies merged | no PR with this row's identity | Ready to ship | Start it, by SKILL.md's Milestones section |
-| `Pending` or `In Progress`, dependencies merged | an open PR with this row's identity | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch. A row whose dependencies are not all merged never adopts a PR: report the mismatch |
+| `Pending`, dependencies `Merged` or `Skipped` | no PR with this row's identity | Ready to ship | Start it, by SKILL.md's Milestones section |
+| `Pending` or `In Progress`, dependencies `Merged` or `Skipped` | an open PR with this row's identity | Died after opening the PR, before recording it | Adopt it: write `In Review` and the `Link`. Do not prepare again if the preparation's commits are on the branch. A row with a dependency that is neither `Merged` nor `Skipped` never adopts a PR: report the mismatch |
 | `In Progress`, stale | no PR, preparation partly on the branch | Died mid-preparation | Finish the preparation from where the branch stands, by comparing it with `milestone.prepare`, then open the PR |
 | `In Review` | PR open | Normal operation | Work it, by Working a milestone PR. **Never merge** |
 | `In Review` | PR merged | A person merged it | Write `Merged`, re-sync, run `milestone.after_merge`, start what it unblocks |
