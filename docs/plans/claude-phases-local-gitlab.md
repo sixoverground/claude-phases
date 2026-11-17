@@ -76,7 +76,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 
 | PR | Branch | Repo | Scope | Phase | Status | Link | Depends |
 |----|--------|------|-------|-------|--------|------|---------|
-| 1  | claude/scope-version-check | sixoverground/claude-phases | `.github/workflows/release.yml`: run `Version bumped` only for PRs into `main` | 0a | In Review | [#28](https://github.com/sixoverground/claude-phases/pull/28) |  |
+| 1  | claude/scope-version-check | sixoverground/claude-phases | `.github/workflows/release.yml`: run `Version bumped` only for PRs into `main` | 0a | Merged | [#28](https://github.com/sixoverground/claude-phases/pull/28) |  |
 | 2  | claude/milestones-driver | sixoverground/claude-phases | Milestone rows: format, `milestone.prepare` and `milestone.after_merge`, driver behaviour, recovery; the integration PR becomes the implicit final milestone | 0b | Pending | - | 0a |
 | 3  | claude/milestones-planner | sixoverground/claude-phases | Planner proposes milestones and writes `milestone.prepare`; refusals, hygiene, README and design notes | 0c | Pending | - | 0b |
 | 4  | claude/release-milestones | sixoverground/claude-phases | Bootstrap release prep: version bump, CHANGELOG, descriptions. The maintainer then ships it to `main` by hand, the one time | 0d | Pending | - | 0c |
@@ -1083,5 +1083,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-17T15:19:34Z
-- Note: 0a ready to merge (#28 @ 2ec90cc)
+- Heartbeat: 2026-11-17T15:23:43Z
+- Note: -
