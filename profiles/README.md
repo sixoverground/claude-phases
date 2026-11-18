@@ -4,7 +4,12 @@ These files are copy-and-paste starting points for common CI and review setups. 
 
 Treat the values as examples, especially check names. Confirm them against a real pull request before relying on the merge gate.
 
-Pick one CI profile and one review profile per repo. They compose.
+Pick one CI profile and one review profile per repo. They compose. On a forge other than GitHub, add that forge's profile too.
+
+| Forge | When |
+|---|---|
+| none | GitHub on github.com, the default. Nothing to set |
+| [`forge-gitlab.yml`](forge-gitlab.yml) | GitLab, on gitlab.com or a self-managed instance |
 
 | CI | When |
 |---|---|
