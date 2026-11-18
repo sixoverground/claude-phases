@@ -85,7 +85,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 7  | claude/forge-neutral-gates | sixoverground/claude-phases | Behaviour-neutral: split `gates.md` and `recovery.md` into forge-neutral rules plus the GitHub mapping | 2b | Merged | [#35](https://github.com/sixoverground/claude-phases/pull/35) | 2a |
 | 8  | claude/local-watcher | sixoverground/claude-phases | Local sessions: `references/watching.md`, the polling watcher, and "forge unreachable is not Blocked" | 3 | Merged | [#36](https://github.com/sixoverground/claude-phases/pull/36) | 2b |
 | 9  | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the review contract, the forge-neutral driver and local running to `main` | M1 | Merged | [#37](https://github.com/sixoverground/claude-phases/pull/37) | 1, 2a, 2b, 3 |
-| 10 | claude/forge-config | sixoverground/claude-phases | Config keys `forge`, `host`, `integration_pr`, `ci.logs: gitlab-jobs`; `group/project` ids and `!42` links; forge selection in the driver | 4 | Pending | - | 16 |
+| 10 | claude/forge-config | sixoverground/claude-phases | Config keys `forge`, `host`, `integration_pr`, `ci.logs: gitlab-jobs`; `group/project` ids and `!42` links; forge selection in the driver | 4 | In Progress | - | 16 |
 | 11 | claude/gitlab-driver-core | sixoverground/claude-phases | `references/forge-gitlab.md` part 1: plan reads and writes, finding, opening and merging MRs, milestones, finishing | 5a | Pending | - | 4 |
 | 12 | claude/gitlab-gates | sixoverground/claude-phases | `references/forge-gitlab.md` part 2: the six gates, job traces, discussions, the watcher command | 5b | Pending | - | 5a |
 | 13 | claude/gitlab-planner | sixoverground/claude-phases | Planner: `references/detection-gitlab.md`, four new refusals, hygiene items, `profiles/ci-gitlab-runner-macos.yml` | 6 | Pending | - | 5b |
@@ -100,7 +100,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Pending | - | 13 |
 | 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | Pending | - | 13, 14 |
 | 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Merged | [#38](https://github.com/sixoverground/claude-phases/pull/38) | M1 |
-| 25 | claude/codex-review-state | sixoverground/claude-phases | Gate 6 on GitHub reads Codex's `codex-review-state` comment as proof for the head it names, and as a sign for `rereview: optional` | 16 | In Review | [#39](https://github.com/sixoverground/claude-phases/pull/39) | 15 |
+| 25 | claude/codex-review-state | sixoverground/claude-phases | Gate 6 on GitHub reads Codex's `codex-review-state` comment as proof for the head it names, and as a sign for `rereview: optional` | 16 | Merged | [#39](https://github.com/sixoverground/claude-phases/pull/39) | 15 |
 
 Rows `M1`, `M2` and `M3` are milestone rows, the row kind phase 0b defines: the branch is the repo's `target_branch`, the PR goes to the default branch, and `Depends` lists what it ships. **A driver that does not know milestone rows must not start one.** The released 0.9.3 does not, and it cannot reach one here before the bootstrap, since every milestone depends on phases that come after phase 0d.
 
@@ -1150,12 +1150,12 @@ After merging:
 - Driver: running
 - YOLO: off
 - Driver-ID: drv-776734c2
-- Active: 16 — sixoverground/claude-phases; 9 — sixoverground/codex-mr-review
+- Active: 4 — sixoverground/claude-phases; 9 — sixoverground/codex-mr-review
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-18T22:18:17Z
-- Note: 9 ready to merge (codex-mr-review#2, 2b4e218); 16 ready to merge (#39, 6707de3, codex declined re-review)
+- Heartbeat: 2026-11-18T22:30:25Z
+- Note: 9 ready to merge (codex-mr-review#2, 2b4e218)
 
 ## Carried findings
 
