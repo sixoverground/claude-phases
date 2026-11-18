@@ -86,7 +86,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 8  | claude/local-watcher | sixoverground/claude-phases | Local sessions: `references/watching.md`, the polling watcher, and "forge unreachable is not Blocked" | 3 | Merged | [#36](https://github.com/sixoverground/claude-phases/pull/36) | 2b |
 | 9  | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the review contract, the forge-neutral driver and local running to `main` | M1 | Merged | [#37](https://github.com/sixoverground/claude-phases/pull/37) | 1, 2a, 2b, 3 |
 | 10 | claude/forge-config | sixoverground/claude-phases | Config keys `forge`, `host`, `integration_pr`, `ci.logs: gitlab-jobs`; `group/project` ids and `!42` links; forge selection in the driver | 4 | Merged | [#40](https://github.com/sixoverground/claude-phases/pull/40) | 16 |
-| 11 | claude/gitlab-driver-core | sixoverground/claude-phases | `references/forge-gitlab.md` part 1: plan reads and writes, finding, opening and merging MRs, milestones, finishing | 5a | In Progress | - | 4 |
+| 11 | claude/gitlab-driver-core | sixoverground/claude-phases | `references/forge-gitlab.md` part 1: plan reads and writes, finding, opening and merging MRs, milestones, finishing | 5a | In Review | [#41](https://github.com/sixoverground/claude-phases/pull/41) | 4 |
 | 12 | claude/gitlab-gates | sixoverground/claude-phases | `references/forge-gitlab.md` part 2: the six gates, job traces, discussions, the watcher command | 5b | Pending | - | 5a |
 | 13 | claude/gitlab-planner | sixoverground/claude-phases | Planner: `references/detection-gitlab.md`, four new refusals, hygiene items, `profiles/ci-gitlab-runner-macos.yml` | 6 | Pending | - | 5b |
 | 14 | claude/local-docs-verify | sixoverground/claude-phases | `docs/running-locally.md`, README local sections, `verify: local` for iOS on a Mac | 7 | Pending | - | 6 |
@@ -1154,7 +1154,7 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-18T23:49:35Z
+- Heartbeat: 2026-11-18T23:56:40Z
 - Note: 9 ready to merge (codex-mr-review#2, 2b4e218)
 
 ## Carried findings
