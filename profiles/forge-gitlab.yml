@@ -1,0 +1,20 @@
+# GitLab, on gitlab.com or a self-managed instance.
+#
+# Without `forge`, every repo is GitHub on github.com. Repo names in
+# `home_repo`, `repos` and the plan table become GitLab project paths,
+# `group/project`, subgroups included.
+forge: gitlab
+host: gitlab.example.com       # leave unset for gitlab.com
+
+ci:
+  required: []                 # job names, not check names, when you list any
+  dispatch: push               # values other than push and none are GitHub-only
+  logs: gitlab-jobs            # the failed job's full trace; auto resolves to this
+
+# integration_pr: false        # never open the change request from target_branch
+                               # to the default branch at the end of the plan.
+                               # Explicit milestone rows still open. The
+                               # cumulative UAT script then goes to a
+                               # `UAT: <project>` issue, or, with issues turned
+                               # off, to a comment on the last merged change
+                               # request, which nobody is asked to read

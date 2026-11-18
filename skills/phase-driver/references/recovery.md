@@ -19,7 +19,7 @@ Apply this **per non-terminal row**, not once per plan, plus every `Merged` mile
 | `In Review` | PR closed, not merged | A human killed it | Ask why. Default to `Blocked` if there's no answer |
 | `In Review` | no PR at all, branch gone | Someone cleaned up. **Not** the driver's own post-merge delete: that only ever runs on a branch whose PR is merged, and a merged PR still exists to be found | Reset to `Pending` |
 | `Blocked` | anything | Waiting on a human | Leave it. Only a user instruction clears `Blocked` |
-| all rows `Merged`/`Skipped` | - | Complete | Go to SKILL.md §8 and apply it, including its fallback where no integration PR is due. Where one is, the only reason not to open it is that one is already open, so check rather than assume a previous driver got there. Then `Driver: idle`, summarize, stop |
+| all rows `Merged`/`Skipped` | - | Complete | Go to SKILL.md §8 and apply it, including its fallback where no integration PR is due. None is due in a repo whose resolved `integration_pr` is `false`: open nothing there, and send the cumulative UAT to the fallback when that leaves no integration PR to carry it. Where one is due, the only reason not to open it is that one is already open, so check rather than assume a previous driver got there. Then `Driver: idle`, summarize, stop |
 
 ## Milestone rows
 

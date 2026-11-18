@@ -241,3 +241,5 @@ When the update is refused, report the matching command from the table, filled i
 ## Issue fallback
 
 Where the core sends something to "an issue on the forge", on GitHub that is a GitHub issue in that repo: a standalone defect, the arbiter's `issue` verdict, and the UAT fallback at the end of a plan, which is an issue titled `UAT: <project>` with the outstanding items.
+
+Issues are available on GitHub, so the core's UAT fallback opens one here rather than posting the script as a comment.
