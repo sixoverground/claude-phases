@@ -8,14 +8,18 @@
 #
 # `logins` is there because a marker is plain text: without it, anyone who
 # can comment on the merge request could type one for the current head and
-# pass gate 6 for an unreviewed commit. Set it to the username the review
-# token posts as, read off its first marker note. It must not be the account
-# the driver acts as, or the watcher never wakes for the reviewer's notes.
+# pass gate 6 for an unreviewed commit. Set it to the account the review
+# token posts as. Two arrangements work:
+#   - the reviewer on its own identity (a project access token or a bot
+#     user's token): its username, read off its first marker note
+#   - the reviewer on your own personal access token, with codex-mr-review
+#     0.2.0 or later, which stamps every note: your own username. Only on a
+#     project that is yours alone; see docs/review-setup.md for why.
 #
 # `proof` and `rereview` do not apply to a marker entry.
 review:
   required:
     - marker: "codex"                        # CODEX_MR_REVIEW_REVIEWER, default codex
-      logins: ["<the review token's username>"]
+      logins: ["<the account the review token posts as>"]
   changes_requested_blocks: true
   threads_must_resolve: true
