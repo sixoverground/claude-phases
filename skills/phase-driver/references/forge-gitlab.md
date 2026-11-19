@@ -6,6 +6,8 @@ On GitLab a change request is a **merge request**, and this file calls it an MR.
 
 Read this file at Reconcile, and again after any compaction, as the core says of every forge reference.
 
+**GitLab support is experimental.** Nothing in this file has driven a real GitLab project end to end yet: no plan has been read and written, no MR opened, gated and merged, and no milestone re-synced on a GitLab server by a driver following it. Until one has, treat a command that fails here as this file being wrong, say so, and do not work around it by guessing. The label comes off when a real project has been driven through all of that.
+
 **What it was checked against.** Every command here was checked against `glab` 1.131.0 (`glab version`) and the GitLab REST API documentation as published in November 2026. No command in this copy has yet been run against a GitLab server. `glab` flags change between versions, and a self-managed instance can lag gitlab.com by several releases, so a field documented today may be missing on an older server. Where one is, the call fails or the field reads `null`: say which, and treat it as this file being wrong for that server, never as a reason to guess. Re-check these pages when either moves:
 
 - [`glab` command reference](https://docs.gitlab.com/cli/)
@@ -159,6 +161,14 @@ The core's rule that resolving a thread does not clear gate 4 asks the reviewer 
   Read `id`, `sha` and `status`. This runs every job the project's MR pipeline rules select, not only the reviewer, so it costs a full pipeline. It creates a detached or merged results pipeline, never a branch pipeline, so a project whose CI config has no MR pipeline rules gets nothing from it. Prefer the retry.
 
 GitLab's "re-request review" button notifies a person and starts nothing, so it is not one of the ways.
+
+#### `@codex review` from a person
+
+**A note from a person that says `@codex review` is a request to run the review job again**, the GitLab form of the same request on GitHub, where Codex itself answers it. On GitLab nothing reads the note but you: the reviewer runs only in a pipeline. So answer it by creating a merge request pipeline, the second way above, on the current head, and reply on the MR with the pipeline's id. Create one even where a retry would do, so the request always gets the same answer.
+
+A request is a note, not a system note, whose whole text is `@codex review`, by anyone but the reviewer's `logins`. **That includes the account you act as**: with one identity a person posts as that account, and you never post that text yourself, so on that account it is the person's. Never write it in a note of your own, even quoted, or the next wake answers you. Answer each request once: a pipeline created for the note at the current head is the answer, so do not create another for the same note on a later wake. A request on an MR whose current head already has a marker from the reviewer still gets the pipeline: the person asked for a review, and a second marker for one head costs nothing but the run.
+
+**It needs a running driver.** With no session watching the MR, nothing answers the note. Say so in the reply when you find one that waited, and point the person at the job's **Retry** button on the MR's pipeline page for next time.
 
 ## The gates
 
@@ -366,7 +376,7 @@ Read `id`, `body`, `author.username`, `system` and `type`. A marker counts only 
 
 Then match it exactly as `gates.md`'s **The review marker** says: the line is `<!-- phases:review v=1 reviewer=<name> sha=<sha> -->`, `reviewer` equals the entry's `marker`, `sha` equals the head sha in full, and, when the entry lists `logins`, `author.username` is one of them. Login matching is case-insensitive, and GitLab adds no suffix to a bot's username, so a project access token's bot user is matched by its username as shown.
 
-**In a merged results pipeline the marker still names the head.** The reviewer job runs on a merge commit there, and a reviewer that meets the contract takes the sha from the source branch (`CI_MERGE_REQUEST_SOURCE_BRANCH_SHA`), as `codex-mr-review` does. A marker that names a merged results pipeline's own commit names a sha that is never the head: it is not proof. Say so in the report, since the fix is in the reviewer, not in the MR.
+**In a merged results pipeline the marker still names the head.** The reviewer job runs on a merge commit there, and a reviewer that meets the contract takes the sha from the source branch (`CI_MERGE_REQUEST_SOURCE_BRANCH_SHA`), as the review contract asks. A marker that names a merged results pipeline's own commit names a sha that is never the head: it is not proof. Say so in the report, since the fix is in the reviewer, not in the MR.
 
 ```
 6 reviewer     PASS (codex marker @ a1b2c3d)
@@ -386,7 +396,7 @@ Then match it exactly as `gates.md`'s **The review marker** says: the line is `<
 
 #### Codex's review-state comment
 
-**Does not apply on GitLab, because that comment is something GitHub's Codex integration writes.** On GitLab, Codex runs as a CI job (`codex-mr-review`) and reports through the marker.
+**Does not apply on GitLab, because that comment is something GitHub's Codex integration writes.** On GitLab, a Codex review runs as a CI job and reports through the marker.
 
 ## Write the plan
 

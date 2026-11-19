@@ -2,7 +2,7 @@
 
 An automated code reviewer is optional. A plan can run without one, but adding a reviewer gives the merge gate evidence beyond passing CI.
 
-Five setups are supported, and you can combine them. Choose based on your Claude plan, organization permissions, and preferred review behavior.
+Six setups are supported, and you can combine them. Choose based on your Claude plan, organization permissions, and preferred review behavior.
 
 | Setup | Cost | Plan required | Configured where | Can the planner set it up? |
 |---|---|---|---|---|
@@ -10,6 +10,7 @@ Five setups are supported, and you can combine them. Choose based on your Claude
 | [Managed Claude Code Review](#managed-claude-code-review) | ~$15–25 per review | Team or Enterprise | claude.ai admin settings | No, prints steps |
 | [GitHub Copilot](#github-copilot) | Per your Copilot plan | Any with Copilot | GitHub repo settings | No, prints steps |
 | [OpenAI Codex](#openai-codex) | Per your ChatGPT plan | Any with Codex | ChatGPT / GitHub app settings | No, prints steps |
+| [GitLab with a local Codex review](#gitlab-with-a-local-codex-review) | Per your ChatGPT plan, on a runner you own | Any with Codex | A CI job, a runner and a token | No, prints steps |
 | [Humans only, or nobody](#humans-only-or-nobody) | Free | Any | Nothing to configure | N/A |
 
 For most Pro or Max users, start with [Claude via GitHub Actions](#claude-via-github-actions). It uses your existing subscription and does not require organization administrator access.
@@ -224,6 +225,103 @@ So if Codex leaves neither a review nor a reaction on your first phase PR, that 
 
 ---
 
+## GitLab with a local Codex review
+
+GitLab has no hosted Codex reviewer, so on a GitLab project the review runs as a CI job on a runner you own, and reports through the [review contract](review-contract.md): inline threads for its findings, then a marker note naming the commit it reviewed. The driver gates on that marker with a `marker` entry. The tool that does this for Codex is [`codex-mr-review`](https://github.com/sixoverground/codex-mr-review). This section describes it at **v0.1.0**; its [README](https://github.com/sixoverground/codex-mr-review/blob/v0.1.0/README.md) is the authority for anything here that changes between versions, such as variables and flags.
+
+### Install the tool on the runner
+
+The review needs a machine with the Codex CLI logged in, which usually means a Mac with a [shell-executor runner](https://docs.gitlab.com/runner/install/osx/). Use a dedicated, non-admin macOS user for the runner, because Codex's read-only sandbox can still read anything that user can. As that user, with Node 20 or later and git:
+
+```sh
+npm install -g github:sixoverground/codex-mr-review#v0.1.0
+codex-mr-review --version
+codex login
+bash -lc 'command -v codex codex-mr-review'
+```
+
+The last line checks that both are on the `PATH` of a login shell, which is what the shell executor runs. Register the runner with the `shell` executor and a tag, and leave **Protected** off, as [hygiene](../skills/phase-planner/references/hygiene.md#gitlab) explains for any runner a phase MR's pipeline needs. Keep the runner user's `~/.codex/AGENTS.md` empty: the tool ignores Codex's `config.toml` but Codex still reads that file, and the tool warns when it has content.
+
+### Add the job
+
+In the project's `.gitlab-ci.yml`:
+
+```yaml
+include:
+  - remote: https://raw.githubusercontent.com/sixoverground/codex-mr-review/v0.1.0/templates/codex-review.gitlab-ci.yml
+
+codex-review:
+  tags: [your-runner-tag]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+```
+
+**Keep the `rules:` in your own file**, even though the template has the same rule. GitLab creates merge request pipelines only when the project's own `.gitlab-ci.yml` has a job rule or `workflow: rules` that matches them; a rule that arrives through `include:` does not count ([GitLab's documentation](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/#configure-merge-request-pipelines)). Without it, a project with no other merge request rule never runs the review, and gate 6 waits for a marker that never comes. A project that already has `workflow: rules` creating merge request pipelines can leave it out.
+
+The template's job runs on every merge request pipeline in the `test` stage (set `stage:` if the project has none), reviews from the MR's diff base, and in a merged results pipeline reviews the source branch head, so its marker names the commit the driver gates on. It reviews at reasoning effort `high` by default. Change the model, effort or reviewer name through the variables listed in the tool's README.
+
+Two settings would quietly break the gate, and the planner's hygiene checklist names both:
+
+- **The job must not be `allow_failure: true`.** A review that fails posts no marker, and gate 6 blocks, which is right. But a job allowed to fail also shows gate 3 a pass, so the only sign of a broken reviewer is a phase waiting on gate 6 for a reason the checks do not show.
+- **Its token variable must not be protected.** Phase branches are not protected, and GitLab withholds a protected variable from their pipelines, so the job fails on every phase MR saying the token is missing.
+
+### The token, and why it is a second identity
+
+Under **Settings > CI/CD > Variables**, add `CODEX_MR_REVIEW_TOKEN`: a project access token or a dedicated bot user's token, with the `api` scope and at least the **Developer** role. Mark it **masked**, and not **protected**, as above.
+
+**Use a different identity from the driver's.** The driver acts as you, through `glab`. If the reviewer posted as you too, two things would stop working:
+
+- `logins` would mean nothing. It is there so that only the reviewer's account can write a marker that counts, and an account the driver also posts as could be any author.
+- The [watcher](../skills/phase-driver/references/watching.md#gitlab) ignores notes from the account the driver acts as, so it would never wake for the reviewer's findings or marker. The phase would move only at the fallback check-in.
+
+Two identities are the supported arrangement.
+
+### The config
+
+Read the reviewer token's username off its first marker note rather than guessing it: a project access token's bot user has a generated username, such as `project_123_bot_<hash>`.
+
+```yaml
+review:
+  required:
+    - marker: "codex"
+      logins: ["<the reviewer token's username>"]
+```
+
+`codex` is the template's default reviewer name, `CODEX_MR_REVIEW_REVIEWER`. The [`review-codex-local.yml`](../profiles/review-codex-local.yml) profile has this with its comments. `rereview` and `proof` do not apply to a `marker` entry: a review that runs posts a marker, and one that does not leaves the gate blocked.
+
+### How the driver treats its findings
+
+By the same rules as a Codex review on GitHub, in [Answering a review](../skills/phase-driver/SKILL.md#answering-a-review). Nothing in them changes for this reviewer.
+
+**Asking it to look again.** Post a note on the MR whose whole text is `@codex review`, from your own account, and a driver that is running answers it by starting a new merge request pipeline, which runs the review job on the current head. Nothing answers it when no driver is running: the note is plain text to GitLab, and the tool runs only in a pipeline. Retry the job from the MR's pipeline page instead.
+
+### On GitHub
+
+A reviewer that meets the contract can gate a GitHub repo through the same `marker` entry, since gate 6 reads markers on either forge. `codex-mr-review` does not post to GitHub. On GitHub, use [OpenAI Codex](#openai-codex) above, or a reviewer of your own that emits the contract.
+
+### Another reviewer through the same job
+
+The template's hidden job, `.codex-review`, carries the setup any reviewer needs: merge request pipelines only, full history, one review per MR at a time, and cancelled by a newer push. Extend it with your own script to run another reviewer, a Claude review for example, as long as that reviewer [emits the contract](review-contract.md): findings as inline resolvable threads, then, only after the review succeeded, a top-level note with `<!-- phases:review v=1 reviewer=<name> sha=<full sha> -->` naming its own reviewer name and the commit the pipeline ran on.
+
+```yaml
+other-review:
+  extends: .codex-review
+  tags: [your-runner-tag]
+  resource_group: other-review-$CI_MERGE_REQUEST_PROJECT_ID-$CI_MERGE_REQUEST_IID
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - my-reviewer --base "$CI_MERGE_REQUEST_DIFF_BASE_SHA" --reviewer my-reviewer
+```
+
+Give it its own reviewer name, its own `resource_group` and its own `marker` entry, and keep its `rules:` in your file for the reason above. The tool's README lists the rules it follows that yours should too: the sha comes from the pipeline and never from model output, model text is scrubbed of the marker prefix before posting, and a failed review posts no marker.
+
+### What to check on the first merge request
+
+Follow [Verifying your setup](#verifying-your-setup) below, with the GitLab steps.
+
+---
+
 ## Humans only, or nobody
 
 ```yaml
@@ -263,3 +361,12 @@ Open a throwaway PR and check three things:
 Then push a second commit and confirm the reviewer re-runs. If it doesn't, the merge gate will stall the first time the driver pushes a fix, which looks like waiting for CI, not like a misconfiguration, so it's worth catching now.
 
 If it doesn't re-run **by design**, because the reviewer decides per push whether another look is warranted, that is a `rereview: optional` case rather than a broken setup. See [Smart detect is why `rereview` exists](#smart-detect-is-why-rereview-exists).
+
+### On GitLab
+
+Open a throwaway merge request with a deliberate flaw, and check four things:
+
+1. **The review job ran** in the MR's pipeline and passed. If the MR has no pipeline at all, the project's own file has no merge request rule: see **Add the job** above. If it is `pending`, no online runner has its tags. If it failed saying the token is missing, the variable is protected.
+2. **Its findings are threads on diff lines**, under the reviewer token's account, not yours.
+3. **The summary note ends with a marker** naming the reviewer and the MR's head sha in full. Compare it with the head shown on the MR's **Commits** tab. Read the note's author here: that username goes in `logins`.
+4. **A second push produces a second marker**, naming the new head. A job that ran once and not again leaves the gate blocked the first time the driver pushes a fix.

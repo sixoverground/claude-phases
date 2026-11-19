@@ -24,6 +24,7 @@ Pick one CI profile and one review profile per repo. They compose. On a forge ot
 | [`review-claude-actions.yml`](review-claude-actions.yml) | Claude review in your own Actions workflow. Any plan |
 | [`review-claude-managed.yml`](review-claude-managed.yml) | Anthropic's managed Code Review. Team/Enterprise |
 | [`review-copilot.yml`](review-copilot.yml) | GitHub Copilot review |
+| [`review-codex-local.yml`](review-codex-local.yml) | GitLab: Codex reviewing in your own CI, gated by its marker. Use with `forge-gitlab.yml` |
 | [`review-humans-only.yml`](review-humans-only.yml) | People review; no bot gate |
 | [`review-none.yml`](review-none.yml) | Nothing reviews |
 
