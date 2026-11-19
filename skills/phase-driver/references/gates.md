@@ -85,7 +85,7 @@ The rule needs only what every forge has: the change request's top-level comment
 | A `v` other than `1` | An unknown version. The format may mean something else there, so it blocks, and the report says which version it found |
 | An abbreviated sha, such as the first seven characters | The contract requires the full sha, and a prefix can match more than one commit |
 | A marker inside an inline thread comment on the diff | The contract puts it in a top-level note. A thread comment is where model-written findings live, which is exactly where a forged marker would come from |
-| A marker you wrote | **Never write a marker yourself**, in any comment, for any reason. The driver is the one thing a marker exists to inform, and a driver that can produce its own proof has no gate |
+| A marker you wrote | **Never write a marker yourself**, or a reviewer stamp, in any comment, for any reason. The driver is the one thing a marker exists to inform, and a driver that can produce its own proof has no gate |
 
 `proof` and `rereview` do not apply to a `marker` entry. A marker is posted by the reviewer's code only after a completed review, so there is no empty-check case for `proof` to tune. And a reviewer that may skip a commit simply posts no marker for it, which blocks, as an unreviewed commit should.
 
