@@ -1493,8 +1493,8 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-19T21:14:22Z
-- Note: -
+- Heartbeat: 2026-11-19T21:17:10Z
+- Note: 18 ready to merge (#48, 838e96c, codex reviewed it clean)
 
 ## Carried findings
 
