@@ -1153,8 +1153,8 @@ After merging:
 - Active: 5a — sixoverground/claude-phases; 10 — sixoverground/codex-mr-review
 - UAT-pending: -
 - Review-baselines: -
-- Arbitrations: -
-- Heartbeat: 2026-11-19T00:49:03Z
+- Arbitrations: 10:3
+- Heartbeat: 2026-11-19T01:20:15Z
 - Note: 5a ready to merge (#41, b56c65b, codex declined re-review)
 
 ## Carried findings
