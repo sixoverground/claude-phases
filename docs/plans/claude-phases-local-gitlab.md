@@ -94,7 +94,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 16 | claude/review-runner | sixoverground/codex-mr-review | Run `codex exec review` read-only, normalise findings into cloud Codex's shape, print them with `--dry-run` | 9 | Merged | [sixoverground/codex-mr-review#2](https://github.com/sixoverground/codex-mr-review/pull/2) | 8, M1 |
 | 17 | claude/gitlab-posting | sixoverground/codex-mr-review | Post findings as MR discussions, summary note, script-owned marker, fingerprint dedupe | 10 | Merged | [sixoverground/codex-mr-review#3](https://github.com/sixoverground/codex-mr-review/pull/3) | 9 |
 | 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Merged | [sixoverground/codex-mr-review#4](https://github.com/sixoverground/codex-mr-review/pull/4) | 10 |
-| 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | In Progress | - | 7, 11 |
+| 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | In Review | [#45](https://github.com/sixoverground/claude-phases/pull/45) | 7, 11 |
 | 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Pending | - | 15, 16, 4, 5a, 5b, 6, 7, 12 |
 | 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Pending | - | M2 |
 | 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Pending | - | 13 |
@@ -1154,7 +1154,7 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-19T18:45:51Z
+- Heartbeat: 2026-11-19T18:50:27Z
 - Note: -
 
 ## Carried findings
