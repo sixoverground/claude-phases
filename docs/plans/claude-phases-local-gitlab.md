@@ -47,7 +47,15 @@ phases:
           origin/main, scripts/check-skill-versions.sh and scripts/release.sh
           --dry-run, and do not open the milestone PR until all three pass.
         after_merge: >
-          Run `claude plugin marketplace update sixoverground` and
+          First confirm the release. Read `version` from .claude-plugin/plugin.json
+          on main and run `gh release view v<version>`. If the release is missing,
+          the push-triggered Release run was skipped or failed, so run
+          `gh workflow run release.yml --ref main`, wait for that run to finish,
+          confirm the release and both skill zips are there, and say in the
+          milestone-merged message that the release had to be dispatched and why.
+          This is the one case in which a workflow is dispatched in this repo. If
+          `gh` cannot do this here, say that the release is missing and give the
+          command. Then run `claude plugin marketplace update sixoverground` and
           `claude plugin update claude-phases@sixoverground` on the machine this
           session runs on. Then say in the milestone-merged message which version
           is installed and whether this session must be restarted to load it, per
@@ -66,7 +74,7 @@ phases:
 
 # claude-phases-local-gitlab
 
-Make claude-phases run from a local Claude Code session and drive GitLab as well as GitHub, and build a small separate tool that runs the Codex CLI's review mode in a GitLab pipeline and proves it did. Twenty-three rows across two repos: sixteen phases and three milestones in `sixoverground/claude-phases`, and four phases in a new tool repo. The plan begins by building the thing it then relies on: **milestones**, a row that ships a feature branch to the default branch when a later phase needs the work released. Once that is on `main`, by hand, once, the driver opens every later merge to `main` itself and a person merges it. The first real user is a client project on a self-managed GitLab that cloud sessions cannot reach, and that project is deliberately not part of this plan.
+Make claude-phases run from a local Claude Code session and drive GitLab as well as GitHub, and build a small separate tool that runs the Codex CLI's review mode in a GitLab pipeline and proves it did. Thirty-two rows across two repos: twenty-three phases and four milestones in `sixoverground/claude-phases`, and five phases in a new tool repo. The plan begins by building the thing it then relies on: **milestones**, a row that ships a feature branch to the default branch when a later phase needs the work released. Once that is on `main`, by hand, once, the driver opens every later merge to `main` itself and a person merges it. The first real user is a client project on a self-managed GitLab that cloud sessions cannot reach, and that project is deliberately not part of this plan.
 
 ## For the driver
 
@@ -96,15 +104,22 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Merged | [sixoverground/codex-mr-review#4](https://github.com/sixoverground/codex-mr-review/pull/4) | 10 |
 | 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | Merged | [#45](https://github.com/sixoverground/claude-phases/pull/45) | 7, 11 |
 | 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Merged | [#46](https://github.com/sixoverground/claude-phases/pull/46) | 15, 16, 4, 5a, 5b, 6, 7, 12 |
-| 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Pending | - | M2 |
+| 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project, with the driver and the reviewer on one account; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Pending | - | M4, 20 |
 | 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Pending | - | 13 |
 | 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | Pending | - | 13, 14 |
 | 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Merged | [#38](https://github.com/sixoverground/claude-phases/pull/38) | M1 |
 | 25 | claude/codex-review-state | sixoverground/claude-phases | Gate 6 on GitHub reads Codex's `codex-review-state` comment as proof for the head it names, and as a sign for `rereview: optional` | 16 | Merged | [#39](https://github.com/sixoverground/claude-phases/pull/39) | 15 |
+| 26 | claude/authorship-stamps | sixoverground/claude-phases | Review contract 1.1: a reviewer stamps every note it posts and scrubs the reserved `<!-- phases:` prefix; the driver stamps every comment, reply and note it writes and never copies another actor's hidden line | 17 | Pending | - | M2 |
+| 27 | claude/whose-note | sixoverground/claude-phases | Who a note is from, read from its stamp and not from its account: the core rule, **Whose thread it is** on both forges, and `@codex review` when a person shares the driver's account | 18 | Pending | - | 17 |
+| 28 | claude/watcher-stamps | sixoverground/claude-phases | Both watcher templates skip only the driver's own stamped notes, so a reviewer or a person posting from the driver's account wakes the session | 19 | Pending | - | 18 |
+| 29 | claude/stamp-every-note | sixoverground/codex-mr-review | Stamp every note per contract 1.1, scrub the reserved prefix from model text, never count a driver-stamped note as the tool's own, token docs for both arrangements, v0.2.0, tagged by the driver | 20 | Pending | - | 17 |
+| 30 | claude/one-account-setup | sixoverground/claude-phases | Both reviewer arrangements documented side by side, one account with a personal access token and two identities with a project or bot token: `docs/review-setup.md`, `docs/running-locally.md`, hygiene, the profile, `configuration.md`; GitLab detection proposes whichever the project shows | 21 | Pending | - | 19, 20 |
+| 31 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship authorship stamps, both reviewer arrangements and the release fix to `main` | M4 | Pending | - | 17, 18, 19, 21, 22 |
+| 32 | claude/release-not-skippable | sixoverground/claude-phases | A release that text quoted in a squash message cannot skip: a merge-triggered release job, `release.sh --if-missing`, `scripts/check-release.sh`, a warning when a milestone branch carries a skip instruction, hygiene | 22 | Pending | - | 19 |
 
-Rows `M1`, `M2` and `M3` are milestone rows, the row kind phase 0b defines: the branch is the repo's `target_branch`, the PR goes to the default branch, and `Depends` lists what it ships. **A driver that does not know milestone rows must not start one.** The released 0.9.3 does not, and it cannot reach one here before the bootstrap, since every milestone depends on phases that come after phase 0d.
+Rows `M1`, `M2`, `M3` and `M4` are milestone rows, the row kind phase 0b defines: the branch is the repo's `target_branch`, the PR goes to the default branch, and `Depends` lists what it ships. `M4` was added after `M2` and ships before `M3`: ids are never renumbered, so the order is in `Depends` and not in the numbers, as it already was for phases 15 and 16. **A driver that does not know milestone rows must not start one.** The released 0.9.3 does not, and it cannot reach one here before the bootstrap, since every milestone depends on phases that come after phase 0d.
 
-The home repo's phases are serial because a repo carries one open phase PR at a time. The tool repo runs beside them: phase 8 starts as soon as phase 1 merges, phase 9 once `M1` has, and phases 10 and 11 follow in order while the home repo works through 4 to 7. The two tracks meet at phase 12.
+The home repo's phases are serial because a repo carries one open phase PR at a time. The tool repo runs beside them: phase 8 starts as soon as phase 1 merges, phase 9 once `M1` has, and phases 10 and 11 follow in order while the home repo works through 4 to 7. The two tracks meet at phase 12. They part and meet once more for the stamps: phase 20 in the tool repo starts as soon as phase 17 merges and runs beside 18 and 19, phase 21 waits for both 19 and 20, phase 22 needs only 19 and so can run while the tool phase finishes, and phase 13 waits for `M4` and for phase 20's release.
 
 ## How this plan is driven
 
@@ -116,10 +131,11 @@ Home-repo phases merge into `feature/local-gitlab`. The marketplace serves `main
 |---|---|---|
 | **Bootstrap**, by hand after 0d | 0a to 0d: the scoped version check and milestones themselves | Every later milestone. The driver cannot open a milestone PR until the driver that knows how is installed |
 | **M1** | 1, 2a, 2b, 3: the review contract, the forge-neutral driver, the watcher | Phase 9, which has to be driven from a session on the Mac where the Codex CLI is logged in. A local session has nothing to wait with until the installed driver has the watcher |
-| **M2** | 15, 16, 4, 5a, 5b, 6, 7, 12: taking over from a dead driver, Codex's review-state comment as proof, GitLab support, the planner on GitLab, the local guide, the marker reviewer setup | Phase 13, which drives a real gitlab.com project with the installed driver and planner |
+| **M2** | 15, 16, 4, 5a, 5b, 6, 7, 12: taking over from a dead driver, Codex's review-state comment as proof, GitLab support, the planner on GitLab, the local guide, the marker reviewer setup | Phase 13, which drives a real gitlab.com project with the installed driver and planner. Since the replan of 2026-11-19, phase 13 waits on `M4` as well |
+| **M4** | 17, 18, 19, 21, 22: authorship stamps in the contract and the driver, who a note is from, the watchers filtering on the stamp, both reviewer arrangements documented, and a release that a squash message cannot skip | Phase 13, which trials the one-account arrangement and has to be driven by an installed driver that stamps its notes and a watcher that filters on the stamp |
 | **M3** | 13, 14: the trial's corrections and the final documentation | The end of the plan |
 
-Three driven milestones is the fewest the real dependencies allow. M1 cannot wait for M2: the tool track would sit idle for six phases with nothing able to drive it locally. M2 cannot be folded into M3: the trial is what M3 ships, and it cannot run on a driver that lacks M2. The bootstrap is the price of building the feature inside the plan that uses it.
+Four driven milestones is the fewest the real dependencies allow. M1 cannot wait for M2: the tool track would sit idle for six phases with nothing able to drive it locally. M2 cannot be folded into M3: the trial is what M3 ships, and it cannot run on a driver that lacks M2. M4 exists because `M2` had already shipped when the maintainer decided one account had to work and the trial should run on it: the trial is driven by what is installed, so the stamps have to be released before it starts, and they cannot ride in M3, which ships the trial itself. The bootstrap is the price of building the feature inside the plan that uses it.
 
 M1 is a complete release for a GitHub user. M2 ships GitLab support before anything has driven a real GitLab project with it, so phase 12 labels it experimental and phase 14 lifts or narrows the label on the trial's evidence.
 
@@ -168,8 +184,9 @@ A plan with milestone rows may not live on a branch a milestone ships: this repo
 | Phase 1 | The bootstrap above |
 | Phase 8 | Create `sixoverground/codex-mr-review` on GitHub, public, with an initial commit on `main` (a README is enough). Add it to the session's scope. Enable cloud Codex code review for it in ChatGPT's Codex settings |
 | Phase 9 | `M1` is merged and installed on the Mac. `codex login` is current (codex-cli 0.147.0 was found installed), and Node 20 or later |
-| Phase 5a UAT and phase 10 UAT, and required by phases 11 and 13 | On the Mac: install `glab` (it was not installed when this plan was written) and `jq`. Create a personal gitlab.com project. Create two tokens on it with `api` scope, one for the driver and one for the reviewer, so the two post under different identities. Register a GitLab Runner on the Mac with the shell executor, tagged `macos` |
-| At each of M1, M2, M3 | Read the PR the driver opened and merge it |
+| Phase 5a UAT and phase 10 UAT, and required by phases 11 and 13 | On the Mac: install `glab` (it was not installed when this plan was written) and `jq`. Create a personal gitlab.com project. Create two tokens on it with `api` scope, one for the driver and one for the reviewer, so the two post under different identities. Register a GitLab Runner on the Mac with the shell executor, tagged `macos`. The two tokens were what phases 5a to 12 were written and tried against, and that arrangement stays supported. The trial in phase 13 runs the other one, a single account: see the phase 13 row below |
+| Phase 13 | `M4` is merged and installed on the Mac, and the session that will drive the trial was started after the update. Phase 20 is merged and the driver has tagged `v0.2.0` on `main` of `sixoverground/codex-mr-review`. Update the tool on the Mac's runner user with `npm install -g github:sixoverground/codex-mr-review#v0.2.0`. On the scratch project, set the masked, unprotected CI variable `CODEX_MR_REVIEW_TOKEN` to a personal access token of **your own account**, with the `api` scope, the same account `glab` is logged in as. Optional, for the two-identity check in phase 13: a second gitlab.com account added to the scratch project as Developer, with a token of its own. gitlab.com Free has no project access tokens, so a second account is the only way to try two identities there |
+| At each of M1, M2, M4, M3 | Read the PR the driver opened and merge it |
 
 ### Conventions for every phase in `sixoverground/claude-phases`
 
@@ -184,7 +201,7 @@ These hold for each home-repo phase and are part of its acceptance criteria.
 - The PR body says what was actually run, in CONTRIBUTING's words: a real run, or "reviewed by reading" when that is the truth.
 - The plan format's own names do not change: the `## PR Sequence` heading, the `PR` column, `Phase N:` titles. Plans in flight contain them.
 
-`ci.dispatch` is `push` and not `auto` for a reason specific to this repo: `release.yml` declares `workflow_dispatch`, and dispatching it runs the release job. Never dispatch a workflow here.
+`ci.dispatch` is `push` and not `auto` for a reason specific to this repo: `release.yml` declares `workflow_dispatch`, and dispatching it runs the release job. Never dispatch a workflow here, with one exception written into `milestone.after_merge`: when a milestone has merged and its release is missing, the driver dispatches `release.yml` on `main`, which is what that workflow's `workflow_dispatch` is for.
 
 ## Decisions and rationale
 
@@ -233,6 +250,43 @@ Settled with the maintainer before this plan was written. Recorded so that a lat
 **The integration MR is the client's call.** `integration_pr: false` stops the driver opening the implicit final milestone, the change request from the long-lived branch to the default branch at the end of a plan that has no milestone rows.
 
 **Xcode Cloud is not a phase gate here.** In the client setup it builds pushes to the long-lived branch for TestFlight. The gate is the runner's `build-test` job and the review job.
+
+### Added 2026-11-19, after M2: one account or two, and stamps
+
+Settled with the maintainer before the trial, and the reason for phases 17 to 22 and `M4`.
+
+**Both arrangements are supported, side by side: one account, or two identities.** The maintainer asked on 2026-11-19 whether the plan accommodates the two tokens as originally designed as well as a personal token. Yes, and neither is the other's fallback.
+
+- **(a) One account.** The reviewer posts with the person's own personal access token, from the same account the driver acts as.
+- **(b) Two identities, as phases 5b and 12 designed it.** The reviewer posts with a project access token, or a dedicated bot user's token, separate from the driver's account.
+
+Phases 5b and 12 shipped only (b), and the docs called it "the supported arrangement". Most people have one account: they are the driver and the reviewer both, through two different models. On gitlab.com a project access token needs Premium or Ultimate, so a Free project cannot make one. A self-managed instance usually lets a Maintainer create one. A dedicated bot user is a second account, on any tier. A design that needs a second identity to work at all is a design many people cannot use, so (a) is made to work. And (b) keeps working exactly as shipped, because where it can be had it is the stronger arrangement. **Pick (a)** on a project that is yours alone, or where a second identity cannot be made. **Pick (b)** wherever other people can push to the project, or the tier and your role allow a project token. The docs present the two side by side and the planner proposes whichever the project actually shows.
+
+**Two identities keep working through every phase, with no stamp required of them.** An account in a `marker` entry's `logins` that is not the account the driver acts as is still a bot by its account alone, its notes still wake the watcher, and `codex-mr-review` 0.1.0 still works there. Phases 17 to 20 each carry an acceptance criterion saying so. The stamps decide only where the account cannot.
+
+**A personal access token in a CI variable is the documented default for one account, with a clear warning. Decided 2026-11-19.** It is broader than a project token: it reaches everything the account can, and anyone who can change the project's pipeline can read it. The maintainer accepts that for arrangement (a), on the condition that the warning sits where the token is created, in both the tool's README and `docs/review-setup.md`, and names arrangement (b) as the answer on a project other people can push to.
+
+**The stamp names are approved as written. Decided 2026-11-19.** `<!-- phases:driver v=1 -->` for the driver and `<!-- phases:reviewer v=1 reviewer=<name> -->` for a reviewer. They are hard to change once a tool ships against them, which is why they carry `v=1`.
+
+**`M4` is a release to every user, and that is approved. Decided 2026-11-19.** It changes how a local GitHub session waits even for someone who never touches GitLab: their own comments now wake the driver.
+
+**The driver tags the tool's release.** After phase 20 merges, the driver tags `v0.2.0` on `main` of `sixoverground/codex-mr-review` and pushes the tag, in the turn it records the merge. Decided 2026-11-19.
+
+**A release must not depend on what a squash message happens to quote.** `M2`'s merge skipped its own release because the squash message quoted a phase commit that contained `[skip ci]`. The maintainer asked for a proper fix as its own phase before `M4`, and not a reminder to read the squash message. Phase 22 makes the release job start from the merge itself, and `milestone.after_merge` in this plan's front matter now confirms the release and dispatches it when it is missing, so `M4`'s own merge is covered by the driver that is already installed.
+
+**Actors are told apart by a stamp in the note, and no longer by the account that posted it.** Three things in the driver decided who wrote a note by its account: the watchers ignored the account the driver acts as, the resolve rules called a thread a bot's by its author, and `logins` pinned a marker's author. With one account all three collapse. So every note says who wrote it, in a hidden line of its own. The driver ends everything it posts with `<!-- phases:driver v=1 -->`. A reviewer that meets the contract's version 1.1 puts `<!-- phases:reviewer v=1 reviewer=<name> -->` in every note it posts. A note with neither is a person's, whatever account it came from.
+
+**The contract moves to 1.1 and the marker stays `v=1`.** The marker's grammar does not change, so a reviewer built against 1.0 still passes gate 6, and a consumer built against 1.0 still reads a 1.1 reviewer. What 1.1 adds is needed only where a reviewer shares an account with the driver or with a person: the reviewer stamp on every note, the scrub widened from the marker's prefix to the whole reserved `<!-- phases:` prefix, and a reviewer never counting a driver-stamped note as its own. A new marker version would have made every existing reviewer fail the gate for a change that leaves proof of review untouched.
+
+**A stamp is trusted only from an account that is allowed to write it.** Anyone who can comment can type either line. The driver's stamp counts only on a note from the account the driver acts as, so a stranger cannot hide a comment from the watcher. A reviewer stamp counts only from an author in the `marker` entry's `logins`, where it lists any, so a stranger cannot have the driver resolve their thread as a bot's. Whatever the reading is unsure of is a person's: a person's thread stays open and a person's note wakes the driver, which are the safe sides of both rules.
+
+**`logins` keeps outsiders out. It no longer separates you from your own reviewer.** With one account, `logins` names that account. It still stops anyone else from typing a marker or a reviewer stamp that counts. What it cannot do any more is tell the reviewer's note from one typed by the account's owner, or written by a driver session on that account that ignored its own rule never to write a marker. That is the same trust boundary the setup already had: the owner holds the reviewer's token, can merge with no gate at all, and is the one running the driver. A second identity turns the driver's rule into something the forge enforces, and keeps the reviewer's token from reaching anything but the project. That is what arrangement (b) buys, and why it stays documented beside (a) and not beneath it.
+
+**The driver never writes another actor's line.** Not a marker, not a reviewer stamp, and not any hidden line copied out of someone else's note, quoted or otherwise. On a shared account, a pasted fingerprint or stamp in a note of the driver's would read as the reviewer's own.
+
+**App reviewers on GitHub are still known by their accounts.** Cloud Codex, Copilot and the other app reviewers post from bot accounts nobody shares, and nothing about reading them changes. The stamp rule decides only where the account cannot.
+
+**Notes written before the stamp are read as a person's.** A driver that did not stamp left notes that now look like their account's owner wrote them. That errs toward a wake and an open thread, so it is left alone and said in the release notes, with no rule to recognise old notes by their wording.
 
 ## Phase Details
 
@@ -1028,25 +1082,303 @@ After merging:
 
 ---
 
-### Phase 13 — End-to-end trial on gitlab.com (sixoverground/claude-phases)
+### Phase 17 — Authorship stamps: the contract, and the driver's own notes (sixoverground/claude-phases)
 
-**Precondition, checked before this phase is claimed.** The session is on the Mac, `glab` is authenticated for gitlab.com, and the `phase-driver` skill it is running has `references/forge-gitlab.md`, which means `M2` is installed and this session has loaded it. If any of these fails, start nothing and say which.
+**Added after M2, before the trial**, by the maintainer's decision of 2026-11-19 recorded under Decisions and rationale: one account has to work as well as two identities, so actors are told apart by a stamp in each note. Phases 17 to 21 build that and `M4` ships it, so that phase 13 trials it with the installed release. This phase writes the stamps down and has the driver start writing its own. Nothing reads a stamp yet, so nothing changes for anyone until phase 18.
 
-**Scope.** The first time everything runs together, on a personal gitlab.com project with no VPN and no client. A toy plan of two phases, driven from a local session on the Mac, through merge request, pipeline, Codex review, a fix, and merge.
+**Scope.** The contract's version 1.1, and the driver stamping what it posts.
 
-- Set up the scratch project as `docs/running-locally.md` and `docs/review-setup.md` describe: a small Node or Swift package, a `.gitlab-ci.yml` with a `build-test` job and the `codex-review` job on the Mac's runner, a long-lived branch as both `target_branch` and `plan_branch`, `integration_pr: false`.
-- Write the toy plan with the planner. Phase one plants a real bug on purpose so the reviewer has something to find; phase two depends on it.
-- Drive it locally with the installed `M2` release. Give the toy plan one milestone row of its own, so a milestone is exercised on GitLab too. YOLO, in the toy plan's own Driver State, off for the first phase and on for the second.
-- New `examples/gitlab-local.md`: the plan as it ran, with links, and what each wake was.
-- Fix what the trial exposes in `forge-gitlab.md`, `watching.md`, `detection-gitlab.md` and the docs. A problem too large for this phase goes to Carried findings, and a problem in the tool is an issue on the tool's repo.
-- `docs/design.md`: a short account of the trial under a new heading, in the style of the README's "First production run".
+- `docs/review-contract.md` becomes **version 1.1**. The marker is untouched and still says `v=1`. The document says so in its first screen: a reviewer that meets 1.0 still proves its reviews, and what 1.1 adds is needed where the reviewer posts from an account it shares with whatever reads the change request, or with a person.
+  - **A new rule: every note the reviewer posts carries a reviewer stamp**, on a line of its own: `<!-- phases:reviewer v=1 reviewer=<name> -->`, with the same `<name>` as its marker. That means the first note of every finding thread, every reply it adds to a thread, the summary note, where it sits beside the marker, and a note saying a review failed. Like the marker, it is written by the reviewer's code and never by a model.
+  - **What a stamp is not.** It says who wrote a note. It says nothing about whether a review completed, so it is never proof of review: only the marker is, and a failed review's note carries a stamp and no marker.
+  - **Rule 4 widens.** The reviewer scrubs the whole reserved prefix `<!-- phases:` from model text, which covers the marker, the reviewer stamp and the line below. A reviewer that scrubs only `<!-- phases:review` meets 1.0 and not 1.1.
+  - **A new rule: the reserved consumer stamp.** `<!-- phases:driver v=1 -->` marks a note written by an automated consumer of the change request, such as claude-phases' driver. A reviewer never writes it, and never counts a note carrying it as one of its own, whatever account posted it.
+  - **Who may post it** is rewritten. One account for the reviewer and the person is an ordinary setup and the contract supports it. A consumer pins the marker and the stamp to the account the reviewer posts as, which keeps out everyone else. It says plainly what that pin cannot do when the account is shared, in the words of Decisions and rationale. A dedicated identity is presented beside it as the stronger arrangement where one can be had, and no longer as a "should" that a shared account fails.
+  - **Versioning** says what 1.1 added, and that the `v` field in the marker did not move because the marker did not change. The examples gain the stamp: the clean summary, the summary with findings, and one finding thread's body.
+- `skills/phase-driver/SKILL.md`: a new golden rule, and a short section it points at, **Stamp what you write**. Every comment, reply, review body and note the driver posts on a change request, on every forge, ends with `<!-- phases:driver v=1 -->` on a line of its own. It is the **last** line, so a comment whose first line is already a marker of the driver's, `<!-- phase-driver:arbiter ... -->` or `<!-- phase-driver:after-merge ... -->`, keeps that first line and recovery still finds it. The section lists what is stamped: gate reports, replies in review threads, the arbiter's verdict, the after-merge comment, a disclosed re-run, anything said to a person on the change request. And what is not: titles and descriptions, commit messages, the plan file.
+- The same section, **Never write another actor's line.** The driver already never writes a review marker. It now also never writes a reviewer stamp, and never copies a hidden HTML comment line out of someone else's note into its own, quoted or not. It quotes visible text only. On a shared account a pasted fingerprint, stamp or marker in a note of the driver's would be taken for the reviewer's.
+- `skills/phase-driver/references/gates.md`, **The review marker**: "the driver never writes a marker itself" gains "or a reviewer stamp". Additions only.
+- `skills/phase-driver/references/forge-github.md` and `forge-gitlab.md`: one sentence each where the reference gives the call that posts a comment or a reply, pointing at **Stamp what you write**. In `forge-github.md`, **Asking a reviewer for a newer review** says the `@codex review` trigger comment is stamped like any other comment.
+- **This phase adds no rule about reading a stamp.** The watchers and the resolve rules still go by account until phases 18 and 19.
 
 **Depends on.** `M2`.
 
 **Acceptance criteria.**
+- [ ] `docs/review-contract.md` states version 1.1, both stamp grammars exactly, which notes carry the reviewer stamp, the widened scrub, and that the marker's `v` is still `1`
+- [ ] Every sentence of the five version 1 rules is still there, unchanged apart from rule 4's prefix and the **Who may post it** section. The PR body lists each changed sentence
+- [ ] The contract names claude-phases only where it already did, and describes `<!-- phases:driver v=1 -->` as a consumer's stamp, with the driver as the example
+- [ ] `SKILL.md` has the golden rule and **Stamp what you write**, which says the stamp is the last line and why, lists what is and is not stamped, and carries **Never write another actor's line**
+- [ ] A real run on a scratch GitHub repo, with this branch's skills: the gate report, a reply in a review thread and an arbiter or after-merge comment each end with the stamp, each first-line marker is still the first line, and the stamp does not show in the rendered comment. The PR body links them
+- [ ] On a real PR in a repo cloud Codex reviews, a stamped `@codex review` comment is still answered by Codex. The PR body links it. If Codex does not answer a stamped trigger, the trigger comment is the one documented exception, and phase 19's watcher has to skip it another way: say so in the PR body and in Carried findings
+- [ ] `git diff` shows no change to the watcher templates, to **Whose thread it is**, or under **Answering a review**, so a two-identity setup behaves exactly as on 0.12.0 apart from the hidden line on the driver's notes
+- [ ] The conventions under "How this plan is driven" hold
+
+**UAT.**
+- [ ] Read `docs/review-contract.md` as someone who built a reviewer against version 1. You should be able to say whether you have to change anything, and what you gain if you do
+- [ ] Load this branch's skills and drive one phase of a scratch GitHub plan. Open the PR in the browser: the driver's comments should read exactly as before. Use "Edit" on one to see its source: the last line should be the stamp
+- [ ] Have a reviewer leave a finding and let the driver reply. The reply should quote only words you can see in the finding, and no hidden line from it
+
+**Risks.** A stamp the driver forgets on one kind of comment is invisible until phase 19, when that comment starts waking the session that wrote it, once per comment. The list of what is stamped is the control, and phase 19's real run is the check. A stamp added to the first line by mistake breaks the two recoveries that match on a comment's first line. `<!-- phases:reviewer` begins with the marker's prefix, `<!-- phases:review`: that is what makes every existing reviewer scrub it already, and it means a reader that recognised a marker by its prefix alone would take a stamp for a broken marker. `gates.md` matches the whole grammar, and the contract's non-examples gain a stamp to say so.
+
+---
+
+### Phase 18 — Whose note it is (sixoverground/claude-phases)
+
+**Scope.** One rule for who wrote a note, read from its stamp where the account cannot say, and the two places the driver uses it: which threads it may resolve on a disagreement, and what counts as a person's request. The rules for answering a review do not change. Only how the driver decides which of them applies to a thread does.
+
+- `skills/phase-driver/references/gates.md`: a new subsection, **Whose note it is**, stated for any forge and pointed at from gate 5.
+  1. **The driver's**: written by the account the driver acts as **and** carrying the driver stamp. The stamp on a note from any other account means nothing.
+  2. **A reviewer's**: it carries no driver stamp, and either
+     - the account says so, as today: the forge reference calls the author a bot or app account, or the author is in the `logins` of a `review.required` entry **and is not the account the driver acts as**; or
+     - the note says so: it carries a reviewer stamp, or a review marker, naming the reviewer of a configured `marker` entry, and its author is one of that entry's `logins` where the entry lists any.
+  3. **A person's**: everything else, whatever account it came from. That includes an unstamped note from the account the driver acts as, which is the person the driver is working for.
+
+  A thread belongs to whoever wrote its first note. A note carrying both stamps is a person's. Whatever the driver cannot settle is a person's: their thread stays open and their note is answered.
+- `skills/phase-driver/SKILL.md`, **Answering a review** and the arbiter's step 6: "a review bot's thread" and "a thread a person opened" each gain a pointer to **Whose note it is**. No outcome, table row or sentence about what to do with a finding changes.
+- `skills/phase-driver/references/forge-gitlab.md`, **Whose thread it is**, rewritten as the mapping: `notes[0].body` for the stamp, `notes[0].author.username` against `logins`, the user's `bot` field, and the username `glab` is logged in as for "the account the driver acts as". The line that made anyone in a marker entry's `logins` a bot now holds only where that account is not the driver's own.
+- `forge-gitlab.md`, **`@codex review` from a person**: a request is a person's note, by the rule above, whose whole text is `@codex review`. This replaces "by anyone but the reviewer's `logins`", which on one account would rule out the person. The driver still never writes that text on GitLab.
+- `skills/phase-driver/references/forge-github.md`: a new **Whose thread it is** under gate 5, the same mapping for GitHub. A bot is an account GitHub types as `Bot`, or one in a `review.required` entry's `logins` that is not the account the driver acts as. A thread whose first comment carries a reviewer stamp from an allowed author is that reviewer's. Cloud Codex and the other app reviewers are found by their accounts exactly as now.
+- **Notes from before the stamp.** Both forge references say that a note the driver wrote before it stamped is read as a person's, and that this errs toward a wake and an open thread.
+
+**Depends on.** Phase 17.
+
+**Acceptance criteria.**
+- [ ] `gates.md` has **Whose note it is**, with the three classes, the first-note rule, the both-stamps rule and the default to a person
+- [ ] The PR body carries a case table, each row a note and the class it gets: the driver's stamped note; an unstamped note from the driver's account; a stamped note from another account; a reviewer-stamped note from a `logins` account that is also the driver's; the same from an account outside `logins`; a reviewer-stamped note where the entry has no `logins`; a bot account with no stamp; a `logins` account that is not the driver's, with no stamp; a note with both stamps
+- [ ] `git diff` under **Answering a review** shows pointers only
+- [ ] `forge-gitlab.md` and `forge-github.md` each have **Whose thread it is** naming the fields read, and each maps onto the core rule without adding a class
+- [ ] `forge-gitlab.md` no longer excludes the reviewer's `logins` from `@codex review` requests, and says why
+- [ ] A real run on a scratch GitHub repo with a `marker` entry whose `logins` is your own account: a thread you start from that account with a reviewer stamp in it is resolved by the driver when it disagrees, and a thread you start with no stamp is answered and left open. The PR body links both
+- [ ] With two accounts, the same run behaves as it did on 0.12.0: a thread from the reviewer's account with no stamp is still a bot's
+- [ ] The conventions under "How this plan is driven" hold
+
+**UAT.**
+- [ ] On a scratch PR, from your own account, leave a review comment the driver will disagree with, a preference with no bearing on correctness. It should reply and leave your thread open
+- [ ] Leave another whose body ends with `<!-- phases:reviewer v=1 reviewer=test -->`, with `review.required: [{ marker: "test", logins: ["<you>"] }]` in the plan. On a disagreement the driver should reply and resolve it
+- [ ] Change `logins` to an account that is not yours and repeat the second step. The thread should be left open: the stamp came from an account that may not write it
+- [ ] On a PR cloud Codex reviewed, ask the driver whose thread a Codex finding is. It should say a bot's, from the account
+
+**Risks.** The resolve rule is the one place a wrong reading overrules a person: a person's thread taken for a bot's is closed on them. Every doubtful case therefore reads as a person's, at the cost of a phase that waits on a thread the driver could have closed. A plan in flight at the upgrade has open change requests full of unstamped notes from the old driver, which the new one reads as a person's replies. They sit inside threads already answered, so the cost should be nothing, and the trial is where that is first seen. With one account and a reviewer that does not stamp, such as `codex-mr-review` 0.1.0, every finding is read as a person's thread and a disagreement stalls the phase until someone resolves it. That is the safe failure, and it is why phase 13 depends on phase 20.
+
+---
+
+### Phase 19 — The watchers filter on the stamp (sixoverground/claude-phases)
+
+**Scope.** Both watcher templates stop skipping an account and skip only the driver's own stamped notes. With one account this is what lets a reviewer's findings and marker wake the session at all. On either forge it closes the gap `watching.md` has admitted since phase 3: a person's own comment did not wake a local session.
+
+- `skills/phase-driver/references/watching.md`, **What counts as a change**: a new comment, review or review-thread comment from anyone, except a note that is the driver's by **Whose note it is**: written by the account the driver acts as and carrying the driver stamp.
+- **The GitHub template.** The three filters on comments, review-thread comments and reviews read the body as well as the login, and drop an item only when both say it is the driver's. A review with an empty body from the driver's account is dropped too: GitHub creates one as the container for each thread reply, and the reply itself is the stamped item. **Reactions keep the account filter**, because a reaction has no body to stamp. So a person's own 👍 from the driver's account still wakes nothing, and no gate reads it.
+- **The GitLab template.** The note filter becomes: not a system note, and not a stamped note from the account `glab` is logged in as. The `@codex review` line stays as it is, and is now a special case of the general rule rather than an exception to it.
+- Both **Skipping the driver's own** paragraphs are rewritten. They say that your own comments on the change request now wake the session, that a stamp typed by another account hides nothing, and that the test is on a line of its own, so a comment that merely mentions the stamp is not skipped.
+- **The first poll after upgrading.** The snapshot files hold the items the old filter let through. With the new filter, the old driver's unstamped notes on an open change request appear as new items, so the first poll prints one line per open change request. `watching.md` says so, and that the wake is answered like any other.
+- The templates keep everything else: silent when nothing changed, a failed request reported once and never fatal, the check-in, `ONCE`, the guarded `rm`, bash 3.2.
+
+**Depends on.** Phase 18.
+
+**Acceptance criteria.**
+- [ ] Both templates are in `watching.md` with the new filters, and still meet phase 3's three criteria: silent on a quiet poll, alive after a failed request, running under macOS's bash 3.2
+- [ ] The GitHub template is run for real against an open PR on the scratch repo, from a session logged in as you. Each of these is recorded in the PR body with the line it printed, or that it printed none: an unstamped comment from your account (one line); a stamped comment from your account (none); a driver reply in a review thread, with the empty review GitHub creates for it (none); a comment from a second account (one line); a stamped comment from a second account (one line); a 👍 from your account (none); ten quiet minutes (none)
+- [ ] The GitLab template passes the same cases against a stand-in `glab` that replays canned API responses, the way phase 5b tested it, plus a system note (none) and a note whose whole text is `@codex review` from the driver's account (one line, as a review request). If the session can reach the gitlab.com scratch project, the cases are run there too and the PR body says which were
+- [ ] A comment that quotes the stamp inside a sentence or a code span, with no stamp line of its own, still wakes
+- [ ] Two identities still work with no stamp: an unstamped note from a second account, which is what a reviewer on its own token at `codex-mr-review` 0.1.0 posts, prints one line on both templates
+- [ ] The first-poll behaviour after an upgrade is stated in `watching.md` and was observed once: the PR body says what printed
+- [ ] The conventions under "How this plan is driven" hold
+
+**UAT.**
+- [ ] On the Mac, with this branch's skills, drive a phase of a scratch GitHub plan until the driver is waiting. Comment on the PR as yourself, in the browser. Within about two minutes the session should wake and answer you
+- [ ] Watch the next ten minutes. The driver's own answer, and its gate report, should not wake it again
+- [ ] Leave it idle for 35 minutes. It should re-arm without posting anything, as before
+- [ ] In a cloud session on the same repo, start a phase. It should subscribe as it always has and mention no watcher
+
+**Risks.** A watcher that wakes on the driver's own notes loops: each wake posts a report, and each report wakes it. The stamp on every note from phase 17 is what prevents that, so a comment the driver posts without a stamp shows up here as a session that never settles, and the real run has to include every kind of comment the driver writes. The GitHub reply container is the case most likely to be missed, since it has no body and is created by GitHub and not by the driver. Reading bodies makes each poll's responses larger, which matters on a long change request polled every minute all night. The GitLab template still has not met a real server unless this phase's session reached one. Phase 13 is where it does.
+
+---
+
+### Phase 20 — Stamp every note, and one account (sixoverground/codex-mr-review)
+
+**Scope.** The tool meets version 1.1 of the contract, so that it can post from the same account as whatever reads its notes. Released as **v0.2.0**: a minor version, because every note the tool posts gains a line and the contract it implements gains a revision, and nothing a user configured has to change.
+
+- **Every note carries the reviewer stamp**, written by the tool's code from `--reviewer`, never from model output: `<!-- phases:reviewer v=1 reviewer=<name> -->` on a line of its own. In a finding thread's first note, inline or the general-thread fallback, it follows the fingerprint line. In a reopen reply it follows the reopened line. In the summary it sits on the line before the marker, which stays last. A failure note carries the stamp and, as now, no marker. The reviewer name is validated before the first note is posted, since until now only the marker checked it.
+- **The scrub widens to the contract's reserved prefix.** `scrubModelText` removes `<!-- phases:` wherever it appears, which covers the marker, the reviewer stamp and the driver stamp, and keeps removing the tool's own two prefixes. It still repeats until nothing is left, so a split prefix cannot reassemble.
+- **A note with the driver stamp is never the tool's own.** `indexThreads` reads threads started by the tool's account, which on one account is also the person's and the driver's. It now skips a thread whose first note carries `<!-- phases:driver`, and a reply carrying it never counts as the tool's reopen. Threads the tool posted at 0.1.0, which have a fingerprint and no stamp, are still recognised, so upgrading re-posts nothing.
+- **The rendering does not change.** A finding's visible body is still the phase 9 rendering byte for byte, and the summary's visible parts are the same. The stamp is one more hidden line.
+- `docs/contract.md`: the pinned link moves to the commit of phase 17's contract, and the statement becomes "implements version 1.1". `docs/output-format.md`, **On a GitLab merge request**: each kind of note with its hidden lines in order.
+- `README.md`, **The token and the role it needs**: both arrangements, side by side and in the same detail. **Your own account**: a personal access token with the `api` scope, the same account anything reading the merge request posts from. **A separate identity**: a project access token or a dedicated bot user's token, as 0.1.0 described. It says which can be had where: on gitlab.com a project access token needs Premium or Ultimate, a self-managed instance usually allows one to a Maintainer, and a bot user is a second account on any tier. It says when to pick each. And it carries the warning where the personal token is described: anyone who can change the pipeline can read a CI variable, and a personal token reaches everything that account can, so on a project other people can push to, use the separate identity. `SECURITY.md` says the same.
+- `package.json` to `0.2.0`, the `CHANGELOG.md` section, and `v0.1.0` to `v0.2.0` in the README's install command and `include:` snippet. **The driver tags the release.** In the turn it records this phase `Merged`, the driver tags the merge commit on `main` as `v0.2.0`, pushes the tag, confirms it with `git ls-remote --tags origin v0.2.0`, and says so. If the push is refused, it says that and gives the two commands, and phase 13 does not start until the tag exists.
+
+**Depends on.** Phase 17, for the contract's text and a commit to pin. It runs beside phases 18 and 19.
+
+**Acceptance criteria.**
+- [ ] Against the mock server, every body the tool posts in every existing scenario contains exactly one reviewer stamp line with the `--reviewer` name: an inline finding, the general-thread fallback, a reopen reply, a clean summary, a summary with findings, a summary with the marker withheld, a failure note
+- [ ] The summary still carries exactly one marker, on its last line, and a failure note carries none
+- [ ] A finding whose model text contains `<!-- phases:driver v=1 -->`, `<!-- phases:reviewer v=1 reviewer=codex -->` or a marker is posted without any of them, and a split prefix does not reassemble. Each has a test
+- [ ] A thread started by the tool's own account whose first note carries a fingerprint **and** the driver stamp does not hide that finding, and a driver-stamped reply containing the reopened line does not stop a reopen. Each has a test
+- [ ] A thread posted by 0.1.0, with a fingerprint and no stamp, is still recognised: the finding is not posted again
+- [ ] The rendering test from phase 9 still passes unchanged
+- [ ] An invalid `--reviewer` exits with a usage error before anything is posted
+- [ ] `codex-mr-review --version` prints 0.2.0, and the README's install command and template URL name `v0.2.0`
+- [ ] With a token whose account no other author shares, the two-identity arrangement, every scenario behaves as it did at 0.1.0 apart from the added stamp line. The existing tests pass with only that line added to their expected bodies
+- [ ] The README describes both arrangements in the same detail, with the tiers, when to pick each, and the warning beside the personal token
+- [ ] After the merge, the tag `v0.2.0` exists on `main`'s merge commit, pushed by the driver, and the install command in the README works against it
+- [ ] No file mentions claude-phases beyond `docs/contract.md` and the README's link to the contract. The driver stamp is described as the contract's reserved consumer stamp
+- [ ] `npm test` and `npm run lint` pass, and the `test` check is green on both operating systems
+
+**UAT.**
+- [ ] On the Mac's runner user, install from the PR's branch. `codex-mr-review --version` should print 0.2.0
+- [ ] On the gitlab.com scratch project, set `CODEX_MR_REVIEW_TOKEN` to a personal access token of your own account and open a merge request with a planted bug. A thread and a summary should appear **under your own name**. View the source of each: both should carry the reviewer stamp, and the summary the marker as well
+- [ ] Reply to the finding yourself, in the browser, and run the job again. Your reply should change nothing about what the tool posts
+- [ ] Resolve the thread without fixing the bug, push an unrelated commit, and let the job run. The thread should be reopened once, and the reply should carry the stamp
+- [ ] On a merge request that already has a thread posted by 0.1.0, run 0.2.0. The finding should not be posted a second time
+
+**Risks.** The widened scrub removes `<!-- phases:` from a finding that legitimately quotes one, for instance a review of a tool that implements the contract. The finding still reads, without the quoted prefix, and that is the cost rule 4 has always had. On one account the tool can no longer tell its own threads from ones the account's owner typed by hand with a pasted fingerprint. The owner could always resolve or delete the thread, so nothing is lost, and the README says so. The tag is pushed by the driver after the merge, so for the minutes between the two the README names a tag that does not exist yet. A driver that cannot push tags to this repo says so, and phase 13's precondition is what stops the trial starting without it.
+
+---
+
+### Phase 21 — Both reviewer arrangements, side by side (sixoverground/claude-phases)
+
+**Scope.** `M2`'s documents say two identities are the supported arrangement. They change to say that both arrangements are supported, in the same detail and with neither as the other's afterthought: **(a) one account**, the reviewer on your own personal access token, and **(b) two identities**, the reviewer on a project access token or a dedicated bot user's token, as originally designed. The planner proposes whichever the project actually shows. Documentation, configuration reference and detection only. The driver's rules were finished in phase 19.
+
+- `docs/review-setup.md`, **GitLab with a local Codex review**. The section **The token, and why it is a second identity** is replaced by **The token: one account, or two identities**, which opens with a table of the two and then gives each its own subsection of the same shape: what to create, what `logins` is, what you will see on the merge request, and what it does and does not protect.
+
+  | | (a) One account | (b) Two identities |
+  |---|---|---|
+  | The reviewer's token | A personal access token of your own account, `api` scope | A project access token, or a dedicated bot user's token, `api` scope, Developer role |
+  | Where it can be had | Anywhere | Project access tokens: Premium or Ultimate on gitlab.com, and usually any Maintainer on a self-managed instance. A bot user: a second account, on any tier |
+  | `logins` | Your own username | The token's username, read off its first marker note |
+  | Notes appear as | You, told apart by their stamps | The reviewer's own account |
+  | Pick it when | The project is yours alone, or a second identity cannot be made | Other people can push to the project, or the tier and your role allow a project token |
+  | Needs | `codex-mr-review` 0.2.0 or later | Any version |
+
+- **The warning sits in subsection (a), where the token is created**, and not only in a comparison: a CI variable is readable by anyone who can change the pipeline, and a personal token reaches everything your account can, so on a project other people can push to, use (b). Subsection (a) also says what `logins` no longer separates on a shared account, in the words of Decisions and rationale.
+- Subsection (b) keeps what `M2` shipped about the project token and the bot user, including reading the generated username off the first marker note. It says what the arrangement buys: the forge enforces what the driver otherwise only promises, and the token reaches only the project. The sentence "Two identities are the supported arrangement" becomes "Both are supported".
+- The install command and the `include:` URL move to `v0.2.0`.
+- The same file, **The config** and **Verifying your setup**: the config shows both values of `logins`. The verification steps branch once: on (a), each finding's source carries the reviewer stamp and a comment you post as yourself wakes the driver; on (b), the findings are under the reviewer's account, as the step says today.
+- `docs/running-locally.md`, **Tokens, and which identity posts what**: the watcher skips only the driver's stamped notes, so your own comments wake the session. "Do not run a reviewer under your own account" is replaced by the two arrangements and a link to the setup section.
+- `skills/phase-planner/references/configuration.md`: the `logins` row of **The `marker` entry** says it also authenticates the reviewer stamp, and what it means under each arrangement. **Reviewer setups**, the GitLab row: "The review token must be a different account from the driver's" becomes "its own identity, or the driver's own account from `codex-mr-review` 0.2.0".
+- `skills/phase-planner/references/hygiene.md`, the GitLab review token item: the sentence demanding a different account is replaced by the choice, with when to pick each and the tier note.
+- `profiles/review-codex-local.yml`: the comment on `logins` describes both values, and the placeholder reads "the account the review token posts as".
+- `skills/phase-planner/references/detection-gitlab.md`, **Who actually reviews**. The planner proposes the arrangement the project shows and never assumes one:
+  - Marker notes by an account that is not the one the planner acts as: arrangement (b). `logins` is that account, read off the notes, as today.
+  - Marker notes by the account the planner acts as: arrangement (a). `logins` is that account, and the findings say the reviewer shares it.
+  - A reviewer job and no marker note yet: the CI file cannot show whose token it is, so the planner asks, with both arrangements as the options. It reads the project's tier and the acting role where the API gives them, to say whether a project access token can be created there, and marks that as inferred. It fills `logins` only on (a), with the acting account. On (b) it leaves the placeholder and says the first marker note will show the username, as today.
+
+  `skills/phase-planner/SKILL.md` §3 keeps its warning for a `marker` entry with no `logins`.
+- `docs/review-setup.md`, **On GitHub**: one sentence that a reviewer meeting contract 1.1 can share your account there as well.
+- `README.md`, **Requirements and integrations**, if it mentions a second account or token for GitLab: corrected to the choice. The three experimental statements are not touched. Phase 14 owns those.
+
+**Depends on.** Phase 19, and phase 20 for the version the commands name.
+
+**Acceptance criteria.**
+- [ ] `docs/review-setup.md` documents both arrangements with the table above and a subsection each, of the same shape and comparable length. Neither is introduced as a fallback, an exception or an afterthought
+- [ ] Arrangement (a) can be followed with one gitlab.com account on the Free tier. Arrangement (b) can be followed with a project access token, and with a bot user, and reads as complete without (a)
+- [ ] The tiers are stated: project access tokens need Premium or Ultimate on gitlab.com, and a self-managed instance usually allows them to a Maintainer. Each is checked against GitLab's documentation, linked in the PR body
+- [ ] The personal-token warning is in subsection (a), beside the step that creates the token
+- [ ] No document says a reviewer must post from a different account than the driver, and none says it must share one
+- [ ] Every command in the section matches the tool's README at `v0.2.0`
+- [ ] `configuration.md`, `hygiene.md`, `docs/running-locally.md` and the profile agree with the setup section, and each names both arrangements
+- [ ] `detection-gitlab.md` covers the three cases in the scope, proposes the arrangement the notes show, asks where they show none, and never fills `logins` without evidence or a yes
+- [ ] claude-phases still names the tool only in `docs/review-setup.md`, the profile and the detection reference, and in `configuration.md`'s Reviewer setups row where it already did
+- [ ] `git diff` shows no change under `skills/phase-driver/`
+- [ ] The conventions under "How this plan is driven" hold
+
+**UAT.**
+- [ ] Read the token section as someone with one gitlab.com account on the Free tier. You should know within the table that (a) is yours, and reach the end of it without being asked for anything you cannot create
+- [ ] Read it again as a Maintainer on a self-managed instance. You should know that (b) is open to you, why you might prefer it, and be able to follow it without reading (a)
+- [ ] With this branch's skills, run the planner on the gitlab.com scratch project, with the review job in its CI file and no marker note yet. It should ask which arrangement, say that the project's tier has no project access tokens, and on (a) propose your own username for `logins`
+- [ ] Run it on a project whose merge requests carry marker notes from another account. It should propose that account and call the setup two identities
+- [ ] Follow `docs/running-locally.md` on tokens. Nothing in it should tell you to keep the reviewer off your account, or to put it there
+
+**Risks.** Two arrangements in one section is where one of them quietly becomes the real one and the other a footnote. The table and the same-shape rule are the control, and the UAT reads it from both chairs. These pages now describe putting a personal access token in a CI variable, which the maintainer accepted with the warning attached, so the warning's position is an acceptance criterion and not a matter of style. Tier rules are GitLab's and change: the section links GitLab's own page beside each claim. The docs name a tool version the driver tags after phase 20 merges. Phase 12's own Risks paragraph in this plan still says two identities are the supported arrangement. It is the record of a merged phase and stays as written. This phase is what supersedes it.
+
+---
+
+### Phase 22 — A release a squash message cannot skip (sixoverground/claude-phases)
+
+**Added in the replan of 2026-11-19**, from the Carried finding `M2` raised. `M2`'s squash commit quoted a phase commit that contained the literal text `[skip ci]`, GitHub skipped the push-triggered Release workflow, and 0.12.0 was installed from `main` with no tag and no release until one was cut afterwards. The maintainer asked for a fix and not a reminder. This phase needs nothing from the stamps, so it depends only on phase 19 and can run while phase 21 waits for the tool.
+
+**Scope.** The release starts from the merge, whatever the merge commit says. And where it still did not happen, the driver finds out and says so.
+
+- `.github/workflows/release.yml`: a second trigger for the `release` job, `pull_request_target` with `types: [closed]`, and the job's condition extended to a pull request that was **merged** into `main`. GitHub documents its skip instructions (`[skip ci]`, `[ci skip]`, `[no ci]`, `[skip actions]`, `[actions skip]`) for `push` and `pull_request` workflows, and they are read from the pushed commit's message. A run started by the pull request closing does not read the squash message at all. The `push` trigger stays, for a direct push to `main` that changes the manifest, and `workflow_dispatch` stays as the repair.
+- **Why `pull_request_target` is safe in this one job, said in the file.** It runs with a write token in the base repository's context, which is dangerous only for a job that runs the pull request's code. This job already checks out `ref: main` and nothing else, and the comment says it must stay that way. `Version bumped` keeps its condition on `pull_request` and never runs under the new trigger.
+- A `concurrency` group on the release job, not cancelling in progress, so the `push` run and the merge run for one merge do not race each other to create the same release.
+- `scripts/release.sh --if-missing`: create the tag, the release and its zips when the version has no release, and do nothing at all when it has one. The merge-triggered run uses it, because that trigger has no `paths` filter and would otherwise rebuild and replace an existing release's zips on every merge into `main`. Without the flag the script behaves as now, including the repair of missing zips on a dispatch.
+- New `scripts/check-release.sh`: for the version `plugin.json` declares on `main`, exit 0 when the tag, the release and both skill zips exist, and otherwise exit non-zero naming what is missing and the command that repairs it. It is what a person or a driver runs after a milestone, and `CONTRIBUTING.md`'s release section names it.
+- `skills/phase-driver/references/forge-github.md`, **Milestone and integration change requests**, with a pointer from the core's Milestones section: when the driver reports a milestone PR ready, it reads the messages of the commits the PR would squash, and if any contains a skip instruction it says so in the ready message, naming the commits, and says that a squash merge quotes them and can skip push-triggered workflows on the default branch. It changes nothing and blocks nothing. `forge-gitlab.md` gains the same sentence for the instructions GitLab honours.
+- `skills/phase-planner/references/hygiene.md`: an item for any repo where a merge to the default branch releases or deploys through a push-triggered workflow. Plan commits end `[skip ci]` and phases that discuss it quote it, so a milestone's squash message can carry it. The item gives the two fixes: trigger on the merged change request, or have `milestone.after_merge` confirm the release. `configuration.md`'s `milestone.after_merge` row gains "confirming that a release happened" among its examples.
+- **Not in this phase:** the plan's own front matter. `milestone.after_merge` there was changed by the replan itself, to confirm the release with `gh` and dispatch `release.yml` when it is missing. It uses `gh release view` directly and not `scripts/check-release.sh`, so that it works at `M4`, before that script has reached `main`.
+
+**Depends on.** Phase 19, only so that the home repo's phases stay one at a time.
+
+**Acceptance criteria.**
+- [ ] A real run on a scratch GitHub repo carrying a copy of the workflow and the scripts: a PR that bumps the version is squash-merged into `main` with `[skip ci]` in the squash message, and the release is created with its zips. The PR body links the run, and says which trigger started it and that the `push` run was skipped
+- [ ] On the same scratch repo, a merge with a clean message creates exactly one release, with the two runs not colliding, and a PR that is closed without merging starts no release
+- [ ] If the scratch run shows that GitHub skips the merge-triggered run too, the PR says so plainly, keeps the scripts and the driver's warning, and records in Carried findings that `after_merge` is then the only cover
+- [ ] `release.sh --if-missing` against an existing release makes no upload and exits 0, against a missing one creates it, and `--dry-run` reports which it would do. `release.sh` with no flag behaves as before, shown by a dry run on this branch
+- [ ] `check-release.sh` exits 0 on a complete release and non-zero, naming the missing part and the repair, with the tag absent, the release absent, and a zip absent. It runs under macOS's bash 3.2 and needs only `gh`
+- [ ] The `release` job checks out `main` and nothing from the pull request, and the workflow's comments say why the new trigger depends on that
+- [ ] On this PR, `Version bumped` appears as skipped, as on every PR into the feature branch, and `Tag and release` does not run
+- [ ] The driver's ready message for a milestone PR names any commit whose message carries a skip instruction, tried on the scratch repo
+- [ ] `hygiene.md` and `configuration.md` carry the item and the example
+- [ ] The conventions under "How this plan is driven" hold. In particular, this phase does not change the version
+
+**UAT.**
+- [ ] Read `release.yml` from the top. The header should tell you the three ways a release starts and why the merge-triggered one exists
+- [ ] On the scratch repo, bump the version on a branch, open a PR into `main`, and squash-merge it after typing `[skip ci]` into the squash message. Within a few minutes the release should exist with both zips
+- [ ] Delete that release and its tag, then run `scripts/check-release.sh`. It should fail and print the command that repairs it. Run that command, then the script again. It should pass
+- [ ] With this branch's skills, drive a scratch plan to a milestone whose branch has a commit message containing `[skip ci]`. The driver's ready message should name the commit and say what a squash would do
+
+**Risks.** `pull_request_target` is the trigger with the sharpest edge in Actions: a write token, in the base repository's context, started by a pull request. It is safe exactly as long as the job runs nothing from the pull request, and the comment in the file is the only thing that tells the next editor so. Whether GitHub applies its skip instructions to this trigger is read from its documentation, which names `push` and `pull_request` only. The scratch run is the evidence, and the acceptance criteria say what to do if it disagrees. Which copy of the workflow GitHub runs for a closing pull request, the base branch's from before the merge or after it, decides whether `M4`'s own merge is covered by the new trigger. `after_merge` covers `M4` either way, and `M3` is the first merge certain to have the new trigger on `main` beforehand. Two triggers for one merge means two runs, and `--if-missing` and the concurrency group are what make the second one a no-op.
+
+---
+
+### Milestone M4 — Authorship stamps and one account (sixoverground/claude-phases)
+
+**Ships.** Phases 17, 18, 19, 21 and 22: the contract's version 1.1, the driver stamping every note it writes, who a note is from read off the stamp, the watchers filtering on the stamp, both reviewer arrangements documented side by side, and a release that a squash message cannot skip. A release to every user, approved by the maintainer on 2026-11-19.
+
+**Review scope.** A finding on this PR is in scope when it falls within the scope of phases 17, 18, 19, 21 and 22, taken together. The driver answers it by its usual rules and commits fixes to `feature/local-gitlab`. Anything beyond those scopes goes to Carried findings.
+
+**Needed by.** Phase 13. The trial is driven by the installed release, on one account, and that cannot work on 0.12.0: its watcher skips every note from the account the driver acts as, which on one account is every note there is. Phase 22 rides along because this is the next release and the last one skipped itself.
+
+**UAT.** On the milestone PR before you merge it:
+- [ ] Load the feature branch's skills on the Mac and drive one phase of a scratch GitHub plan from a local session. Comment on the PR as yourself: the session should wake and answer. Its answer should not wake it again
+- [ ] On the same PR, with a `marker` entry whose `logins` is your own account, post a marker for the head from your account. Gate 6 should pass on it, as it would have before
+- [ ] Drive one phase of an existing GitHub plan from a cloud session, with cloud Codex reviewing. Nothing should have changed: Codex's threads are a bot's, and the driver resolves them by the rules it always had
+- [ ] Read the CHANGELOG section the preparation wrote. It should say that the driver now stamps its comments, that your own comments now wake a local session, that a reviewer may share your account or have its own, that notes written by an earlier driver read as a person's, and that a release no longer depends on the merge commit's message
+- [ ] With a `marker` entry whose `logins` is a second account, comment from that account with no stamp. The session should wake, and a review thread from that account should be a bot's, as on 0.12.0
+
+After merging:
+- [ ] The release should appear, with its tag and both skill zips. If the push-triggered run was skipped, the driver's milestone-merged message should say that it found the release missing and dispatched it, as `milestone.after_merge` now tells it to. Merge this one however you like: nothing has to be trimmed from the squash message
+- [ ] The driver should record `M4`, re-create the feature branch, update the plugin, and say whether to restart
+- [ ] Start a fresh session on the Mac and ask whether its `phase-driver` has **Stamp what you write**. It should
+
+**Risks.** This changes how every local GitHub session waits, for users who never touch GitLab: their own comments now wake the driver, which is the fix they were missing, and a driver that fails to stamp something would wake itself. The UAT of phases 17 and 19 is the gate for that. A plan in flight when this installs gets one extra wake per open change request, and its old driver's notes read as a person's. `M2`'s merge skipped its own release workflow. Phase 22's new trigger may not yet apply to the merge that ships it, so this milestone's cover is `milestone.after_merge`, which the installed 0.12.0 driver already follows: it confirms the release and dispatches it if it is missing. That needs `gh` with permission to run workflows in the session that records the merge. A cloud session that lacks it says the release is missing and gives the command.
+
+---
+
+### Phase 13 — End-to-end trial on gitlab.com (sixoverground/claude-phases)
+
+**Precondition, checked before this phase is claimed.** The session is on the Mac, `glab` is authenticated for gitlab.com, and the `phase-driver` skill it is running has `references/forge-gitlab.md` and the **Stamp what you write** section, which means `M4` is installed and this session has loaded it. `codex-mr-review --version` on the runner's user prints 0.2.0 or later. If any of these fails, start nothing and say which.
+
+**Scope.** The first time everything runs together, on a personal gitlab.com project with no VPN and no client, **and on one account**: the driver acts as the maintainer through `glab`, the review job posts with a personal access token of that same account, and `logins` names it. No second token and no second identity anywhere in the trial. A toy plan of two phases, driven from a local session on the Mac, through merge request, pipeline, Codex review, a fix, and merge.
+
+- Set up the scratch project as `docs/running-locally.md` and `docs/review-setup.md` describe, following the one-account path from phase 21: a small Node or Swift package, a `.gitlab-ci.yml` with a `build-test` job and the `codex-review` job on the Mac's runner, `CODEX_MR_REVIEW_TOKEN` set to the maintainer's own token, a long-lived branch as both `target_branch` and `plan_branch`, `integration_pr: false`.
+- Write the toy plan with the planner. Phase one plants a real bug on purpose so the reviewer has something to find; phase two depends on it. The planner should propose `logins` as the account it is acting as.
+- Drive it locally with the installed `M4` release. Give the toy plan one milestone row of its own, so a milestone is exercised on GitLab too. YOLO, in the toy plan's own Driver State, off for the first phase and on for the second.
+- New `examples/gitlab-local.md`: the plan as it ran, with links, and what each wake was.
+- Fix what the trial exposes in `forge-gitlab.md`, `watching.md`, `detection-gitlab.md` and the docs. A problem too large for this phase goes to Carried findings, and a problem in the tool is an issue on the tool's repo.
+- `docs/design.md`: a short account of the trial under a new heading, in the style of the README's "First production run".
+
+**Depends on.** `M4`, for the installed driver that stamps its notes and the watcher that filters on the stamp, and phase 20, for a reviewer that stamps every note. Changed from `M2` in the replan of 2026-11-19.
+
+**Acceptance criteria.**
 - [ ] The PR body links both merge requests of the toy plan, merged, and the pipelines that gated them
-- [ ] The PR body states the installed claude-phases version the toy plan was driven with
+- [ ] The PR body states the installed claude-phases version the toy plan was driven with, and the `codex-mr-review` version on the runner
 - [ ] On the first: a Codex finding as an inline thread, a fix pushed by the driver, the thread resolved by the driver, a second marker at the new head, and gate 6 passing on that marker
+- [ ] Every note on both merge requests was posted by one account. Each of the driver's carries the driver stamp, each of the reviewer's the reviewer stamp, and the PR body says so from the notes' source, not from memory
+- [ ] The watcher woke the session for the reviewer's finding and for its marker, each within a poll or two and not at the fallback check-in, and did not wake it for the driver's own reply or gate report. The PR body gives the wake lines
+- [ ] The driver treated the reviewer's thread as a bot's, and a thread the maintainer opened from the same account, on a point the driver disagreed with, was answered and left open
+- [ ] A comment the maintainer posted on the merge request, as themselves, woke the session
+- [ ] The two-identity arrangement on GitLab: either one further merge request reviewed with a token from a second account, with `logins` naming it, on which the reviewer's notes woke the session and its thread was a bot's, linked in the PR body; or a plain statement that it was not exercised and why. gitlab.com Free has no project access tokens, so this needs a second account and is not required for the phase to pass
 - [ ] The driver answered that finding by its existing review-handling rules, with no GitLab-specific instruction beyond the mappings in `forge-gitlab.md`; anything it could not handle that way is recorded as an observation
 - [ ] On the second: merged by the driver with `--sha`, and the source branch deleted by the server
 - [ ] The toy plan's milestone: a merge request from the long-lived branch to the default branch opened by the driver, not merged by it, and after you merged it, the long-lived branch back in line with the default branch
@@ -1058,13 +1390,15 @@ After merging:
 - [ ] The conventions under "How this plan is driven" hold
 
 **UAT.**
-- [ ] Read both merge requests on gitlab.com from top to bottom. The review thread, the driver's reply and the resolution should tell a story you can follow without the session's transcript
+- [ ] Read both merge requests on gitlab.com from top to bottom. The review thread, the driver's reply and the resolution should tell a story you can follow without the session's transcript. Every note will be under your own name: you should still be able to tell which were the reviewer's, which the driver's and which yours, from how they read
+- [ ] While the driver is waiting on an open merge request, comment on it as yourself. Within about two minutes the session should wake and answer
+- [ ] On that merge request, post a note whose whole text is `@codex review`. A new pipeline should start, and the driver's reply naming it should not start another
 - [ ] In the scratch project's branch list, only the default and long-lived branches should remain
 - [ ] Open the plan file's history. You should see three status commits per phase and nothing else from the driver
 - [ ] Start a fresh local session in the project and say `status`. It should report the plan complete and name any carried findings and outstanding UAT
 - [ ] On the scratch project, start one more toy phase and, while its merge request is open, push a commit to it yourself right as the driver is about to merge. The merge should be refused and the driver should re-evaluate
 
-**Risks.** This is where the prose written in phases 5a to 6 meets a real server, and it will be wrong somewhere. The phase is sized for small corrections; a structural problem is a replan, and the plan should stop here if one appears. gitlab.com is not the client's instance: a different version, a different tier, no VPN, and an owner's permissions where the client grants Developer. The trial proves the design and leaves those four differences untested, and the handoff has to say so. The answers still owed about the client's instance decide that rollout and do not block this phase. Corrections made here are on the feature branch, so the toy plan keeps running on the `M2` release; a correction the trial cannot proceed without is tried with `--plugin-dir` on this phase's branch, as "How this plan is driven" describes.
+**Risks.** This is where the prose written in phases 5a to 6 meets a real server, and it will be wrong somewhere. The phase is sized for small corrections; a structural problem is a replan, and the plan should stop here if one appears. gitlab.com is not the client's instance: a different version, a different tier, no VPN, and an owner's permissions where the client grants Developer. The trial proves the design and leaves those four differences untested, and the handoff has to say so. The answers still owed about the client's instance decide that rollout and do not block this phase. The trial's two phases run on one account. The two-identity arrangement stays supported, and on GitLab it is exercised end to end only if a second account is at hand for the optional step above: a project access token cannot be created on gitlab.com's Free tier. Without that step its evidence is the UAT of phases 5b to 12, the two-account criteria of phases 18 to 20 on GitHub and the mock server, and nothing on a real GitLab server after the stamps. The handoff and phase 14's wording have to say which it was. A stamp the driver or the tool leaves off shows here as a session that wakes itself or a thread nobody may close, and either is a correction for this phase or an issue on the tool's repo. Corrections made here are on the feature branch, so the toy plan keeps running on the `M4` release; a correction the trial cannot proceed without is tried with `--plugin-dir` on this phase's branch, as "How this plan is driven" describes.
 
 ---
 
@@ -1076,8 +1410,8 @@ After merging:
 - The three experimental statements from phase 12: remove them, or keep them and say exactly what is untested, depending on what phase 13 found.
 - `README.md`: the diagram, **Quick start** and **Requirements and integrations** say GitHub or GitLab; **The merge gate** table is worded for both; **Project status** gains the GitLab line and the trial; **Documentation** lists `examples/gitlab-local.md`.
 - `CONTRIBUTING.md`, **Scope**: replace "support for forges other than GitHub" being out of scope with how to add a forge, one reference file per skill with the same headings. **Keep the contract files in sync** names the forge references and the review contract. Add that PRs into a feature branch skip `Version bumped` and the bump happens once before the branch reaches `main`.
-- `SECURITY.md`: the trust boundary names merge request notes and job traces, and a local session's exposure, which is the maintainer's own machine and credentials where a cloud session had a container.
-- `docs/design.md`: **Design at a glance** gains the forge-neutral core; new sections on the review contract and why the script owns the marker, and on the watcher; **Known gaps** says the head-moved window is closed on GitLab and open on GitHub, and says what the trial left untested; **Things deliberately not done** records shipping the watcher as a script, GitHub posting in the review tool, and new rules for reading a self-hosted Codex review.
+- `SECURITY.md`: the trust boundary names merge request notes and job traces, and a local session's exposure, which is the maintainer's own machine and credentials where a cloud session had a container. It also states the one-account boundary as Decisions and rationale has it: what `logins` and the stamps keep out, what they cannot separate when the driver, the reviewer and the person share an account, and what the two-identity arrangement adds.
+- `docs/design.md`: **Design at a glance** gains the forge-neutral core; new sections on the review contract and why the script owns the marker, on the watcher, and on authorship stamps and why actors are told apart by the note and not the account; **Known gaps** says the head-moved window is closed on GitLab and open on GitHub, and says what the trial left untested; **Things deliberately not done** records shipping the watcher as a script, GitHub posting in the review tool, and new rules for reading a self-hosted Codex review.
 - `.github/ISSUE_TEMPLATE/setup_not_supported.yml` and `bug_report.yml`: a forge field.
 - Search the repo for claims this plan made false: "The only required platforms are GitHub", "iOS is CI-only", "there is nothing to poll".
 
@@ -1089,7 +1423,8 @@ After merging:
 - [ ] No document says GitHub is the only supported forge, or that iOS can only be verified in CI
 - [ ] Every remaining "experimental" statement is followed by what is untested, and where the docs claim something about GitLab, phase 13 observed it
 - [ ] `CONTRIBUTING.md` describes adding a forge
-- [ ] `docs/design.md` has the three new sections and the updated known gap
+- [ ] `docs/design.md` has the four new sections and the updated known gap
+- [ ] No document describes two identities as required, or one account as required. Where one account is described, it matches what phase 13 ran, and what is said of two identities on GitLab is as strong as phase 13's evidence for it
 - [ ] The conventions under "How this plan is driven" hold
 
 **UAT.**
@@ -1109,11 +1444,11 @@ After merging:
 **Needed by.** Nothing in the plan. It is the end, and the last row.
 
 **UAT.** On the milestone PR before you merge it:
-- [ ] Read the CHANGELOG section the preparation wrote. It should tell what the trial found, and link the two earlier entries so the plan can be read in order
+- [ ] Read the CHANGELOG section the preparation wrote. It should tell what the trial found, and link the earlier entries of this plan, `M4`'s included, so the plan can be read in order
 - [ ] Read the whole diff as one change
 
 After merging:
-- [ ] The release should appear with its notes and both skill zips
+- [ ] The release should appear with its notes and both skill zips, started by the merge itself whatever the squash message said, which is phase 22's fix seen on a real release
 - [ ] The driver should record `M3`, leave the feature branch deleted since no row targets it any more, set `Driver: idle`, and name any outstanding UAT and carried findings
 - [ ] Ask Claude which version of claude-phases it has. It should name the new one
 - [ ] Drive one phase of any existing GitHub plan in a cloud session on the released version. It should behave as it did before this plan started
@@ -1137,9 +1472,12 @@ After merging:
 8. **How the tool is installed.** Phase 11 installs from a git tag with `npm install -g`. Publishing to npm gives a shorter command and needs an npm account and a name that is free.
 9. **`AGENTS.md` from the base branch.** Phase 9 reviews with the target branch's copy, so a merge request cannot change its own review instructions. A merge request that legitimately improves `AGENTS.md` is then reviewed under the old one. Confirm.
 
+**Settled.**
+
+10. **One token or two.** Settled 2026-11-19 by the maintainer, for every instance and not for one rollout: **both are supported, side by side.** One account, with the reviewer on the person's own personal access token, and two identities, with the reviewer on a project access token or a dedicated bot user's token, as originally designed. The question was written when two identities were required, and it asked whether a second could be had at all where creating a project access token needs a role or a tier the person lacks: Premium or Ultimate on gitlab.com, and usually the Maintainer role on a self-managed instance. Phases 17 to 21 remove the requirement without removing the arrangement: notes are told apart by their stamps where the account cannot, and a reviewer on its own account is recognised by that account exactly as before. What `logins` guarantees under each, when to pick which, and the accepted risk of a personal token in a CI variable are under Decisions and rationale. Which arrangement a given project uses is that project's choice, and the planner proposes what it finds.
+
 **Owed for the client rollout, and not blocking this plan.** The trial in phase 13 runs on gitlab.com, so none of these stops a phase. They decide whether and how the result can be used on the client's instance afterwards.
 
-10. **One token or two on the client's GitLab.** The supported arrangement is a driver identity and a separate reviewer identity. Creating a project access token usually needs the Maintainer role. With one token, `logins` cannot tell the reviewer from the driver and the watcher wakes on the driver's own notes.
 11. **What the Developer-role token may do on the long-lived branch.** If that branch is protected and only Maintainers push or merge, the driver cannot write plan status to it and cannot merge under YOLO. With milestones there is a second consequence: a plan with milestone rows keeps its plan off the shipped branch, which on the client's project means the default branch or a branch of its own.
 12. **The client instance's GitLab version and tier.** Gate 4 on GitLab depends on both, and so do some fields phase 5b reads. Unknown means gate 4 is off there and says so.
 
@@ -1163,9 +1501,9 @@ After merging:
 - [x] **A killed local session holds the plan for 90 minutes, and nothing lets a person release it.** Planned as phase 15, shipping in `M2`. Found in M1's UAT on #37, step "kill the session, start a new one, say `status`": the new session read the plan and GitHub correctly but would not take over, because the dead session's heartbeat was minutes old and the Driver-ID rules say a live-looking foreign ID means stop. That is the rule working; the gap is that `vocabulary.md` has no word for "that driver is gone, take over", so the session improvised one, and the only documented release is editing `Driver-ID` to `-` by hand. Locally a killed session is the common case, not the rare one. Out of scope for M1, which ships these rules unchanged. Candidates: a documented `take over` instruction, and recording host and PID in Driver State so a session on the same machine can check whether the holder is still running.
 - [x] **Codex's own review-state comment is not read as proof, so a session that cannot attribute reactions blocks forever on a reviewed PR.** Found in M1's UAT, on scratch PR sixoverground/phases-watcher-scratch#4: a cloud session (released 0.10.0) took over, and gate 6 blocked on "one 👍 but I can't tell who left it". Its tools report reaction counts only, and gates.md rightly refuses to infer a verdict from a count. Codex had in fact also posted its summary comment, authored by `chatgpt-codex-connector[bot]`, carrying `<!-- codex-review-state:v1 {"code_review":{"commit_sha":"<full head sha>","status":"completed","has_any_findings":false,...}} -->`. That is attributable through the same tools that read comments, names the exact head, and says the review completed: as strong as a review at the head, and stronger than a 👍. Gate 6 does not count it, and `rereview: optional` does not count it as a sign either. Out of scope for M1, which ships gate 6 unchanged (2b moved it byte for byte). Candidate: in `forge-github.md`'s Gate 6, read that comment, from a `logins` author only, with `status` `completed` and `commit_sha` equal to the head, as proof for that head and as a sign at any head; never read its `has_*_findings` fields as a verdict, since threads and gate 5 own findings. Planned as phase 16, shipping in `M2`.
 
-- **The watcher ignores reactions on comments.** Found by `codex-mr-review`'s own dry run during phase 9's UAT (side by side on #36 at `e47ffcc`): the GitHub template in `watching.md` polls `/issues/$N/reactions` only, so a 👍 or 👀 on an issue comment or a review-thread comment produces no wake, although the file lists reactions as wake events. Codex's own verdict reaction lands on the PR body, which is polled, so the cost is a delayed wake for other reviewers' comment reactions until the fallback check-in. Phase 3 is merged; phase 5b edits `watching.md` for the GitLab watcher and is a natural place to fix it, if the plan's author wants it there.
+- **The watcher ignores reactions on comments.** Found by `codex-mr-review`'s own dry run during phase 9's UAT (side by side on #36 at `e47ffcc`): the GitHub template in `watching.md` polls `/issues/$N/reactions` only, so a 👍 or 👀 on an issue comment or a review-thread comment produces no wake, although the file lists reactions as wake events. Codex's own verdict reaction lands on the PR body, which is polled, so the cost is a delayed wake for other reviewers' comment reactions until the fallback check-in. Phase 3 is merged; phase 5b edits `watching.md` for the GitLab watcher and is a natural place to fix it, if the plan's author wants it there. *Replan of 2026-11-19: left open on purpose. Phase 19 rewrites this template's filters and does not add comment reactions, which would cost one request per comment on every poll. A reaction also has no body to stamp, so it keeps the account filter there.*
 
 - [x] **Merged-results pipelines review the merge commit, so every finding becomes a general thread.** Fixed in phase 11 (sixoverground/codex-mr-review#4): the template passes `--head "$CI_MERGE_REQUEST_SOURCE_BRANCH_SHA"`, and the tool defaults to it when set. From the arbitration on sixoverground/codex-mr-review#3 (verdict comment `<!-- phase-driver:arbiter 10:3 -->`): with the default `--head HEAD`, a merged-results pipeline's reviewed tree is the merge commit and never equals the MR's `diff_refs.head_sha`, so after finding 7's guard every finding there is posted as a general thread rather than inline. For phase 11, whose scope is the CI template: the template should pass `--head "$CI_MERGE_REQUEST_SOURCE_BRANCH_SHA"` when it is set, or the tool should default to it.
 
-- **A milestone's squash merge can skip its own release.** On #46 (M2), the squash commit's message quoted a phase commit containing the literal text `[skip ci]` ("don't count on [skip ci] in an MR title", from 5a), so GitHub skipped the push-triggered Release workflow: no `v0.12.0` tag or GitHub release was created, although the plugin update installed 0.12.0 from `main`. Out of scope for M2, whose scope is the phases it ships. Candidates: `milestone.prepare` or the milestone PR body tells the person to trim the squash message of `[skip ci]` and its variants before merging; or `release.yml` also runs on `workflow_dispatch` and the driver's after-merge step checks for the tag and says how to dispatch it.
+- [x] **A milestone's squash merge can skip its own release.** On #46 (M2), the squash commit's message quoted a phase commit containing the literal text `[skip ci]` ("don't count on [skip ci] in an MR title", from 5a), so GitHub skipped the push-triggered Release workflow: no `v0.12.0` tag or GitHub release was created, although the plugin update installed 0.12.0 from `main`. Out of scope for M2, whose scope is the phases it ships. Candidates: `milestone.prepare` or the milestone PR body tells the person to trim the squash message of `[skip ci]` and its variants before merging; or `release.yml` also runs on `workflow_dispatch` and the driver's after-merge step checks for the tag and says how to dispatch it. Planned as phase 22, shipping in `M4`: the release job also starts from the merged pull request, which does not read the squash message, and `milestone.after_merge` in this plan now confirms the release and dispatches it when it is missing, which covers `M4`'s own merge.
 
