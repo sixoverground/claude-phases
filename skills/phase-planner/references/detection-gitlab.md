@@ -160,12 +160,25 @@ glab api --hostname <host> --paginate "projects/<P>/merge_requests/<iid>/notes?p
 
 Read `body`, `author.username`, `system` and `type`. Then look in the CI file's `merged_yaml` and `includes` for the job that posts it: a real job, not a hidden template, read as resolved by [Resolve each job before reading it](#resolve-each-job-before-reading-it). An included template such as `codex-mr-review`'s usually defines the job through `extends`, so its rules and tags are the inherited ones.
 
+**Recognising `codex-mr-review`**, the local Codex reviewer set up as [GitLab with a local Codex review](https://github.com/sixoverground/claude-phases/blob/main/docs/review-setup.md#gitlab-with-a-local-codex-review) describes. A real job is its reviewer job when any of these holds:
+
+- the project's `includes` has a `remote` or `project` entry for `templates/codex-review.gitlab-ci.yml` in `sixoverground/codex-mr-review`, and the job is the template's `codex-review` or `extends` its hidden `.codex-review`
+- the job's resolved `script` runs `codex-mr-review review`
+
+**Read the reviewer's name and its author off a real note, never from the CI file alone.** On a marker note, the name is the marker's `reviewer=` value and the author is the note's `author.username`. Those two go into the entry as read, and the findings say which MR and note they came from:
+
+```
+  reviewer         codex marker on !41 and !43, posted by project_123_bot_4f2a; codex-review job from the codex-mr-review template
+```
+
+With the job and no marker note yet, the name the job will post is `CODEX_MR_REVIEW_REVIEWER` as the job resolves it, `codex` when nothing overrides the template's default. Propose it, and say it is read from the CI file and unconfirmed. Do not fill `logins`: the account is the token's, which the CI file does not show, and a project access token's bot username is generated. Ask for it, or leave the placeholder and say the first phase MR's marker note will show it. A job whose script runs another reviewer through `.codex-review`, as the setup's **Another reviewer through the same job** describes, posts the name its own script passes: read it there, or from its first note, and never assume `codex`.
+
 | Observed | Set |
 |---|---|
 | Marker notes for one reviewer name, by one account | `required: [{ marker: "<name>", logins: ["<that account>"] }]`. Read the account off the notes; list only it |
-| A reviewer job in the CI file (for example `codex-review`, from the `codex-mr-review` CI template, which posts `reviewer=codex`) but no marker on any MR yet | The `marker` entry, with a line in the findings saying no MR has shown a marker yet and the first phase MR will confirm it. Leave `logins` for the account it will post as, and ask which that is |
+| A reviewer job in the CI file (for example `codex-review`, from the `codex-mr-review` CI template) but no marker on any MR yet | The `marker` entry with the name the job will post, as above, and a line in the findings saying no MR has shown a marker yet and the first phase MR will confirm it. Leave `logins` for the account it will post as, and ask which that is |
 | Marker notes, and the reviewer job does not run by itself on an MR into `target_branch` (its rules, a manual `when`, or a missing `needs`) | Refuse, by the trigger filters above. The markers came from MRs into another branch, or from someone playing the job |
-| Neither a marker nor a job that could post one | No `marker` entry. Configuring one is refused in `SKILL.md` §3 |
+| Neither a marker nor a job that could post one | No `marker` entry. Configuring one is refused in `SKILL.md` §3, and the refusal points at [GitLab with a local Codex review](https://github.com/sixoverground/claude-phases/blob/main/docs/review-setup.md#gitlab-with-a-local-codex-review) as the way to set one up |
 | People review, approve or request changes | `required: []`, and say that gates 4 and 5 still apply to them. Gate 4 depends on the instance: requesting changes is a Premium and Ultimate feature from GitLab 17.2 |
 | Nobody reviews | `required: []`, and say plainly that nothing will be checking the driver's work |
 

@@ -123,6 +123,9 @@ For a repo whose forge is `gitlab`. The same loop, through `glab api` against th
 - the head pipeline's status, and the status of each of its jobs
 - the commit statuses on the head sha, which include external ones
 - a new note, or a new note in a thread, from anyone other than the account the driver acts as. System notes are left out: a push already shows as a moved head
+- a new note whose whole text is `@codex review`, from anyone, the driver's own account included. With one identity a person posts as the driver's account, and the driver never posts that text itself
+
+A person's note asking `@codex review` reaches the watcher as a `review request`, and the wake answers it as the GitLab reference's [`@codex review` from a person](forge-gitlab.md#codex-review-from-a-person) says. Only a running watcher sees it: with no session watching the MR, nothing answers the request.
 
 Reactions are not on the list: no gate reads them on GitLab. A request for changes is not either, because it adds no note; see the GitLab reference's **Watch**.
 
@@ -169,8 +172,10 @@ while :; do
       api --paginate "projects/$P/repository/commits/$sha/statuses?per_page=100" &&
       jq -r '.[] | "check status \(.name)=\(.status)"' "$D/raw" >> "$new" &&
       api --paginate "projects/$P/merge_requests/$N/notes?per_page=100" &&
-      jq -r --arg me "$ME" '.[] | select(.system | not) | select((.author.username | ascii_downcase) != $me)
-        | "item \(if .type == null then "note" else "thread note" end):\(.id)"' "$D/raw" >> "$new"
+      jq -r --arg me "$ME" '.[] | select(.system | not)
+        | (.body // "" | test("^\\s*@codex review\\s*$"; "i")) as $ask
+        | select($ask or (.author.username | ascii_downcase) != $me)
+        | "item \(if $ask then "review request" elif .type == null then "note" else "thread note" end):\(.id)"' "$D/raw" >> "$new"
     } 2>"$D/err"; then
       up=1
       if [ -f "$D/$K.down" ]; then rm -f "${D:?}/${K:?}.down"; lines="$lines $mr: the forge is answering again."; fi

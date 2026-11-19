@@ -41,6 +41,8 @@ A repo is named by its project path on its forge: `owner/name` on GitHub, `group
 
 Neither key has an off switch: every repo lives on some forge, and leaving both unset is GitHub on `github.com`, exactly as before the keys existed. Set them under `defaults` when every repo is on one forge, or per repo when they are not.
 
+**GitLab support is experimental.** Everything for GitLab was written against `glab` and GitLab's API documentation and tested with stand-ins, but no plan has yet been driven end to end on a real GitLab project. Expect a command or field to be wrong for some server, and report it when one is. The label comes off once a real GitLab project has been driven through planning, a merge request, its pipeline and review, a fix, a merge and a milestone.
+
 **The home repo's `forge` and `host` decide where the plan is read and written.** Every other repo's decide where that repo's change requests live.
 
 **Why a key rather than detection.** A remote URL says which host a clone came from, but not which forge runs there, and a self-managed GitLab on a company domain looks like any other host. The driver reads its rules for a forge from a reference file per forge, so it has to know which one before it touches anything. A driver whose copy has no reference for the configured forge stops at its first reconcile and says so, rather than guessing.
@@ -280,7 +282,7 @@ What separates them is the reviewer's own contract. Smart detect reviews every P
 
 ### Reviewer setups
 
-All six are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
+All seven are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
 
 | Setup | Config | Notes |
 |---|---|---|
@@ -289,6 +291,7 @@ All six are first-class, and they compose. Require Copilot *and* a Claude check 
 | **GitHub Copilot** | `required: [{ logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"] }]` | Enable the "Review new pushes" ruleset so anchors track the head |
 | **OpenAI Codex** | `required: [{ logins: ["chatgpt-codex-connector"], rereview: optional }]` | Reviews as a GitHub App with inline comments. On **smart detect** it reviews once and may skip later pushes, which is what `rereview: optional` is for. If it is set to review every push, drop the key and take the stronger default |
 | **Any reviewer that emits the contract** | `required: [{ marker: "<name>", logins: ["<its account>"] }]` | A self-hosted reviewer that posts the [review contract](https://github.com/sixoverground/claude-phases/blob/main/docs/review-contract.md)'s marker after every review. Pin `logins` to the account it posts as. `proof` and `rereview` don't apply |
+| **GitLab with a local Codex review** | `required: [{ marker: "codex", logins: ["<the review token's username>"] }]` | A CI job runs Codex on your own runner and posts the marker. The only reviewer setup mapped on GitLab. The review token must be a different account from the driver's. Profile: `profiles/review-codex-local.yml` |
 | **Humans only, or nobody** | `required: []` | Gates for `CHANGES_REQUESTED` and thread resolution still apply to human reviews |
 
 See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/docs/review-setup.md) for the full walkthrough of each.
