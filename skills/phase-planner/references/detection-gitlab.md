@@ -191,7 +191,7 @@ The same as [`detection.md`](detection.md#release-conventions--milestoneprepare)
 
 ## Toolchain → `verify`
 
-The same table as [`detection.md`](detection.md#toolchain--verify). One GitLab case more: where the CI runs on a runner on the same Mac as the driver, the toolchain the runner uses is usually installed there too, so `local` is often right. Confirm it rather than assume it, and see the GitLab section of [`hygiene.md`](hygiene.md#gitlab) for the runner and the driver sharing one machine.
+The same table as [`detection.md`](detection.md#toolchain--verify), including its Xcode row: `ci` in a cloud session, `local` on macOS with `xcodebuild` present, as a quick simulator build with the test suite left to CI. One GitLab case more: where the CI runs on a runner on the same Mac as the driver, the toolchain the runner uses is usually installed there too, so `local` is often right. Confirm it rather than assume it, and see the GitLab section of [`hygiene.md`](hygiene.md#gitlab) for the runner and the driver sharing one machine.
 
 ## When there's nothing to observe
 

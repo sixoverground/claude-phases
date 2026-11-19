@@ -56,7 +56,13 @@ Only for a plan with milestone rows.
 
 ## Makes local verification possible
 
-**A `SessionStart` hook** that installs dependencies, for any repo set to `verify: local`. `local` has no fallback: if the toolchain isn't there, verification fails and the phase blocks. Use `verify: auto` if you'd rather it drop to CI instead.
+**A `SessionStart` hook** that installs dependencies, for any repo set to `verify: local` in a cloud session. That is a cloud concern: a fresh container has nothing installed. A session on your own machine uses the toolchain already there. `local` has no fallback: if the toolchain isn't there, verification fails and the phase blocks. Use `verify: auto` if you'd rather it drop to CI instead.
+
+**When the driver and a CI runner share a Mac**, for an Xcode project on `verify: local`, keep their builds apart. Contention between them is intermittent, so a setup that worked once is not proof:
+
+- **Its own DerivedData.** Pass the driver's build `-derivedDataPath` pointing at a directory of its own, so it never waits on, or corrupts, the runner's build directory.
+- **A simulator the runner does not use.** Build for a generic simulator destination (`-destination 'generic/platform=iOS Simulator'`), which needs no booted simulator, or name a simulator the runner never boots.
+- **One concurrent job on the runner** (`concurrent = 1` in a GitLab runner's `config.toml`), so the runner itself never runs two builds against one simulator.
 
 ## Worth mentioning, not blocking
 

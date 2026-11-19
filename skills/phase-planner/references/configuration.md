@@ -97,7 +97,7 @@ What's realistic:
 
 - **Web / backend.** `local`. Node, Python, Go, and Rust toolchains all install in the container.
 - **Android.** `auto`. JVM unit tests are feasible; emulator-backed instrumented tests belong in CI.
-- **iOS.** `ci`. Building needs macOS and Xcode; no Linux container has them.
+- **iOS.** `ci` in a cloud session: building needs macOS and Xcode, and no Linux container has them. `local` when the session runs on macOS with Xcode, as a quick build for the simulator, with the full test suite left to CI.
 
 ### CI
 
