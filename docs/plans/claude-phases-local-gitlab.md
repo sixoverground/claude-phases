@@ -1154,7 +1154,7 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3
-- Heartbeat: 2026-11-19T14:10:46Z
+- Heartbeat: 2026-11-19T14:11:19Z
 - Note: -
 
 ## Carried findings
@@ -1164,4 +1164,4 @@ After merging:
 
 - **The watcher ignores reactions on comments.** Found by `codex-mr-review`'s own dry run during phase 9's UAT (side by side on #36 at `e47ffcc`): the GitHub template in `watching.md` polls `/issues/$N/reactions` only, so a 👍 or 👀 on an issue comment or a review-thread comment produces no wake, although the file lists reactions as wake events. Codex's own verdict reaction lands on the PR body, which is polled, so the cost is a delayed wake for other reviewers' comment reactions until the fallback check-in. Phase 3 is merged; phase 5b edits `watching.md` for the GitLab watcher and is a natural place to fix it, if the plan's author wants it there.
 
-- **Merged-results pipelines review the merge commit, so every finding becomes a general thread.** From the arbitration on sixoverground/codex-mr-review#3 (verdict comment `<!-- phase-driver:arbiter 10:3 -->`): with the default `--head HEAD`, a merged-results pipeline's reviewed tree is the merge commit and never equals the MR's `diff_refs.head_sha`, so after finding 7's guard every finding there is posted as a general thread rather than inline. For phase 11, whose scope is the CI template: the template should pass `--head "$CI_MERGE_REQUEST_SOURCE_BRANCH_SHA"` when it is set, or the tool should default to it.
+- [x] **Merged-results pipelines review the merge commit, so every finding becomes a general thread.** Fixed in phase 11 (sixoverground/codex-mr-review#4): the template passes `--head "$CI_MERGE_REQUEST_SOURCE_BRANCH_SHA"`, and the tool defaults to it when set. From the arbitration on sixoverground/codex-mr-review#3 (verdict comment `<!-- phase-driver:arbiter 10:3 -->`): with the default `--head HEAD`, a merged-results pipeline's reviewed tree is the merge commit and never equals the MR's `diff_refs.head_sha`, so after finding 7's guard every finding there is posted as a general thread rather than inline. For phase 11, whose scope is the CI template: the template should pass `--head "$CI_MERGE_REQUEST_SOURCE_BRANCH_SHA"` when it is set, or the tool should default to it.
