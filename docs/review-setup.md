@@ -252,7 +252,11 @@ include:
 
 codex-review:
   tags: [your-runner-tag]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 ```
+
+**Keep the `rules:` in your own file**, even though the template has the same rule. GitLab creates merge request pipelines only when the project's own `.gitlab-ci.yml` has a job rule or `workflow: rules` that matches them; a rule that arrives through `include:` does not count ([GitLab's documentation](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/#configure-merge-request-pipelines)). Without it, a project with no other merge request rule never runs the review, and gate 6 waits for a marker that never comes. A project that already has `workflow: rules` creating merge request pipelines can leave it out.
 
 The template's job runs on every merge request pipeline in the `test` stage (set `stage:` if the project has none), reviews from the MR's diff base, and in a merged results pipeline reviews the source branch head, so its marker names the commit the driver gates on. It reviews at reasoning effort `high` by default. Change the model, effort or reviewer name through the variables listed in the tool's README.
 
@@ -304,11 +308,13 @@ other-review:
   extends: .codex-review
   tags: [your-runner-tag]
   resource_group: other-review-$CI_MERGE_REQUEST_PROJECT_ID-$CI_MERGE_REQUEST_IID
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   script:
     - my-reviewer --base "$CI_MERGE_REQUEST_DIFF_BASE_SHA" --reviewer my-reviewer
 ```
 
-Give it its own reviewer name, its own `resource_group` and its own `marker` entry. The tool's README lists the rules it follows that yours should too: the sha comes from the pipeline and never from model output, model text is scrubbed of the marker prefix before posting, and a failed review posts no marker.
+Give it its own reviewer name, its own `resource_group` and its own `marker` entry, and keep its `rules:` in your file for the reason above. The tool's README lists the rules it follows that yours should too: the sha comes from the pipeline and never from model output, model text is scrubbed of the marker prefix before posting, and a failed review posts no marker.
 
 ### What to check on the first merge request
 
@@ -360,7 +366,7 @@ If it doesn't re-run **by design**, because the reviewer decides per push whethe
 
 Open a throwaway merge request with a deliberate flaw, and check four things:
 
-1. **The review job ran** in the MR's pipeline and passed. If it is `pending`, no online runner has its tags. If it failed saying the token is missing, the variable is protected.
+1. **The review job ran** in the MR's pipeline and passed. If the MR has no pipeline at all, the project's own file has no merge request rule: see **Add the job** above. If it is `pending`, no online runner has its tags. If it failed saying the token is missing, the variable is protected.
 2. **Its findings are threads on diff lines**, under the reviewer token's account, not yours.
 3. **The summary note ends with a marker** naming the reviewer and the MR's head sha in full. Compare it with the head shown on the MR's **Commits** tab. Read the note's author here: that username goes in `logins`.
 4. **A second push produces a second marker**, naming the new head. A job that ran once and not again leaves the gate blocked the first time the driver pushes a fix.
