@@ -67,7 +67,7 @@ For each resolved job that matters, read its conditions against a merge request 
 
 **First, whether the project creates merge request pipelines at all.** GitLab requires job rules or `workflow: rules` that match `CI_PIPELINE_SOURCE == "merge_request_event"`, and its merge request pipelines page says that rules defined through `include:` (for example `include:component`) do not satisfy this: they must be in the project's own CI file. So read that file itself (`ci_config_path`, or `.gitlab-ci.yml`) as well as `merged_yaml`, and note where the `merge_request_event` rule lives. If it appears only in included files, say you could not tell whether merge request pipelines are created, and ask.
 
-**Observation comes first.** A job seen finishing (any finished status, not `created`, `pending` or `manual`) in a recent merge request pipeline into `target_branch` from an unprotected source branch counts as **observed**: it is eligible, and a runner served it. That is the ground truth this file calls load-bearing below, and the table that follows is only for jobs you have not seen run. Where the static reading of the CI file contradicts an observation, because the table says a job cannot run and you saw it run, or the reverse, do not refuse. Show both, the observation and the rule you read, and ask.
+**Observation comes first.** A job seen **executing** in a recent merge request pipeline into `target_branch` from an unprotected source branch counts as **observed**: it is eligible, and a runner served it. Executing means the job record shows it actually started: `started_at` is set, and for a job that runs on a runner (anything without `trigger:`), `runner` is set too. A status alone is not evidence: a `skipped` job, which includes an unstarted manual job, never ran, and a job `canceled` before it started, or one still `created`, `pending` or `manual`, shows neither eligibility nor a runner. Those are read by the table below like any job you have not seen run. That is the ground truth this file calls load-bearing below, and the table that follows is only for jobs you have not seen run. Where the static reading of the CI file contradicts an observation, because the table says a job cannot run and you saw it run, or the reverse, do not refuse. Show both, the observation and the rule you read, and ask.
 
 **The table is partial.** It covers the keywords listed in it and no others. GitLab's job eligibility has more inputs than any table here: child pipelines, `only: variables`, jobs added by pipeline execution policies, compute quotas, and group or locked runners among them. The catch-all row at the end of the table says what to do with the rest.
 
@@ -125,7 +125,7 @@ If none exist, as for a new feature branch, read MRs into the default branch ins
 For each MR, its pipelines, and the jobs of the newest **merge request pipeline** (`source` is `merge_request_event`, or `ref` is under `refs/merge-requests/<iid>/`), which is the pipeline the driver's gate 3 reads first. Fall back to the newest branch pipeline only where an MR had no merge request pipeline, and say so:
 
 ```sh
-glab api --hostname <host> "projects/<P>/merge_requests/<iid>/pipelines?per_page=100"
+glab api --hostname <host> --paginate "projects/<P>/merge_requests/<iid>/pipelines?per_page=100"
 glab api --hostname <host> --paginate "projects/<P>/pipelines/<id>/jobs?per_page=100"
 glab api --hostname <host> --paginate "projects/<P>/pipelines/<id>/trigger_jobs?per_page=100"
 glab api --hostname <host> --paginate "projects/<P>/repository/commits/<sha>/statuses?per_page=100"
@@ -228,7 +228,7 @@ A job with `tags` runs only on a runner that has every one of them, and a job st
 Read the tags from the resolved job, by [Resolve each job before reading it](#resolve-each-job-before-reading-it). Then the runners, where the token may:
 
 ```sh
-glab api --hostname <host> "projects/<P>/runners?status=online&per_page=100"
+glab api --hostname <host> --paginate "projects/<P>/runners?status=online&per_page=100"
 glab api --hostname <host> runners/<id>
 ```
 
