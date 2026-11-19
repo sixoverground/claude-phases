@@ -1154,8 +1154,8 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-19T00:01:21Z
-- Note: 9 ready to merge (codex-mr-review#2, 2b4e218)
+- Heartbeat: 2026-11-19T00:17:45Z
+- Note: 9 ready to merge (codex-mr-review#2, 9486485), pending the re-run side-by-side at high effort
 
 ## Carried findings
 
