@@ -65,7 +65,7 @@ glab api --hostname <host> projects/<P>
 Reconcile asks the forge what is actually true for each row. On GitLab, list the row's repo's MRs by that row's branch, in every state:
 
 ```sh
-glab api --hostname <host> "projects/<P>/merge_requests?source_branch=<b>&state=all"
+glab api --hostname <host> --paginate "projects/<P>/merge_requests?source_branch=<b>&state=all&per_page=100"
 ```
 
 `state=all` is what makes a merged or closed MR answer the question as much as an open one does. It is also the server's default, and it is passed anyway so the query does not depend on that.
@@ -89,7 +89,7 @@ From each entry, read:
 A milestone row's MR has the target branch as source and the default branch as target, so list by both, then pick the one whose title names the row's id, per SKILL.md's **Which PR is a milestone's**:
 
 ```sh
-glab api --hostname <host> "projects/<P>/merge_requests?source_branch=<target_branch>&target_branch=<default_branch>&state=all"
+glab api --hostname <host> --paginate "projects/<P>/merge_requests?source_branch=<target_branch>&target_branch=<default_branch>&state=all&per_page=100"
 ```
 
 One MR, when a later step needs more than the list gives:
@@ -194,9 +194,10 @@ That, and only that message, is the stale-write conflict the core's lock rules h
 When the plan branch refuses direct writes, each transition becomes a one-file MR against the plan branch, **merged at once by the driver**. That is what the core's "with auto-merge" means on GitLab: auto-merge would leave the MR waiting on a pipeline nobody is watching, so it is turned off and the driver merges in the same transition.
 
 1. **Write the file to a new branch in one call.** The same `PUT` as above, with `branch` set to a new branch under the repo's `branch_prefix`, such as `claude/plan-<project>-<N>-<status>`, and `start_branch` set to the plan branch, added to `body.json`. GitLab creates the branch from the plan branch and commits to it in one request, and `last_commit_id` is still checked against the file as it was on the plan branch.
-2. **Open the MR** by [Open](#open), from that branch into the plan branch, titled with the same `chore(plan): ... [skip ci]` message, with `--remove-source-branch=true` and `--squash-before-merge=false`. The `[skip ci]` in the title is what skips the MR's own pipelines. In the commit message it would not.
-3. **Re-read the plan file's `last_commit_id` on the plan branch.** If it is not the token from step 1, someone wrote in between: close the MR (`glab api --hostname <host> -X PUT projects/<P>/merge_requests/<iid> -f state_event=close`), delete its branch, and treat it as the stale-write conflict. An MR's merge does not check a file's token, so this read is the lock, and like GitHub's merge it narrows the window rather than closing it.
-4. **Merge it** by [Merge](#merge), with `--message` set to the same `chore(plan): ... [skip ci]` line, so the merge commit on the plan branch skips its pipeline too.
+2. **Open the MR** by [Open](#open), from that branch into the plan branch, titled with the same `chore(plan): ... [skip ci]` message, with `--remove-source-branch=true` and `--squash-before-merge=false`. On GitLab 19.5 and later, with the `ci_skip_pipeline_from_mr_title` feature flag on, the `[skip ci]` in the title skips the MR's own pipelines; in the commit message it would not. **Do not count on it**: an older self-managed server, or one with the flag off, starts the pipeline anyway, so step 3 checks.
+3. **If the MR has a pipeline, let it finish before merging.** Read the MR (`glab api --hostname <host> projects/<P>/merge_requests/<iid>`) and look at `head_pipeline`. When it is `null`, the title skip worked or no pipeline is configured: go on. When it is set and its `status` is still running or pending, the server did not skip it, and a merge now would be refused wherever the project requires a successful pipeline. Wait for it as for any check, by the core's §4: the transition is not finished, so nothing the write describes may start meanwhile. When it fails, that is the hard stop below. When it succeeds, go on. Say once that this server does not skip pipelines from an MR title, so the person knows why plan writes are slow here.
+4. **Re-read the plan file's `last_commit_id` on the plan branch.** If it is not the token from step 1, someone wrote in between: close the MR (`glab api --hostname <host> -X PUT projects/<P>/merge_requests/<iid> -f state_event=close`), delete its branch, and treat it as the stale-write conflict. An MR's merge does not check a file's token, so this read is the lock, and like GitHub's merge it narrows the window rather than closing it.
+5. **Merge it** by [Merge](#merge), with `--message` set to the same `chore(plan): ... [skip ci]` line, so the merge commit on the plan branch skips its pipeline too.
 
 **Where the token may not merge into the plan branch, stop.** Read `user.can_merge` on the MR before merging. When it is `false`, or the merge is refused for permission, or the project allows merges only after a pipeline succeeds (`only_allow_merge_if_pipeline_succeeds`) and does not count a skipped one (`allow_merge_on_skipped_pipeline: false`), no status can be recorded at all. That is a hard stop, not a `Blocked` row: a `Blocked` would itself be a plan write. Close the plan MR, say which branch refused and why, and that the driver needs either push or merge access to it, or the plan moved to a branch it can write. By golden rule 10's last sentence, the action the write described has not started.
 
