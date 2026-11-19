@@ -46,7 +46,27 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 
 **Gate 4.** Group reviews by author, take each author's most recent. A request for changes that the same reviewer later superseded with an approval or a comment no longer blocks.
 
-**Gate 5.** Every review thread resolved. Only diff-anchored comments form resolvable threads, so this does nothing for a reviewer that posts only top-level comments. Resolve a thread only when you've actually addressed it: fixed it, declined it as out of scope and said where it went, or, on a review bot's thread, answered it with checkable reasoning that it is wrong or not worth a round. A thread a person opened is resolved only for the first two. See *Answering a review* in the skill.
+**Gate 5.** Every review thread resolved. Only diff-anchored comments form resolvable threads, so this does nothing for a reviewer that posts only top-level comments. Resolve a thread only when you've actually addressed it: fixed it, declined it as out of scope and said where it went, or, on a review bot's thread, answered it with checkable reasoning that it is wrong or not worth a round. A thread a person opened is resolved only for the first two. See *Answering a review* in the skill. Whether a thread is a bot's or a person's is decided by [Whose note it is](#whose-note-it-is).
+
+### Whose note it is
+
+The driver treats a note differently depending on who wrote it: a reviewer's thread may be resolved on a disagreement, a person's may not, and a person's note can ask for things a reviewer's cannot. On a shared account the account cannot say who that was, so the stamps of the [review contract](https://github.com/sixoverground/claude-phases/blob/main/docs/review-contract.md), version 1.1, say it instead. Every note is exactly one of three:
+
+1. **The driver's.** Written by the account the driver acts as **and** carrying the driver stamp, `<!-- phases:driver v=1 -->`. The same stamp on a note from any other account means nothing: only the driver's own account can write the driver's notes.
+2. **A reviewer's.** It carries no driver stamp, and either:
+   - **the account says so**, as before stamps existed: the forge reference calls the author a bot or app account, or the author is in the `logins` of a `review.required` entry **and is not the account the driver acts as**; or
+   - **the note says so**: it carries a reviewer stamp, `<!-- phases:reviewer v=1 reviewer=<name> -->`, or a review marker, naming the reviewer of a configured `marker` entry, and its author is one of that entry's `logins` where the entry lists any.
+3. **A person's.** Everything else, whatever account it came from. That includes an unstamped note from the account the driver acts as: on a shared account, that is the person the driver is working for.
+
+**A thread belongs to whoever wrote its first note.** Replies inside it do not change whose it is.
+
+**A note carrying both stamps is a person's.** Neither the driver nor a reviewer that meets the contract ever writes the other's stamp, so a note with both was written by hand.
+
+**Whatever you cannot settle is a person's.** An author you cannot read, a stamp that does not parse, a `bot` field you could not fetch: read the note as a person's. Their thread stays open and their note is answered. Taking a person's thread for a bot's closes it on someone who is present, so every doubt costs a wait rather than that.
+
+**Notes from before the stamp.** A note the driver wrote before it stamped its notes carries no stamp, so on the driver's own account it reads as a person's. That errs toward a wake and an open thread, never toward closing one.
+
+Each forge reference's **Whose thread it is** says which fields hold the author, the account type and the body there. [GitHub](forge-github.md#whose-thread-it-is), [GitLab](forge-gitlab.md#whose-thread-it-is).
 
 **Gate 6.** Each entry in `review.required` needs proof it evaluated **this** commit. An entry is satisfied by any of:
 

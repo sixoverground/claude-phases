@@ -166,7 +166,7 @@ GitLab's "re-request review" button notifies a person and starts nothing, so it 
 
 **A note from a person that says `@codex review` is a request to run the review job again**, the GitLab form of the same request on GitHub, where Codex itself answers it. On GitLab nothing reads the note but you: the reviewer runs only in a pipeline. So answer it by creating a merge request pipeline, the second way above, on the current head, and reply on the MR with the pipeline's id. Create one even where a retry would do, so the request always gets the same answer.
 
-A request is a note, not a system note, whose whole text is `@codex review`, by anyone but the reviewer's `logins`. **That includes the account you act as**: with one identity a person posts as that account, and you never post that text yourself, so on that account it is the person's. Never write it in a note of your own, even quoted, or the next wake answers you. Answer each request once: a pipeline created for the note at the current head is the answer, so do not create another for the same note on a later wake. A request on an MR whose current head already has a marker from the reviewer still gets the pipeline: the person asked for a review, and a second marker for one head costs nothing but the run.
+A request is **a person's note**, by [Whose note it is](gates.md#whose-note-it-is), not a system note, whose whole text is `@codex review`. That includes an unstamped note from the account you act as, which on one account is the person. It replaces an earlier rule, "by anyone but the reviewer's `logins`", which on one account would have ruled out the person, since their account is then the reviewer's too. Never write that text in a note of your own on GitLab, even quoted and even stamped, or the next wake answers you. Answer each request once: a pipeline created for the note at the current head is the answer, so do not create another for the same note on a later wake. A request on an MR whose current head already has a marker from the reviewer still gets the pipeline: the person asked for a review, and a second marker for one head costs nothing but the run.
 
 **It needs a running driver.** With no session watching the MR, nothing answers the note. Say so in the reply when you find one that waited, and point the person at the job's **Retry** button on the MR's pipeline page for next time.
 
@@ -355,12 +355,23 @@ A project with **All threads must be resolved** turned on refuses the merge itse
 
 #### Whose thread it is
 
-The core treats a bot's thread and a person's thread differently, in **Answering a review** and in `gates.md`'s gate 5. On GitLab a thread is the author's of its first note, `notes[0].author`, and that author is **a bot** when either:
+The core decides whose a note is by [Whose note it is](gates.md#whose-note-it-is), and a thread is its first note's. On GitLab the fields are:
 
-- their `username` is in the `logins` of a `marker` entry in `review.required`, matched case-insensitively; or
-- GitLab marks the user as a bot: `glab api --hostname <host> users/<author id>`, field `bot` is `true`. Project and group access tokens, and service accounts, post as bot users.
+- **The first note** of a discussion: `notes[0]`. Its `body` holds any stamp or marker, and `author.username` and `author.id` its author.
+- **The account the driver acts as**: the username `glab` is logged in as for the host, `glab api --hostname <host> user`, field `username`. Compare usernames case-insensitively.
+- **A bot account**: `glab api --hostname <host> users/<author id>`, field `bot` is `true`. Project and group access tokens, and service accounts, post as bot users. A `bot` field you could not read is not `true`.
+- **An author in `logins`**: `author.username` in the `logins` of a `review.required` entry, matched case-insensitively. Such an author makes the note a reviewer's by account **only when it is not the account the driver acts as**. On one account it is, and then only a reviewer stamp or a marker in the body makes the note a reviewer's.
 
-Anyone else is a person, and their thread stays open by the core's rules.
+So the core's three classes come out as:
+
+| `notes[0]` | Whose |
+|---|---|
+| By the driver's account, body carries `<!-- phases:driver v=1 -->` and no reviewer stamp | The driver's |
+| By an account with `bot: true`, or in a `logins` that is not the driver's own, with no driver stamp | A reviewer's |
+| Body carries a reviewer stamp or marker naming a configured `marker` entry, by one of its `logins` where it lists any, with no driver stamp | A reviewer's |
+| Anything else, including an unstamped note from the driver's account | A person's |
+
+A note the driver wrote before it stamped its notes reads as a person's, which errs toward a wake and an open thread, as the core says.
 
 ### Gate 6: reviewer
 
