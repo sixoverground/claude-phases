@@ -4,20 +4,20 @@ Six gates. All must pass before a merge. Evaluate them against a specific commit
 
 Use the row's repo's resolved config (its entry deep-merged over `defaults`).
 
-Each gate is a question any forge can answer. How GitHub answers it, field by field, is in [`forge-github.md`](forge-github.md#the-gates), under a heading per gate.
+Each gate is a question any forge can answer. How GitHub answers it, field by field, is in [`forge-github.md`](forge-github.md#the-gates), under a heading per gate. How GitLab answers it is in [`forge-gitlab.md`](forge-gitlab.md#the-gates), under the same headings. Read the forge reference for the change request's repo.
 
-| # | Gate | Passes when | Off switch | On GitHub |
-|---|---|---|---|---|
-| 1 | Not a draft | The change request is not a draft | none: a draft is an explicit "not ready" | [Gate 1](forge-github.md#gate-1-draft) |
-| 2 | No blocking label | No label in `blocking_labels` (default `do-not-merge`, `wip`, `blocked`) | `blocking_labels: []` | [Gate 2](forge-github.md#gate-2-labels) |
-| 3 | Checks green | Every counted check passed | `ci.allow_none: true` covers the zero-checks case | [Gate 3](forge-github.md#gate-3-checks) |
-| 4 | No changes requested | For each reviewer, their *latest* review does not request changes | `review.changes_requested_blocks: false` | [Gate 4](forge-github.md#gate-4-changes-requested) |
-| 5 | Threads resolved | Every review thread is resolved | `review.threads_must_resolve: false` | [Gate 5](forge-github.md#gate-5-threads) |
-| 6 | Reviewer saw this commit | Every entry in `review.required` is satisfied at the head SHA, or declined it under `rereview: optional` | `review.required: []` (the default) | [Gate 6](forge-github.md#gate-6-reviewer) |
+| # | Gate | Passes when | Off switch | On GitHub | On GitLab |
+|---|---|---|---|---|---|
+| 1 | Not a draft | The change request is not a draft | none: a draft is an explicit "not ready" | [Gate 1](forge-github.md#gate-1-draft) | [Gate 1](forge-gitlab.md#gate-1-draft) |
+| 2 | No blocking label | No label in `blocking_labels` (default `do-not-merge`, `wip`, `blocked`) | `blocking_labels: []` | [Gate 2](forge-github.md#gate-2-labels) | [Gate 2](forge-gitlab.md#gate-2-labels) |
+| 3 | Checks green | Every counted check passed | `ci.allow_none: true` covers the zero-checks case | [Gate 3](forge-github.md#gate-3-checks) | [Gate 3](forge-gitlab.md#gate-3-checks) |
+| 4 | No changes requested | For each reviewer, their *latest* review does not request changes | `review.changes_requested_blocks: false` | [Gate 4](forge-github.md#gate-4-changes-requested) | [Gate 4](forge-gitlab.md#gate-4-changes-requested) |
+| 5 | Threads resolved | Every review thread is resolved | `review.threads_must_resolve: false` | [Gate 5](forge-github.md#gate-5-threads) | [Gate 5](forge-gitlab.md#gate-5-threads) |
+| 6 | Reviewer saw this commit | Every entry in `review.required` is satisfied at the head SHA, or declined it under `rereview: optional` | `review.required: []` (the default) | [Gate 6](forge-github.md#gate-6-reviewer) | [Gate 6](forge-gitlab.md#gate-6-reviewer) |
 
 ## Gate 3: checks
 
-Read every check the forge reports for the head commit. [Gate 3](forge-github.md#gate-3-checks) in the forge reference says where they come from on GitHub.
+Read every check the forge reports for the head commit. [Gate 3](forge-github.md#gate-3-checks) in the forge reference says where they come from on GitHub, and [Gate 3](forge-gitlab.md#gate-3-checks) on GitLab.
 
 **Which checks count**, in precedence order:
 
@@ -26,13 +26,13 @@ Read every check the forge reports for the head commit. [Gate 3](forge-github.md
 3. minus anything in `ci.ignore_checks`,
 4. minus any check named in `review.required[].check`. A reviewer's own check never gates the merge unless you explicitly put it in `ci.required`.
 
-**Every check either passed, blocked, or is still running.** Which conclusions pass and which block is the forge's vocabulary, listed under [Gate 3](forge-github.md#gate-3-checks). A check still running blocks until it finishes, wait, don't fail.
+**Every check either passed, blocked, or is still running.** Which conclusions pass and which block is the forge's vocabulary, listed under [Gate 3](forge-github.md#gate-3-checks) for GitHub and [Gate 3](forge-gitlab.md#gate-3-checks) for GitLab. A check still running blocks until it finishes, wait, don't fail.
 
 **Zero checks blocks** unless `ci.allow_none: true`. A repo whose CI silently stopped running looks identical to a repo with no CI, and the failsafe direction is to stop.
 
 ### Reading a failure
 
-Per the repo's `ci.logs`. The values that fetch something are the forge's, and [Reading a failure](forge-github.md#reading-a-failure) says what each one reads on GitHub. One value is the same everywhere:
+Per the repo's `ci.logs`. The values that fetch something are the forge's, and [Reading a failure](forge-github.md#reading-a-failure) says what each one reads on GitHub, and [Reading a failure](forge-gitlab.md#reading-a-failure) on GitLab. One value is the same everywhere:
 
 - **`none`.** Don't guess.
 
@@ -53,14 +53,15 @@ One re-run of failed jobs per head commit, and disclose it in the PR. Re-running
 - a review by one of its `logins` of the head commit, or
 - an inline review-thread comment by one of them at that sha, or
 - a **👍 reaction on the PR by one of its `logins`**, created at or after the head commit's committer date. See [The decline reaction](forge-github.md#the-decline-reaction), or
+- a **review-state record by one of its `logins`**, where the forge reference defines one, saying a review of exactly the head sha completed. On GitHub that is [Codex's review-state comment](forge-github.md#codexs-review-state-comment), or
 - for a `marker` entry, **a top-level comment on the change request containing a `v=1` review marker** whose `reviewer` equals the entry's `marker` and whose `sha` equals the head sha, authored by one of the entry's `logins` when it lists any. See [The review marker](#the-review-marker), or
 - a check named by its `check` at that sha, judged by the entry's `proof`:
   - **`output`** (default). Completed, with a conclusion other than skipped or cancelled, **and** with non-empty output.
   - **`completed`.** Completed, with a conclusion other than skipped or cancelled.
 
-Login matching is case-insensitive, and ignores the suffix the forge adds to an app account's login. [Gate 6](forge-github.md#gate-6-reviewer) gives GitHub's.
+Login matching is case-insensitive, and ignores the suffix the forge adds to an app account's login. [Gate 6](forge-github.md#gate-6-reviewer) gives GitHub's, and [Gate 6](forge-gitlab.md#gate-6-reviewer) GitLab's.
 
-**A `marker` entry is satisfied by its marker and nothing else.** The review, inline-comment and 👍 rules above do not apply to it, and its `logins` only say who may author the marker note. A reviewer that posts a finding and then fails before finishing has written no marker, and an inline comment or 👍 from its account must not stand in for one: the marker exists precisely because those signals cannot say a review completed.
+**A `marker` entry is satisfied by its marker and nothing else.** The review, inline-comment, 👍 and review-state rules above do not apply to it, and its `logins` only say who may author the marker note. A reviewer that posts a finding and then fails before finishing has written no marker, and an inline comment or 👍 from its account must not stand in for one: the marker exists precisely because those signals cannot say a review completed.
 
 ### The review marker
 
@@ -70,7 +71,7 @@ A `{ marker: "<reviewer>" }` entry is satisfied by a reviewer that meets the [re
 <!-- phases:review v=1 reviewer=<name> sha=<full 40-character sha> -->
 ```
 
-The rule needs only what every forge has: the change request's top-level comments, their text, and their author. Where to find those comments is the forge's, under [Gate 6](forge-github.md#gate-6-reviewer).
+The rule needs only what every forge has: the change request's top-level comments, their text, and their author. Where to find those comments is the forge's, under [Gate 6](forge-github.md#gate-6-reviewer) for GitHub and [Gate 6](forge-gitlab.md#gate-6-reviewer) for GitLab.
 
 **It is proof for the sha it names, and only that one.** Match it exactly:
 

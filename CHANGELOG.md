@@ -4,6 +4,28 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.12.0]
+
+### GitLab, experimentally
+
+A plan can now run against GitLab, on gitlab.com or a self-managed instance. **It is experimental:** everything was written against `glab` and GitLab's API documentation and tested with stand-ins, but no plan has yet been driven end to end on a real GitLab project.
+
+* **Forge configuration.** A repo says which forge hosts it with `forge` (`github` or `gitlab`), and `host` for a self-managed instance. A plan that sets neither is a GitHub plan exactly as before. A driver whose copy has no reference for the configured forge stops at its first reconcile and says so, and writes nothing.
+* **`integration_pr: false`** turns off the implicit final milestone, for teams that ship their feature branches their own way. Explicit milestone rows still open. The cumulative UAT script then goes to a `UAT: <project>` issue, or, where the forge has no issues, to a comment on the last merged change request, with `UAT-pending` kept and the completion summary saying so.
+* **The driver on GitLab.** A new reference, `references/forge-gitlab.md`. The driver finds, opens and merges merge requests with `glab`, writes the plan through the Files API with `last_commit_id` as the write token, and merges with `--sha` so the server refuses a moved head. It gates them too: it finds the head's pipeline, merged-results pipelines included, reads its jobs, trigger jobs and external statuses, reads requested changes where the instance can report them, and resolves threads through the discussions API. Gate 6 accepts `marker` reviewers only. A GitLab watcher template joins the GitHub one in `watching.md`.
+* **The planner on GitLab.** It reads the CI file with includes resolved, the jobs that ran in recent merge request pipelines, the runners (inferred from recent jobs where a Developer token can't list them), branch permissions and marker notes, and refuses four configurations that could never pass there. A new `ci-gitlab-runner-macos.yml` profile pairs with `forge-gitlab.yml` for a self-hosted Mac runner.
+* **A local Codex reviewer.** The reviewer setup guide covers Codex reviewing each merge request in your own CI through `codex-mr-review`, gated by its review marker, with a `review-codex-local.yml` profile. The planner recognises that job and reads the reviewer's name and account from a real marker note. A note that says only `@codex review` asks a running driver to start a fresh review pipeline, even when you and the driver share an account.
+
+### Running locally
+
+* **A guide.** `docs/running-locally.md` covers driving a plan from a terminal on your Mac: the watcher in place of webhooks, keeping the session alive, Remote Control from a phone, and recovering after a crash.
+* **iOS verified on the Mac.** iOS is now `verify: local` when the session runs on a Mac with Xcode, as a quick simulator build with the full suite left to CI. The hygiene checklist says how to keep the driver's build apart from a CI runner on the same machine.
+* **Taking over from a dead driver.** A driver that was killed no longer holds the plan for 90 minutes. The driver records which process holds the plan (`Driver-Host`), so a new session on the same machine can see that process has gone and take over by itself. Anything it cannot check, such as another machine, is still treated as alive. When a person knows a driver is gone, saying `take over` releases the plan.
+
+### Codex's review-state comment as proof
+
+Gate 6 on GitHub now reads Codex's own review-state comment. A completed review naming the exact head commit counts as proof that Codex looked, and a completed one at any commit counts as a sign it has the PR. A session that can't see who left a 👍 no longer blocks forever on a PR Codex has reviewed. The comment's findings fields are never read as a verdict.
+
 ## [0.11.0]
 
 ### Run the driver on your own machine

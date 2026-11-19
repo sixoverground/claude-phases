@@ -1,0 +1,21 @@
+# GitLab, with Codex reviewing in your own CI through codex-mr-review.
+# Use with forge-gitlab.yml. Setup: docs/review-setup.md, "GitLab with a
+# local Codex review".
+#
+# The job posts its findings as threads and, after every completed review,
+# a note carrying <!-- phases:review v=1 reviewer=codex sha=<head> -->.
+# Gate 6 reads that marker and nothing else on GitLab.
+#
+# `logins` is there because a marker is plain text: without it, anyone who
+# can comment on the merge request could type one for the current head and
+# pass gate 6 for an unreviewed commit. Set it to the username the review
+# token posts as, read off its first marker note. It must not be the account
+# the driver acts as, or the watcher never wakes for the reviewer's notes.
+#
+# `proof` and `rereview` do not apply to a marker entry.
+review:
+  required:
+    - marker: "codex"                        # CODEX_MR_REVIEW_REVIEWER, default codex
+      logins: ["<the review token's username>"]
+  changes_requested_blocks: true
+  threads_must_resolve: true

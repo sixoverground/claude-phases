@@ -1,6 +1,6 @@
 # Configuration reference
 
-Every key lives in the plan file's front matter under `phases:`. The only assumptions this project makes are **GitHub** and **Claude Code**. CI provider, languages, review setup, and branch conventions are all configurable, including "none at all" for each.
+Every key lives in the plan file's front matter under `phases:`. The only assumptions this project makes are **a forge, GitHub by default,** and **Claude Code**. CI provider, languages, review setup, and branch conventions are all configurable, including "none at all" for each.
 
 Values in `defaults:` are inherited by every repo. Values under a specific repo deep-merge over them, so you override one key without restating the rest.
 
@@ -20,15 +20,38 @@ phases:
 | Key | Default | Meaning |
 |---|---|---|
 | `project` | *required* | Project name. Also the plan's filename |
-| `home_repo` | *required* | `owner/name` where the plan file lives. The **only** repo the driver writes plan state to |
+| `home_repo` | *required* | The repo where the plan file lives, as the forge's project path. The **only** repo the driver writes plan state to |
 | `plan_branch` | home repo's default branch | The branch the plan file lives on. Every plan read and write uses it. See [Where the plan lives](#where-the-plan-lives) |
-| `repos` | *required* | Map of `owner/name` → per-repo overrides. `{}` means "inherit everything" |
+| `repos` | *required* | Map of repo → per-repo overrides, keyed by the forge's project path. `{}` means "inherit everything" |
 | `defaults` | `{}` | Values inherited by every repo |
 | `max_concurrent` | `null` | Global cap on simultaneously open phase PRs. `null` means no cap beyond the built-in one-per-repo rule |
+
+A repo is named by its project path on its forge: `owner/name` on GitHub, `group/project` on GitLab, subgroups included, as in `acme/platform/web`. The same form is used in `home_repo`, as a key of `repos`, and in the plan table's `Repo` column.
 
 ---
 
 ## Per-repo (and `defaults`)
+
+### Forge
+
+| Key | Default | Meaning |
+|---|---|---|
+| `forge` | `github` | The service that hosts this repo: `github` or `gitlab` |
+| `host` | `github.com` for `github`, `gitlab.com` for `gitlab` | The forge's hostname. Set it for a self-managed instance, for example `gitlab.example.com` |
+
+Neither key has an off switch: every repo lives on some forge, and leaving both unset is GitHub on `github.com`, exactly as before the keys existed. Set them under `defaults` when every repo is on one forge, or per repo when they are not.
+
+**GitLab support is experimental.** Everything for GitLab was written against `glab` and GitLab's API documentation and tested with stand-ins, but no plan has yet been driven end to end on a real GitLab project. Expect a command or field to be wrong for some server, and report it when one is. The label comes off once a real GitLab project has been driven through planning, a merge request, its pipeline and review, a fix, a merge and a milestone.
+
+**The home repo's `forge` and `host` decide where the plan is read and written.** Every other repo's decide where that repo's change requests live.
+
+**Why a key rather than detection.** A remote URL says which host a clone came from, but not which forge runs there, and a self-managed GitLab on a company domain looks like any other host. The driver reads its rules for a forge from a reference file per forge, so it has to know which one before it touches anything. A driver whose copy has no reference for the configured forge stops at its first reconcile and says so, rather than guessing.
+
+```yaml
+defaults:
+  forge: gitlab
+  host: gitlab.example.com     # leave unset for gitlab.com
+```
 
 ### Branch and merge
 
@@ -40,6 +63,7 @@ phases:
 | `merge.delete_branch` | `true` | Delete the phase branch after the driver merges it. **YOLO-only**, with YOLO off the driver never merges, so it never deletes. Only applies to merges the driver performs, a human merging in the UI controls their own checkbox. Only ever deletes a branch matching `branch_prefix`, never the plan branch or a `target_branch`. `false` for repos whose rulesets require branches to persist |
 | `plan_writes` | `direct` | `direct`, or `plan-pr` when the plan branch is protected. `default-branch` is accepted as an alias for `direct`. See below |
 | `yolo` | `true` | `false` pins this repo to manual merges regardless of the global toggle. Config can only restrict, never force |
+| `integration_pr` | `true` | `false` means the driver never opens the implicit final milestone in this repo: the change request from `target_branch` to the default branch when a plan without milestone rows completes. For a team that ships its feature branches its own way. It has no effect on explicit milestone rows, which a plan author wrote on purpose. What it does to the cumulative UAT is in [YOLO](#yolo) |
 | `milestone.prepare` | absent | Prose the driver follows on `target_branch` before it opens a [milestone](format.md#milestone-rows) PR: a version bump, a changelog section, anything a release of this repo needs. Committed straight to the branch. Absent means the milestone PR opens with no preparation |
 | `milestone.after_merge` | absent | Prose the driver follows after a person has merged a milestone PR and the branch is back in line with the default branch: updating an installed copy, announcing a release. Absent means nothing runs beyond the re-sync |
 
@@ -75,7 +99,7 @@ What's realistic:
 
 - **Web / backend.** `local`. Node, Python, Go, and Rust toolchains all install in the container.
 - **Android.** `auto`. JVM unit tests are feasible; emulator-backed instrumented tests belong in CI.
-- **iOS.** `ci`. Building needs macOS and Xcode; no Linux container has them.
+- **iOS.** `ci` in a cloud session: building needs macOS and Xcode, and no Linux container has them. `local` when the session runs on macOS with Xcode, as a quick build for the simulator, with the full test suite left to CI.
 
 ### CI
 
@@ -83,7 +107,7 @@ The driver never asks which CI product you use. It asks three separable question
 
 | Key | Default | Meaning |
 |---|---|---|
-| `ci.required` | `[]` | Check names that must pass. `[]` means *every* counted check must pass |
+| `ci.required` | `[]` | Check names that must pass. `[]` means *every* counted check must pass. On GitLab these are job names |
 | `ci.ignore_checks` | `[]` | Check names excluded from counting. For advisory checks such as coverage reporters and preview deploys |
 | `ci.allow_none` | `false` | With `false`, zero checks **blocks** the merge (failsafe). Set `true` for repos with no CI |
 | `ci.dispatch` | `auto` | How the driver triggers a build |
@@ -108,14 +132,17 @@ A reviewer's check named in `review.required[].check` is **automatically exclude
 | `push` | Only ever trigger CI by pushing a commit |
 | `none` | Never dispatch. For CI that starts on its own conditions, like Xcode Cloud |
 
+Values other than `push` and `none` are GitHub-only for now.
+
 **`ci.logs`**. This one determines how autonomously a red build gets fixed.
 
 | Value | Behavior |
 |---|---|
 | `actions` | Fetch real failure text from the GitHub Actions log API. The fix loop matches a local one apart from latency |
 | `check-output` | Read the check run's title, summary, and `details_url`. Often enough to identify a failing test; sometimes only enough to know *that* it failed. When it's uninformative the driver reports and links out rather than guessing |
+| `gitlab-jobs` | GitLab only. Fetch the failed job's full trace. The fix loop matches a local one apart from latency, as with `actions` |
 | `none` | Red is red. Report and ask |
-| `auto` | Use Actions logs when the check belongs to an Actions run, otherwise fall back to `check-output` |
+| `auto` | On GitHub, use Actions logs when the check belongs to an Actions run, otherwise fall back to `check-output`. On GitLab, `gitlab-jobs` |
 
 **Observation is universal.** Whatever the provider, results reach the driver as check runs and commit statuses on the head commit. Actions, Xcode Cloud, CircleCI, Buildkite, Bitrise, Jenkins via the status API. The merge gate reads those, so it needs no provider-specific logic.
 
@@ -255,7 +282,7 @@ What separates them is the reviewer's own contract. Smart detect reviews every P
 
 ### Reviewer setups
 
-All six are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
+All seven are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
 
 | Setup | Config | Notes |
 |---|---|---|
@@ -264,6 +291,7 @@ All six are first-class, and they compose. Require Copilot *and* a Claude check 
 | **GitHub Copilot** | `required: [{ logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"] }]` | Enable the "Review new pushes" ruleset so anchors track the head |
 | **OpenAI Codex** | `required: [{ logins: ["chatgpt-codex-connector"], rereview: optional }]` | Reviews as a GitHub App with inline comments. On **smart detect** it reviews once and may skip later pushes, which is what `rereview: optional` is for. If it is set to review every push, drop the key and take the stronger default |
 | **Any reviewer that emits the contract** | `required: [{ marker: "<name>", logins: ["<its account>"] }]` | A self-hosted reviewer that posts the [review contract](https://github.com/sixoverground/claude-phases/blob/main/docs/review-contract.md)'s marker after every review. Pin `logins` to the account it posts as. `proof` and `rereview` don't apply |
+| **GitLab with a local Codex review** | `required: [{ marker: "codex", logins: ["<the review token's username>"] }]` | A CI job runs Codex on your own runner and posts the marker. The only reviewer setup mapped on GitLab. The review token must be a different account from the driver's. Profile: `profiles/review-codex-local.yml` |
 | **Humans only, or nobody** | `required: []` | Gates for `CHANGES_REQUESTED` and thread resolution still apply to human reviews |
 
 See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/docs/review-setup.md) for the full walkthrough of each.
@@ -318,12 +346,14 @@ YOLO controls exactly one thing: **who presses merge.**
 | **Press merge** | **driver, once gates pass** | **you**, the driver pings with the PR link and a gate summary |
 | Start the next phase after merge | driver | **driver** |
 | Open a milestone row's PR | driver | **driver** |
-| Open the integration PR, the implicit final milestone | driver | nobody |
+| Open the integration PR, the implicit final milestone, unless `integration_pr: false` | driver | nobody |
 | **Merge a milestone PR**, explicit or implicit | **you** | **you** |
 
 **The next phase always continues after a merge, in both modes.** Merge from the GitHub mobile app with YOLO off and the driver notices, records it, and starts whatever that unblocks. Turning YOLO off buys a review checkpoint, not a manual pipeline.
 
 **YOLO also decides where UAT checklists go.** With it off, every PR carries its own phase's manual-test checklist, because you're there to read it. With it on, phases merge unattended and UAT is deferred to a single comprehensive test script on the **integration PR** the driver opens when the plan completes, or on the final phase's PR where phases already target the default branch and no integration PR exists. Toggling mid-plan is safe. `UAT-pending` in Driver State tracks what hasn't reached a human, so switching off mid-plan hands you the backlog along with the current phase. See [When UAT reaches a human](format.md#when-uat-reaches-a-human).
+
+**`integration_pr: false` moves that script.** With no integration PR to carry it, the cumulative script goes to the fallback when the plan completes: an issue titled `UAT: <project>` where the forge has issues, and otherwise a comment on the last merged change request, with `UAT-pending` left as it is and the completion summary saying so. That is a real loss, and the choice is yours to make: the integration PR is the one place the script had leverage, because a person has to act on it before anything reaches the default branch. An issue is something someone may read. A comment on a change request that has already merged is weaker still, which is what a project with issues turned off gets.
 
 **YOLO never merges a milestone.** It decides who presses merge on phase PRs and nothing else. A [milestone row](format.md#milestone-rows) is a checkpoint the plan's author put in the table, so the driver opens its PR in both modes, and a person merges it in both. The integration PR at the end of a plan with no milestone rows keeps its older rule: the driver opens it only under YOLO, because with YOLO off you merged every phase and already know where the branch stands.
 
@@ -352,6 +382,8 @@ phases:
 ```
 
 `plan_branch` being the same branch phase PRs merge into is fine. Phase PRs never touch the plan file, so a squash merge can't conflict with it. The driver re-reads the plan's blob `sha` at the start of every transition, which is what keeps that safe.
+
+The integration PR is usually what takes this branch to the default branch at the end. With `integration_pr: false` the driver opens nothing, the branch stays where it is with the plan on it, and the cumulative UAT script goes to the fallback described under [YOLO](#yolo) rather than onto a change request someone has to act on.
 
 Two things to get right:
 

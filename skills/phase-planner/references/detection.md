@@ -4,6 +4,8 @@ Read the repo, don't interrogate the user. Everything below is observable, and o
 
 Run this per repo. Show the evidence, then let them correct it.
 
+**For a repo whose forge is `gitlab`, read [`detection-gitlab.md`](detection-gitlab.md) instead.** It has the same headings, with GitLab's commands, and three sections more. This file is GitHub's.
+
 ## Read current code, not PR history
 
 This file already says that what a workflow *declares* differs from what actually *reports*. The same holds one level up, for the code a plan is written against: **a merged PR describes what was added, not what survived.**
@@ -139,7 +141,7 @@ From the repo's files:
 | Observed | Set |
 |---|---|
 | `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml` | `local` |
-| An Xcode project, `Package.swift` for an app target | `ci`: macOS and Xcode can't exist in a Linux container |
+| An Xcode project, `Package.swift` for an app target | `ci` in a cloud session: macOS and Xcode can't exist in a Linux container. `local` when the planning session runs on macOS and `xcodebuild -version` succeeds. Then make the local step a quick build for the simulator and leave the test suite to CI, and say so in the findings |
 | Gradle with an Android plugin | `auto`: JVM unit tests can run locally, instrumented ones can't |
 | Markdown, config, or docs only | `none` |
 

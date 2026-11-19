@@ -136,7 +136,7 @@ Every parallel row names its dependency explicitly. A blank `Depends` means *"th
 - [ ] Airplane mode: a network error appears rather than a spinner that never ends
 - [ ] Sign out, then confirm relaunching does not restore the session
 
-**Risks.** Keychain access on first launch needs an entitlement. `verify: ci` here. No Linux container can build this, so CI is the only verification before review.
+**Risks.** Keychain access on first launch needs an entitlement. `verify: ci` here, for a cloud session: no Linux container can build this, so CI is the only verification before review. Driven from a Mac with Xcode, this would be `verify: local`, a quick simulator build before each push.
 
 ---
 
@@ -202,6 +202,7 @@ Every parallel row names its dependency explicitly. A blank `Depends` means *"th
 - Driver: idle
 - YOLO: off
 - Driver-ID: -
+- Driver-Host: -
 - Active: -
 - UAT-pending: -
 - Heartbeat: -

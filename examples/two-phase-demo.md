@@ -87,6 +87,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 - Driver: idle
 - YOLO: off
 - Driver-ID: -
+- Driver-Host: -
 - Active: -
 - UAT-pending: -
 - Heartbeat: -

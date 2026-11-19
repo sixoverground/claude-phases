@@ -56,10 +56,39 @@ Only for a plan with milestone rows.
 
 ## Makes local verification possible
 
-**A `SessionStart` hook** that installs dependencies, for any repo set to `verify: local`. `local` has no fallback: if the toolchain isn't there, verification fails and the phase blocks. Use `verify: auto` if you'd rather it drop to CI instead.
+**A `SessionStart` hook** that installs dependencies, for any repo set to `verify: local` in a cloud session. That is a cloud concern: a fresh container has nothing installed. A session on your own machine uses the toolchain already there. `local` has no fallback: if the toolchain isn't there, verification fails and the phase blocks. Use `verify: auto` if you'd rather it drop to CI instead.
+
+**When the driver and a CI runner share a Mac**, for an Xcode project on `verify: local`, keep their builds apart. Contention between them is intermittent, so a setup that worked once is not proof:
+
+- **Its own DerivedData.** Pass the driver's build `-derivedDataPath` pointing at a directory of its own, so it never waits on, or corrupts, the runner's build directory.
+- **A simulator the runner does not use.** Build for a generic simulator destination (`-destination 'generic/platform=iOS Simulator'`), which needs no booted simulator, or name a simulator the runner never boots.
+- **One concurrent job on the runner** (`concurrent = 1` in a GitLab runner's `config.toml`), so the runner itself never runs two builds against one simulator.
 
 ## Worth mentioning, not blocking
 
 **A `CLAUDE.md`** describing conventions the driver should follow. It reads it like any session, and phases written to match the codebase's existing style need less review.
 
 **A PR template.** The driver fills the body itself, but a template tells it what the repo expects.
+
+## GitLab
+
+Only for a repo whose forge is `gitlab`. The items above are written for GitHub; these are what a GitLab project needs in their place.
+
+**The review job and `build-test` run in merge request pipelines, by themselves.** The driver's gate 3 reads the merge request pipeline first, and a marker names the head it reviewed, so the jobs that gate a phase must run in a merge request pipeline into `target_branch` on every push. A job whose `rules` only match branch pipelines (`$CI_COMMIT_BRANCH`) or only the default branch never runs there, and the gate waits for it. Give each a rule on `$CI_PIPELINE_SOURCE == "merge_request_event"`, or put `workflow: rules` that create merge request pipelines in the project's own CI file, not only in an include. A job with no conditions and no such `workflow` defaults to `except: merge_requests`. Neither job should be `when: manual`, and anything they `needs` must run there too. `build-test` here stands for whatever the project's build and test job is called.
+
+**The review job must not be `allow_failure: true`.** A marker reviewer that fails posts no marker, so gate 6 blocks, which is right. A job allowed to fail also shows gate 3 a pass, so the only sign of a broken reviewer is a phase waiting on gate 6 with every check green. Let it fail red. This holds for any job that runs a `marker` reviewer.
+
+**The review job's token variable must not be protected.** GitLab gives a protected CI/CD variable only to pipelines on protected branches, and phase branches are not protected, so the job fails on every phase MR saying its token is missing. Mark it masked and not protected. And make it a different account from the one the driver acts as, or `logins` stops meaning anything and the watcher, which ignores the driver's own notes, never wakes for the reviewer.
+
+**Plan commits and `[skip ci]`.** The driver ends every plan commit with `[skip ci]`, which GitLab honours for push pipelines. A `rules: changes` exclusion on push-triggered jobs, so they do not run when only `docs/plans/**` changed, is belt and braces, as `paths-ignore` is on GitHub. It matters most where the plan branch deploys.
+
+**"Delete source branch" as a project default** (Settings → Merge requests, *Enable "Delete source branch" option by default*). The driver opens each phase MR with the option on and leaves it off for milestone and integration MRs, so GitLab deletes a phase branch on merge whoever merges it. The project default covers MRs the driver did not open, and is the GitLab form of *Automatically delete head branches*.
+
+**A protected plan branch, and who may push to it.** The driver writes every status transition to the plan branch. A protected branch where only Maintainers may push refuses a Developer-role token, and so does the plan-PR fallback if only Maintainers may merge. Either allow the driver's role to push to the plan branch (*Allowed to push and merge* under Settings → Repository → Protected branches), give the token the Maintainer role, or put the plan on an unprotected feature branch. Check the branch you will actually use; detection reads it.
+
+**The runner and the driver sharing one Mac.** A self-hosted runner on the same Mac as a local driver is a common setup and works, with four things to get right. Trigger jobs are not among its work: they run on GitLab itself.
+
+- **Register it as not protected.** A runner set to run only on protected branches (`access_level: ref_protected`) cannot run a phase MR's pipeline, because phase branches are not protected, and the jobs wait as `pending`. Leave *Protected* off on the runner, or protect the phase branches and the target branch and allow merge request pipelines to use protected runners.
+- **Separate working copies.** The runner builds in its own directory, the driver works in a clone of its own, and the person's checkout is a third. Never point the driver at the runner's build directory or the other way round.
+- **The Mac stays awake.** A sleeping Mac stops the runner and the driver together, and jobs queue as `pending` until it wakes. Turn off sleep while a plan runs, or accept that it pauses.
+- **Capacity.** A runner with `concurrent = 1` runs one job at a time, so a review job and `build-test` on the same pipeline run in turn, and two repos' pipelines queue behind each other. That is slower, not broken. Raise `concurrent` in the runner's `config.toml` if the Mac can take it.

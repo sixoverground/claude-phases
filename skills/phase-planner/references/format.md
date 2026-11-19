@@ -1,6 +1,6 @@
 # Plan file format
 
-A plan is one markdown file, committed to a GitHub repo, that describes a piece of work split into phases, and doubles as the durable state of the driver executing it.
+A plan is one markdown file, committed to a repo on the project's forge, that describes a piece of work split into phases, and doubles as the durable state of the driver executing it.
 
 It lives at `docs/plans/<project>.md` in the project's **home repo**.
 
@@ -99,11 +99,11 @@ Per-repo values deep-merge over `defaults`. A single-repo project lists one repo
 |---|---|---|
 | `PR` | yes | Ordinal, for humans reading the table |
 | `Branch` | yes | The phase branch, prefixed with `branch_prefix`. On a [milestone row](#milestone-rows), the repo's `target_branch` |
-| `Repo` | yes | `owner/name`. **This is what makes multi-repo work**: each row targets exactly one repo |
+| `Repo` | yes | The repo's project path on its forge: `owner/name` on GitHub, `group/project` on GitLab, subgroups included. **This is what makes multi-repo work**: each row targets exactly one repo |
 | `Scope` | yes | One line. The detail lives in Phase Details below the table |
 | `Phase` | yes | Phase id, referenced by `Depends`. `3a`/`3b` for splits. `M1`, `M2` for milestone rows |
 | `Status` | yes | The cursor. See below |
-| `Link` | no | `-` or `owner/repo#42`. A cache only, and always re-derivable from GitHub |
+| `Link` | no | `-`, `owner/repo#42` on GitHub, or `group/project!42` on GitLab. A cache only, and always re-derivable from the forge |
 | `Depends` | no | Comma-separated phase ids. Blank means "the previous row" |
 
 ```markdown
@@ -203,6 +203,7 @@ A plan branch that isn't the default branch often sidesteps this entirely, since
 - Driver: running          <!-- running | paused | idle -->
 - YOLO: on                 <!-- on = driver merges; off = you merge -->
 - Driver-ID: d7f3a91c
+- Driver-Host: craigs-mbp.local 48542 Tue Nov 17 23:15:56 2026 UTC
 - Active:
   - Phase 2 — acme/acme-ios#17 — In Review (gate: awaiting reviewer)
   - Phase 3 — acme/acme-android#9 — In Review (gate: CI pending)
@@ -218,6 +219,7 @@ A plan branch that isn't the default branch often sidesteps this entirely, since
 | `Driver` | `running` normally; `paused` finishes the current step and starts nothing new; `idle` when the plan is complete |
 | `YOLO` | `on`: the driver merges once gates pass. `off`: you merge, and the driver does everything else. Toggled at runtime |
 | `Driver-ID` | Random token identifying the driver instance holding the plan. See below |
+| `Driver-Host` | `<host> <pid> <start time> UTC` of the Claude Code process holding the plan, written with the claim. The start time is in UTC, so sessions with different time zones agree on it. `-` when unknown, and what a plan without the field reads as. Lets a later session on the same machine see that the holder has died |
 | `Active` | One entry per in-flight phase. A list, so several repos can be in flight at once |
 | `UAT-pending` | Phase ids whose UAT checklist hasn't reached a human yet. See [When UAT reaches a human](#when-uat-reaches-a-human) |
 | `Review-baselines` | `<phase id>:<count>` pairs, written when a user clears a review-round stop with `continue`. The driver subtracts a phase's baseline from its derived reviewed-head count. Per phase, because concurrent phases can each be stopped. A milestone row's id works the same way, as in `M1:3` |
@@ -232,11 +234,12 @@ Two drivers acting on one plan would race. But a *single* long-lived session tha
 | Condition | Action |
 |---|---|
 | `Driver-ID` matches the one I hold | It's me: proceed regardless of heartbeat age |
-| Different ID, heartbeat < 90 min | Another driver is live: report and stop |
+| Different ID, `Driver-Host` on this host names a process that is gone | The holder died: take over |
+| Different ID, heartbeat < 90 min | Another driver may be live: report and stop, naming `take over` |
 | Different ID, heartbeat stale | Take over: mint a new ID, continue |
 | No ID | Unclaimed: claim it |
 
-A fresh session holds no ID, so it always takes the third or fourth branch. A resuming session holds its own, so it never blocks itself.
+A fresh session holds no ID, so it always takes one of the last four branches. A resuming session holds its own, so it never blocks itself. A person can always release a dead driver's claim by saying `take over`.
 
 ---
 
@@ -338,9 +341,11 @@ Without that list, a mid-plan toggle silently loses UAT for every phase that mer
 
 **A milestone PR is where UAT reaches a human, in either mode.** It carries the assembled script for every id in `UAT-pending` that it ships, plus the milestone's own UAT, and those ids are cleared when it opens. With YOLO on, that makes each milestone a point where the backlog is handed over rather than only the end of the plan. The integration PR in the table above is the implicit final milestone, and the same rule is what puts the cumulative script on it.
 
+**When no integration PR will exist by configuration**, because the repo sets `integration_pr: false`, the cumulative script has no change request to land on. Under YOLO the phases still omit their own UAT and add their ids to `UAT-pending`, and when the plan completes the script goes to the fallback below. That gives up the one place the script had leverage, and it is the plan author's trade to make.
+
 **The final phase** is the last non-`Skipped` row in table order. Under YOLO it is merged by the driver within minutes of opening, which is why the cumulative checklist belongs on the integration PR wherever one exists: a checklist on a PR nobody had to read is a record, not a prompt.
 
-If a plan somehow finishes with `UAT-pending` non-empty and no integration PR was opened, which happens when every repo targets its default branch and the final phase was skipped or merged before the checklist was assembled, post the cumulative checklist as a GitHub issue titled `UAT: <project>` rather than dropping it.
+If a plan finishes with `UAT-pending` non-empty and no integration PR carried the cumulative checklist, which happens when `integration_pr` is `false`, or when every repo targets its default branch and the final phase was skipped or merged before the checklist was assembled, the driver never drops it. Where the forge has issues, it posts the cumulative checklist as an issue titled `UAT: <project>` and clears `UAT-pending`. Where it has none, it posts the checklist as a comment on the last merged PR, leaves `UAT-pending` as it is, and says so in its completion summary.
 
 Set `uat: false` in a repo's config for repos where manual testing is meaningless.
 
@@ -372,7 +377,7 @@ What a driver does when the plan and GitHub disagree, which is the situation aft
 | `In Review` | PR open | Normal | Re-subscribe, re-evaluate gates |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, advance |
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
-| all rows terminal | - | Complete | With no milestone rows and YOLO on, open the integration PR if `target_branch` is not the default branch. Then set `Driver: idle` and report |
+| all rows terminal | - | Complete | With no milestone rows and YOLO on, open the integration PR if `target_branch` is not the default branch and `integration_pr` is not `false`. Then set `Driver: idle` and report |
 
 Applied **per row**, not once per plan. With several repos in flight, each recovers independently.
 

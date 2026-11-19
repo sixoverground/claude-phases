@@ -1,6 +1,6 @@
 ---
 name: phase-driver
-description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.11.0.
+description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.12.0.
 model: opus
 ---
 
@@ -25,9 +25,13 @@ Read `references/recovery.md`, `references/gates.md`, `references/watching.md`, 
 
 ## The forge
 
-The forge is the service that hosts the repos: it holds the change requests, their checks and reviews, and the plan file. **It is GitHub unless the repo's config says otherwise**, and everything in this file that is true only of GitHub lives in [`references/forge-github.md`](references/forge-github.md). That covers how to find, open, watch and merge a change request, who should open it, how to write the plan, and how to delete or move a branch.
+The forge is the service that hosts the repos: it holds the change requests, their checks and reviews, and the plan file. Everything in this file that is true of only one forge lives in that forge's reference, `references/forge-<forge>.md`. That covers how to find, open, watch and merge a change request, who should open it, how to write the plan, and how to delete or move a branch.
 
-**Read `references/forge-github.md` at Reconcile, and again after any compaction.** It is a reference, read lazily, so a compaction can drop it while this file survives. A driver acting on this file alone will reach for the wrong tool, and on GitHub one wrong tool for opening a change request still succeeds while making sure it is never reviewed.
+**Resolve the forge per repo.** It is that repo's resolved `forge` key, deep-merged over `defaults` like any other, and `github` where neither sets it. A plan with no `forge` key anywhere is a GitHub plan, read through [`references/forge-github.md`](references/forge-github.md), exactly as before the key existed. The home repo's forge is the one the plan file is read from and written to; each other repo's forge is the one its change requests live on.
+
+**Read the reference for every forge the plan resolves to, at Reconcile, and again after any compaction.** It is a reference, read lazily, so a compaction can drop it while this file survives. A driver acting on this file alone will reach for the wrong tool, and on GitHub one wrong tool for opening a change request still succeeds while making sure it is never reviewed.
+
+**A forge with no reference in this copy stops the driver.** If a repo resolves to a forge whose `references/forge-<forge>.md` does not exist beside this file, stop at Reconcile before writing anything: no claim, no `Heartbeat`, no **For the driver** section, no branch. Say which repo names which forge, that this copy of the driver has no reference for it, and that a newer release may. That is also what a plan written for a newer release does on an older install, and it is the right answer there too: guessing a forge's API from another forge's reference is how a change request gets opened that nobody reviews, or a plan write lands somewhere nobody reads.
 
 ## 1. Find the plan
 
@@ -41,11 +45,11 @@ Parse the front matter under `phases:`. That is your entire configuration. Resol
 
 Run this on every invocation and every wake, including when you think you know the state. It is cheap and it is what makes crash recovery work.
 
-1. Read the plan: front matter, the PR Sequence Table, the Driver State block.
+1. Read the plan: front matter, the PR Sequence Table, the Driver State block. Then resolve each repo's forge and read its reference, as [The forge](#the-forge) says. A forge with no reference stops here, before anything is written.
 2. Check the **Driver-ID** rules below.
 3. For **every** non-terminal row, ask the forge what's actually true: find the change request for that row's branch in that row's repo, in any state, as the forge reference's **Find** says. A milestone row is matched more narrowly, by its [identity](#which-pr-is-a-milestones), and a `Merged` milestone row that is not yet [settled](#settled) is checked too, since its post-merge work can be left unfinished by a crash.
 4. Apply `references/recovery.md` per row. Where the plan and the forge disagree, **the forge is the truth**, fix the plan, never assume.
-5. Rewrite `Heartbeat` and, if you took over, `Driver-ID`.
+5. Rewrite `Heartbeat` and, if you took over, `Driver-ID` and `Driver-Host`.
 6. If the plan has no `## For the driver` section, add it in that same write, between the title paragraph and `## PR Sequence`. Plans written before the section existed lack it, and without it a session that loses this file has nothing to send it back.
 
 ### For the driver
@@ -63,11 +67,34 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | Condition | Action |
 |---|---|
 | `Driver-ID` matches the one you hold | It's you. Proceed regardless of heartbeat age |
-| Different ID, `Heartbeat` under 90 minutes old | Another driver is live. Report and stop; do not touch the plan |
+| Different ID, and its `Driver-Host` names **this** host and a process that is not running, or is running with a different start time | The holder is dead. Take over: mint a new random ID, write it with your own `Driver-Host`, continue, and say in your report and in the claiming commit that the previous holder's process was gone |
+| Different ID, `Heartbeat` under 90 minutes old | Another driver may be live. Report and stop; do not touch the plan. The report gives the heartbeat's age, the holder's host, whether its process is running where you can tell, and says that **`take over`** releases the plan if the person knows that driver is gone |
 | Different ID, `Heartbeat` stale | Take over: mint a new random ID, write it, continue |
 | No ID, or `-` | Unclaimed. Claim it |
 
-You hold an ID only if you minted it in this session. After compaction you may have forgotten; if you can't establish that you hold it, treat it as someone else's.
+You hold an ID only if you minted it in this session. After compaction you may have forgotten; if you can't establish that you hold it, treat it as someone else's. **A `Driver-Host` that matches your own, host, process and start time, establishes it**: that is the session you are in, so the ID is yours.
+
+**A person's `take over` is the exception to the stop row.** When the instruction you are handling is `take over`, the "report and stop" row does not end the turn: finish Reconcile's reads, write nothing, and go to the confirmation `references/vocabulary.md` describes. Nothing is written, and no phase is touched, until the person confirms. Without this, Reconcile would stop on exactly the claim the person is trying to release.
+
+The same-host row is the only way a heartbeat under 90 minutes is overridden without a person. Anything it cannot check is treated as alive: a different host, a `Driver-Host` of `-` or missing, a process you cannot read. A false "dead" puts two drivers on one phase, which is the outcome this table exists to prevent. A person who knows better says `take over`, as `references/vocabulary.md` describes.
+
+#### Driver-Host
+
+`Driver-Host` records which process holds the plan: `<host> <pid> <start time>`, written in the same write as the claim, as in `Driver-Host: craigs-mbp.local 48542 Tue Nov 17 23:15:56 2026 UTC`. The start time is always in UTC and says so, because `ps` prints local time and two sessions on one machine can run with different `TZ` settings. The pid is the Claude Code session's own process, not the shell a command runs in, which is gone the moment the command ends. A plan written before this field, or a session that cannot name its process, has `-`.
+
+Find your own with this, which runs under macOS's bash 3.2 and on Linux. It prefers `CLAUDE_PID` when Claude Code sets it, otherwise the nearest ancestor named `claude`, and prints `-` when it finds neither:
+
+```sh
+pid=''; p=$$
+while [ -n "$p" ] && [ "$p" -gt 1 ]; do
+  if [ "$p" = "${CLAUDE_PID:-x}" ]; then pid=$p; break; fi
+  case "$(ps -o comm= -p "$p" 2>/dev/null)" in *claude) pid=$p; break ;; esac
+  p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+done
+if [ -n "$pid" ]; then echo "$(uname -n) $pid $(TZ=UTC LC_ALL=C ps -o lstart= -p "$pid" | sed 's/ *$//') UTC"; else echo '-'; fi
+```
+
+Check a holder on this host with `TZ=UTC LC_ALL=C ps -o lstart= -p <pid> | sed 's/ *$//'`, which trims the padding `ps` adds, and compare it with the recorded start time minus its trailing ` UTC`. No output means the process is gone, whatever the clock says. Output that differs from the recorded start time means the pid was reused by something else, and the holder is gone too, **but only when the recorded time ends in `UTC`**. A recorded time without it was written in an unknown time zone, so a difference proves nothing: treat that holder as alive unless its pid has no process at all. Only output equal to the recorded start time means it is still running. `uname -n` must equal the recorded host before any of this means anything: a pid on another machine says nothing about this one.
 
 ## 3. Start phases
 
@@ -188,7 +215,7 @@ Every outcome above resolves a review bot's thread, and that is deliberate. A th
 
 **Count the review rounds on this change request.** At `stuck.max_review_rounds` (default `3`, `null` to disable), or sooner where the [repo's own rules](#the-repos-own-stop-rules) call for a stop, step back and arbitrate. When the arbiter's extra rounds run out, stop for a person.
 
-**Count reviewed heads, not reviews.** A round is one head commit that a required reviewer evaluated, so the count is the number of distinct shas on this change request for which **any** `review.required` entry is satisfied by gate 6's own test: a review or inline comment at that sha by one of its `logins`, a check run named by its `check` at that sha passing the entry's `proof`, a review marker naming that sha for a `marker` entry, or a 👍 that belongs to that head.
+**Count reviewed heads, not reviews.** A round is one head commit that a required reviewer evaluated, so the count is the number of distinct shas on this change request for which **any** `review.required` entry is satisfied by gate 6's own test: a review or inline comment at that sha by one of its `logins`, a check run named by its `check` at that sha passing the entry's `proof`, a review marker naming that sha for a `marker` entry, or a 👍 that belongs to that head. A review-state record never counts here, even where it is proof for gate 6: the forge reference says why.
 
 **A reaction belongs to exactly one head.** It carries no sha, so bound it: a 👍 belongs to the head that was current when it was created, at or after that head's push and before the next head's push. Gate 6 asks only about the current head, where "at or after this head was pushed" is the whole test. Counting heads asks about all of them, and the same clause unbounded makes one reaction on the third head satisfy the first two as well, producing a count of three from a single 👍 and stopping the phase before one finding has been answered.
 
@@ -391,7 +418,7 @@ Reconcile checks every `Merged` milestone row that is not settled, finishes whic
 
 ## 8. Finishing the plan
 
-When every row is `Merged` or `Skipped`, in this order: **open the integration PR if YOLO is on**, then set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
+When every row is `Merged` or `Skipped`, in this order: **open the integration PR if YOLO is on**, in each repo whose `integration_pr` is not `false`, then set `Driver: idle`, clear `Active`, post a summary of what shipped, and stop.
 
 **This section governs a plan with no milestone rows, and its integration PR is the implicit final milestone.** A plan that has milestone rows shipped through them: no integration PR is opened, and finishing is `Driver: idle`, the summary, and the readout of Carried findings and any `UAT-pending` below.
 
@@ -405,7 +432,9 @@ When every row is `Merged` or `Skipped`, in this order: **open the integration P
 
 Phases usually target a feature branch rather than the default one, so that nothing reaches `main` until the feature is whole. When the last phase merges, that branch is finished and nobody has been asked to look at it as a whole. Every review so far was of one phase against its siblings.
 
-So, with YOLO on: **for each repo whose `target_branch` is not its default branch and which merged at least one phase, open a change request from `target_branch` to that repo's default branch.** Title it `<project>: <n> phases`. Body: what shipped, phase by phase with links; anything the plan recorded as deliberately out of scope; and any setup the feature needs that no change request could contain.
+So, with YOLO on: **for each repo whose `target_branch` is not its default branch, which merged at least one phase, and whose resolved `integration_pr` is not `false`, open a change request from `target_branch` to that repo's default branch.** Title it `<project>: <n> phases`. Body: what shipped, phase by phase with links; anything the plan recorded as deliberately out of scope; and any setup the feature needs that no change request could contain.
+
+**`integration_pr: false` means no implicit final milestone in that repo.** The plan's author has said how the feature branch reaches the default branch, and it is not through a change request the driver opens. So open nothing from that repo's `target_branch`, and do not treat the plan as unfinished for it. The key has no effect on explicit milestone rows: an author who wrote one wants it opened, and [Milestones](#milestones) opens it. Where no integration PR is opened because of this key, the cumulative UAT script that PR would have carried goes to [the fallback](#the-fallback).
 
 **Never merge it. YOLO opens this change request and does not merge it**, and that is not an inconsistency. YOLO is a judgement about *phase* change requests. Work the plan produced, scoped by the plan, verified by the driver, gated per phase. This one is the whole feature landing on the branch everything else builds on, and none of that reasoning reaches it. Open it, report it, go idle.
 
@@ -421,7 +450,12 @@ Where `target_branch` *is* the default branch there is no integration PR to open
 
 ### The fallback
 
-If the plan completes with `UAT-pending` non-empty and no integration PR was opened. Every repo targets its default branch, or the final phase was skipped or merged before you assembled the list. Open an issue on the forge titled `UAT: <project>` with the outstanding items, as the forge reference's **Issue fallback** says. Never drop them; unverified work that nobody knows is unverified is the thing this exists to prevent.
+If the plan completes with `UAT-pending` non-empty and no integration PR carried the cumulative script: every repo targets its default branch, `integration_pr: false` turned it off, or the final phase was skipped or merged before you assembled the list. Assemble the cumulative script by the rules in §3, then:
+
+- **Where the home repo's forge reference says issues are available**, open an issue there titled `UAT: <project>` with the script, as that reference's **Issue fallback** says, and clear `UAT-pending`.
+- **Otherwise**, post the script as a comment on the last change request the plan merged. Leave `UAT-pending` as it is, and say in the completion summary that the script went to a comment on a merged change request, which nobody is asked to read, and that every id still in `UAT-pending` is unverified.
+
+Never drop them; unverified work that nobody knows is unverified is the thing this exists to prevent. The comment is the weaker of the two, which is why `UAT-pending` keeps the ids: a person reading the plan later still sees what nobody has tested.
 
 ## Writing to the plan
 

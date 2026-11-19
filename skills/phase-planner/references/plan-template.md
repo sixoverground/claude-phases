@@ -7,6 +7,9 @@ phases:
                                # feature-branch work, matching target_branch.
 
   defaults:
+    # forge: github              # github or gitlab; github when unset
+    # host:                      # github.com or gitlab.com when unset; set it
+                                 # for a self-managed instance
     branch_prefix: claude/
     target_branch: main
     verify: auto
@@ -107,6 +110,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 - Driver: idle
 - YOLO: on
 - Driver-ID: -
+- Driver-Host: -
 - Active: -
 - UAT-pending: -
 - Review-baselines: -
