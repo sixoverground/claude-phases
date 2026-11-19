@@ -87,13 +87,13 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 9  | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the review contract, the forge-neutral driver and local running to `main` | M1 | Merged | [#37](https://github.com/sixoverground/claude-phases/pull/37) | 1, 2a, 2b, 3 |
 | 10 | claude/forge-config | sixoverground/claude-phases | Config keys `forge`, `host`, `integration_pr`, `ci.logs: gitlab-jobs`; `group/project` ids and `!42` links; forge selection in the driver | 4 | Merged | [#40](https://github.com/sixoverground/claude-phases/pull/40) | 16 |
 | 11 | claude/gitlab-driver-core | sixoverground/claude-phases | `references/forge-gitlab.md` part 1: plan reads and writes, finding, opening and merging MRs, milestones, finishing | 5a | Merged | [#41](https://github.com/sixoverground/claude-phases/pull/41) | 4 |
-| 12 | claude/gitlab-gates | sixoverground/claude-phases | `references/forge-gitlab.md` part 2: the six gates, job traces, discussions, the watcher command | 5b | In Review | [#42](https://github.com/sixoverground/claude-phases/pull/42) | 5a |
-| 13 | claude/gitlab-planner | sixoverground/claude-phases | Planner: `references/detection-gitlab.md`, four new refusals, hygiene items, `profiles/ci-gitlab-runner-macos.yml` | 6 | Pending | - | 5b |
+| 12 | claude/gitlab-gates | sixoverground/claude-phases | `references/forge-gitlab.md` part 2: the six gates, job traces, discussions, the watcher command | 5b | Merged | [#42](https://github.com/sixoverground/claude-phases/pull/42) | 5a |
+| 13 | claude/gitlab-planner | sixoverground/claude-phases | Planner: `references/detection-gitlab.md`, four new refusals, hygiene items, `profiles/ci-gitlab-runner-macos.yml` | 6 | In Progress | - | 5b |
 | 14 | claude/local-docs-verify | sixoverground/claude-phases | `docs/running-locally.md`, README local sections, `verify: local` for iOS on a Mac | 7 | Pending | - | 6 |
 | 15 | claude/tool-scaffold | sixoverground/codex-mr-review | Node CLI skeleton, tests, lint, GitHub Actions CI, `AGENTS.md` | 8 | Merged | [sixoverground/codex-mr-review#1](https://github.com/sixoverground/codex-mr-review/pull/1) | 1 |
 | 16 | claude/review-runner | sixoverground/codex-mr-review | Run `codex exec review` read-only, normalise findings into cloud Codex's shape, print them with `--dry-run` | 9 | Merged | [sixoverground/codex-mr-review#2](https://github.com/sixoverground/codex-mr-review/pull/2) | 8, M1 |
 | 17 | claude/gitlab-posting | sixoverground/codex-mr-review | Post findings as MR discussions, summary note, script-owned marker, fingerprint dedupe | 10 | Merged | [sixoverground/codex-mr-review#3](https://github.com/sixoverground/codex-mr-review/pull/3) | 9 |
-| 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | In Review | [sixoverground/codex-mr-review#4](https://github.com/sixoverground/codex-mr-review/pull/4) | 10 |
+| 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Merged | [sixoverground/codex-mr-review#4](https://github.com/sixoverground/codex-mr-review/pull/4) | 10 |
 | 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | Pending | - | 7, 11 |
 | 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Pending | - | 15, 16, 4, 5a, 5b, 6, 7, 12 |
 | 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Pending | - | M2 |
@@ -1150,12 +1150,12 @@ After merging:
 - Driver: running
 - YOLO: off
 - Driver-ID: drv-776734c2
-- Active: 5b — sixoverground/claude-phases; 11 — sixoverground/codex-mr-review
+- Active: 6 — sixoverground/claude-phases
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3
-- Heartbeat: 2026-11-19T13:32:29Z
-- Note: 11 ready to merge (codex-mr-review#4, 9306d65; tag v0.1.0 after); 5b ready to merge (#42, cfb258c, codex declined re-review)
+- Heartbeat: 2026-11-19T14:10:46Z
+- Note: -
 
 ## Carried findings
 
