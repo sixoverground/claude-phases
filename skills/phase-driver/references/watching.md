@@ -18,7 +18,8 @@ What counts as a change, per change request:
 
 - the head sha
 - the state or conclusion of any check on the head
-- a new comment, review, review-thread comment or reaction from anyone other than the account the driver acts as
+- a new comment, review or review-thread comment from anyone, except a note that is the driver's by [Whose note it is](gates.md#whose-note-it-is): written by the account the driver acts as **and** carrying the driver stamp, `<!-- phases:driver v=1 -->`, on a line of its own
+- a new reaction from anyone other than the account the driver acts as. A reaction has no body to stamp, so reactions keep the account filter
 - merged or closed
 
 Reactions are on the list because some reviewers answer with nothing else: a 👍 from a reviewer on smart detect delivers no event, and it is often the whole answer.
@@ -60,9 +61,9 @@ while :; do
       sha=$(sed -n 's/^head //p' "$new") &&
       gh api --paginate "repos/$R/commits/$sha/check-runs?per_page=100" --jq '.check_runs[] | "check \(.name)=\(.conclusion // .status)"' >> "$new" &&
       gh api --paginate "repos/$R/commits/$sha/status?per_page=100" --jq '.statuses[] | "check \(.context)=\(.state)"' >> "$new" &&
-      gh api --paginate "repos/$R/issues/$N/comments?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item comment:\(.id)\"" >> "$new" &&
-      gh api --paginate "repos/$R/pulls/$N/comments?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item thread comment:\(.id)\"" >> "$new" &&
-      gh api --paginate "repos/$R/pulls/$N/reviews?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item review:\(.id)\"" >> "$new" &&
+      gh api --paginate "repos/$R/issues/$N/comments?per_page=100" --jq ".[] | select(((.user.login | ascii_downcase) == \"$ME\" and ((.body // \"\") | split(\"\\n\") | map(rtrimstr(\"\\r\")) | any(. == \"<!-- phases:driver v=1 -->\"))) | not) | \"item comment:\(.id)\"" >> "$new" &&
+      gh api --paginate "repos/$R/pulls/$N/comments?per_page=100" --jq ".[] | select(((.user.login | ascii_downcase) == \"$ME\" and ((.body // \"\") | split(\"\\n\") | map(rtrimstr(\"\\r\")) | any(. == \"<!-- phases:driver v=1 -->\"))) | not) | \"item thread comment:\(.id)\"" >> "$new" &&
+      gh api --paginate "repos/$R/pulls/$N/reviews?per_page=100" --jq ".[] | select(((.user.login | ascii_downcase) == \"$ME\" and ((.body // \"\") | split(\"\\n\") | map(rtrimstr(\"\\r\")) | any(. == \"<!-- phases:driver v=1 -->\"))) or ((.user.login | ascii_downcase) == \"$ME\" and (.body // \"\") == \"\") | not) | \"item review:\(.id)\"" >> "$new" &&
       gh api --paginate "repos/$R/issues/$N/reactions?per_page=100" --jq ".[] | select((.user.login | ascii_downcase) != \"$ME\") | \"item reaction \(.content):\(.id)\"" >> "$new"
     } 2>"$D/err"; then
       up=1
@@ -113,7 +114,19 @@ Fill it in:
 
 It keeps its snapshots in a directory named for the plan under `$TMPDIR`, one file per change request, each named from the full identity plus a checksum so that `acme/web-api#1` and `acme/web_api#1` never share one. A re-armed watcher compares against the last one, so a change that lands while no watcher is running still prints on the first poll after re-arming. Arm a new watcher whenever the set of open change requests changes, and stop the old one.
 
-**Skipping the driver's own comments.** The watcher ignores comments, reviews and reactions by the account `gh` is logged in as, so the driver is not woken by its own gate reports. In a local session that account is usually the person's own, so their comments on the change request do not wake the session either. Talk to the session instead.
+**Skipping the driver's own comments.** The watcher skips a comment, review or review-thread comment only when it is the driver's by [Whose note it is](gates.md#whose-note-it-is): by the account `gh` is logged in as, **and** carrying `<!-- phases:driver v=1 -->` on a line of its own. The driver stamps everything it posts, so its own gate reports and replies never wake it. Everything else wakes it:
+
+- **Your own comments.** In a local session the driver usually acts as your account. Before stamps, the watcher skipped that whole account, so your comments on the change request did not wake the session. They carry no driver stamp, so now they do.
+- **A reviewer on your account**, whose notes carry a reviewer stamp, not the driver's.
+- **A stamp typed by another account.** It hides nothing: the stamp counts only from the driver's own account.
+- **A comment that merely mentions the stamp**, in a sentence or a code span. The test is for the stamp on a line of its own.
+
+Two more things are skipped by account alone:
+
+- **A review with an empty body from the driver's account.** GitHub creates one as the container for each reply the driver posts in a review thread. The reply inside it is the stamped item, so its container must not wake the session either.
+- **Reactions from the driver's account.** A reaction has no body to stamp, so a 👍 you leave from your own account still wakes nothing. No gate reads it.
+
+**The first poll after upgrading.** A watcher's snapshot files hold the items the old filter let through. Under this filter, the old driver's unstamped comments on a change request that is still open appear as new items, so the first poll after the upgrade prints one line per open change request. Answer that wake like any other: reconcile, find nothing new, re-arm.
 
 ### GitLab
 
@@ -122,8 +135,8 @@ For a repo whose forge is `gitlab`. The same loop, through `glab api` against th
 - the head sha, and whether the MR is open, merged or closed
 - the head pipeline's status, and the status of each of its jobs
 - the commit statuses on the head sha, which include external ones
-- a new note, or a new note in a thread, from anyone other than the account the driver acts as. System notes are left out: a push already shows as a moved head
-- a new note whose whole text is `@codex review`, from anyone, the driver's own account included. With one identity a person posts as the driver's account, and the driver never posts that text itself
+- a new note, or a new note in a thread, from anyone, except a note that is the driver's by [Whose note it is](gates.md#whose-note-it-is): written by the account `glab` is logged in as **and** carrying the driver stamp on a line of its own. System notes are left out: a push already shows as a moved head
+- among those, a note whose whole text is `@codex review` is printed as a `review request`. It is never the driver's, since the driver never writes that text on GitLab
 
 A person's note asking `@codex review` reaches the watcher as a `review request`, and the wake answers it as the GitLab reference's [`@codex review` from a person](forge-gitlab.md#codex-review-from-a-person) says. Only a running watcher sees it: with no session watching the MR, nothing answers the request.
 
@@ -174,7 +187,9 @@ while :; do
       api --paginate "projects/$P/merge_requests/$N/notes?per_page=100" &&
       jq -r --arg me "$ME" '.[] | select(.system | not)
         | (.body // "" | test("^\\s*@codex review\\s*$"; "i")) as $ask
-        | select($ask or (.author.username | ascii_downcase) != $me)
+        | ((.author.username | ascii_downcase) == $me
+           and (.body // "" | split("\n") | map(rtrimstr("\r")) | any(. == "<!-- phases:driver v=1 -->"))) as $driver
+        | select($ask or ($driver | not))
         | "item \(if $ask then "review request" elif .type == null then "note" else "thread note" end):\(.id)"' "$D/raw" >> "$new"
     } 2>"$D/err"; then
       up=1
@@ -229,7 +244,7 @@ One watcher covers every MR on one host. A plan with repos on more than one forg
 
 **Refused or unreachable.** A 401, 403 or 404 that GitLab itself sent, which `glab api` prints as `glab: <message> (HTTP <code>)`, prints as refused access. Anything else prints as unreachable, including a bare `glab: HTTP 403` with no GitLab message, which usually comes from a proxy in front of the host, as the GitLab reference's **Unreachable or denied** says.
 
-**Skipping the driver's own notes** works as in the GitHub template, by the username `glab` is logged in as.
+**Skipping the driver's own notes** works as in the GitHub template: a note is skipped only when it is by the username `glab` is logged in as **and** carries the driver stamp on a line of its own. Your own notes, a reviewer's notes on your account, and a stamp typed by anyone else all wake the session. GitLab has no empty reply container, and the template reads no award emoji, so neither of the GitHub template's account-only skips is needed. The first poll after upgrading prints one line per open MR, as above.
 
 ## The wake message
 
