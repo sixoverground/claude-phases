@@ -23,7 +23,7 @@ What counts as a change, per change request:
 
 Reactions are on the list because some reviewers answer with nothing else: a 👍 from a reviewer on smart detect delivers no event, and it is often the whole answer.
 
-**Use the template as written. Replace only the four bracketed values.** A loop improvised on each wake is where a silent failure would hide: one that exits on its first failed request, or compares the wrong field, looks exactly like a quiet change request. This one was run against a real PR before it was written down, it tolerates a failed request without exiting, and it needs nothing but `gh`, `jq` (which `gh` carries for `--jq`) and the bash 3.2 that macOS ships.
+**Use the template as written. Replace only the bracketed values.** A loop improvised on each wake is where a silent failure would hide: one that exits on its first failed request, or compares the wrong field, looks exactly like a quiet change request. The GitHub one was run against a real PR before it was written down, it tolerates a failed request without exiting, and it needs nothing but `gh`, `jq` (which `gh` carries for `--jq`) and the bash 3.2 that macOS ships.
 
 ### GitHub
 
@@ -114,6 +114,117 @@ Fill it in:
 It keeps its snapshots in a directory named for the plan under `$TMPDIR`, one file per change request, each named from the full identity plus a checksum so that `acme/web-api#1` and `acme/web_api#1` never share one. A re-armed watcher compares against the last one, so a change that lands while no watcher is running still prints on the first poll after re-arming. Arm a new watcher whenever the set of open change requests changes, and stop the old one.
 
 **Skipping the driver's own comments.** The watcher ignores comments, reviews and reactions by the account `gh` is logged in as, so the driver is not woken by its own gate reports. In a local session that account is usually the person's own, so their comments on the change request do not wake the session either. Talk to the session instead.
+
+### GitLab
+
+For a repo whose forge is `gitlab`. The same loop, through `glab api` against the repo's `host`, so a GitLab watcher prints the same wake lines and keeps the same rules: silent when nothing changed, one line naming every MR that changed in a poll, a failed request reported once and never fatal, the check-in, and `ONCE`. What it snapshots per MR:
+
+- the head sha, and whether the MR is open, merged or closed
+- the head pipeline's status, and the status of each of its jobs
+- the commit statuses on the head sha, which include external ones
+- a new note, or a new note in a thread, from anyone other than the account the driver acts as. System notes are left out: a push already shows as a moved head
+
+Reactions are not on the list: no gate reads them on GitLab. A request for changes is not either, because it adds no note; see the GitLab reference's **Watch**.
+
+It needs `glab`, authenticated for the host, a `jq` binary (recent macOS ships one in `/usr/bin`; `glab api` has no `--jq` of its own), and bash 3.2. It was tested under macOS's `/bin/bash` 3.2 against a stand-in `glab` that replayed canned API responses and could be made to fail. It has not yet been run against a GitLab server.
+
+```bash
+HOST='[GitLab host, e.g. gitlab.com or gitlab.example.com]'
+PLAN='[plan path, e.g. docs/plans/acme.md]'
+MRS='[open phase MRs on that host, space separated, e.g. acme/web!42 acme/platform/api!7]'
+CHECKIN_MIN=[minutes to the fallback check-in: 45 to 60, or 10 to 15]
+ONCE=[0 under Monitor; 1 for a background command that exits on its first line]
+
+key() { printf '%s' "$1" | tr -c 'A-Za-z0-9' '_'; printf '_'; printf '%s' "$1" | cksum | cut -d ' ' -f 1; }
+D="${TMPDIR:-/tmp}/phase-driver-watch/$(key "$PLAN")/gitlab-$(key "$HOST")"
+mkdir -p "$D" || exit 1
+WAKE="[phase-driver watcher] Invoke the phase-driver skill, then reconcile $PLAN."
+say() { printf '%s %s\n' "$WAKE" "$1"; if [ "$ONCE" = 1 ]; then exit 0; fi; }
+now() { date +%s; }
+enc() { printf '%s' "$1" | jq -sRr @uri; }
+api() { glab api --hostname "$HOST" "$@" > "$D/raw"; }
+
+due=$(( $(now) + CHECKIN_MIN * 60 ))
+old=$(cat "$D/checkin" 2>/dev/null)
+case "$old" in ''|*[!0-9]*) old=$due ;; esac
+[ "$old" -lt "$due" ] && due=$old
+echo "$due" > "$D/checkin"
+
+ME=''
+WAIT=60
+while :; do
+  lines=''; up=0
+  if [ -z "$ME" ] && glab api --hostname "$HOST" user > "$D/me" 2>"$D/err"; then
+    ME=$(jq -r '.username // empty | ascii_downcase' "$D/me" 2>>"$D/err")
+  fi
+  for mr in $MRS; do
+    R=${mr%%!*}; N=${mr##*!}; P=$(enc "$R"); K=$(key "$mr"); new="$D/$K.new"
+    if [ -n "$ME" ] && {
+      api "projects/$P/merge_requests/$N" &&
+      jq -r '"state \(.state)", "head \(.sha)", "check pipeline=\(.head_pipeline.status // "none") #\(.head_pipeline.id // "-")"' "$D/raw" > "$new" &&
+      sha=$(sed -n 's/^head //p' "$new") &&
+      pl=$(jq -r '.head_pipeline.id // empty' "$D/raw") &&
+      { [ -z "$pl" ] || { api --paginate "projects/$P/pipelines/$pl/jobs?per_page=100" &&
+          jq -r '.[] | "check \(.name)=\(.status)"' "$D/raw" >> "$new"; }; } &&
+      api --paginate "projects/$P/repository/commits/$sha/statuses?per_page=100" &&
+      jq -r '.[] | "check status \(.name)=\(.status)"' "$D/raw" >> "$new" &&
+      api --paginate "projects/$P/merge_requests/$N/notes?per_page=100" &&
+      jq -r --arg me "$ME" '.[] | select(.system | not) | select((.author.username | ascii_downcase) != $me)
+        | "item \(if .type == null then "note" else "thread note" end):\(.id)"' "$D/raw" >> "$new"
+    } 2>"$D/err"; then
+      up=1
+      if [ -f "$D/$K.down" ]; then rm -f "${D:?}/${K:?}.down"; lines="$lines $mr: the forge is answering again."; fi
+      LC_ALL=C sort -o "$new" "$new"
+      if [ -f "$D/$K.old" ] && ! cmp -s "$D/$K.old" "$new"; then
+        what=''
+        a=$(sed -n 's/^state //p' "$D/$K.old"); b=$(sed -n 's/^state //p' "$new")
+        [ "$a" != "$b" ] && what="$what; now $b"
+        a=$(sed -n 's/^head //p' "$D/$K.old")
+        [ "$a" != "$sha" ] && what="$what; head moved ${a%"${a#???????}"} -> ${sha%"${sha#???????}"}"
+        c=$(LC_ALL=C comm -13 "$D/$K.old" "$new" | sed -n 's/^check //p' | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+        [ -n "$c" ] && what="$what; checks: $c"
+        i=$(LC_ALL=C comm -13 "$D/$K.old" "$new" | sed -n 's/^item \(.*\):.*/\1/p' | sort | uniq -c | sed 's/^ *\([0-9]*\) \(.*\)/\1 new \2/' | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+        [ -n "$i" ] && what="$what; $i"
+        [ -n "$what" ] && lines="$lines $mr:${what#;}."
+      fi
+      mv "$new" "$D/$K.old"
+    elif [ ! -f "$D/$K.down" ]; then
+      : > "$D/$K.down"
+      if grep -q '(HTTP 40[134])' "$D/err"; then
+        lines="$lines $mr: the forge refused access ($(grep -o 'HTTP 40[134]' "$D/err" | head -n 1))."
+      else
+        why=$(sed 's/^ *//; s/ *$//' "$D/err" | grep -v -e '^$' -e '^ERROR$' | head -n 1 | sed 's/^[A-Za-z]* "[^"]*": //' | cut -c 1-120)
+        lines="$lines $mr: the forge is unreachable ($why); still polling, backing off to at most five minutes."
+      fi
+    fi
+  done
+  [ -n "$lines" ] && say "Changed:$lines"
+  if [ "$up" = 1 ]; then WAIT=60; else WAIT=$(( WAIT * 2 )); [ "$WAIT" -gt 300 ] && WAIT=300; fi
+  if [ "$(now)" -ge "$(cat "$D/checkin")" ]; then
+    echo $(( $(now) + CHECKIN_MIN * 60 )) > "$D/checkin"
+    say "Fallback check-in, every $CHECKIN_MIN minutes."
+  fi
+  sleep "$WAIT"
+done
+```
+
+Keep the guarded `rm` for the same reason as in the GitHub template.
+
+Fill it in:
+
+| Value | What goes there |
+|---|---|
+| `HOST` | The repo's resolved `host`, such as `gitlab.com` or `gitlab.example.com` |
+| `PLAN` | The plan file's path, as it appears in the repo |
+| `MRS` | Every open phase MR in the plan on that host, as `group/project!iid`, subgroups included, separated by spaces |
+| `CHECKIN_MIN` | Minutes to the fallback check-in, below |
+| `ONCE` | `0` under Monitor. `1` only for the fallback without Monitor, below |
+
+One watcher covers every MR on one host. A plan with repos on more than one forge or host runs one watcher for each, and each keeps its snapshots in its own directory under the plan's, so they never share a file.
+
+**Refused or unreachable.** A 401, 403 or 404 that GitLab itself sent, which `glab api` prints as `glab: <message> (HTTP <code>)`, prints as refused access. Anything else prints as unreachable, including a bare `glab: HTTP 403` with no GitLab message, which usually comes from a proxy in front of the host, as the GitLab reference's **Unreachable or denied** says.
+
+**Skipping the driver's own notes** works as in the GitHub template, by the username `glab` is logged in as.
 
 ## The wake message
 

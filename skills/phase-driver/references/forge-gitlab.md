@@ -6,13 +6,16 @@ On GitLab a change request is a **merge request**, and this file calls it an MR.
 
 Read this file at Reconcile, and again after any compaction, as the core says of every forge reference.
 
-**This copy maps everything except the gates.** It can find, open and merge MRs, write the plan and move branches. It cannot yet decide whether an MR may merge: see [The gates](#the-gates), which says what the driver does instead.
-
 **What it was checked against.** Every command here was checked against `glab` 1.131.0 (`glab version`) and the GitLab REST API documentation as published in November 2026. No command in this copy has yet been run against a GitLab server. `glab` flags change between versions, and a self-managed instance can lag gitlab.com by several releases, so a field documented today may be missing on an older server. Where one is, the call fails or the field reads `null`: say which, and treat it as this file being wrong for that server, never as a reason to guess. Re-check these pages when either moves:
 
 - [`glab` command reference](https://docs.gitlab.com/cli/)
 - [Repository files API](https://docs.gitlab.com/api/repository_files/)
 - [Merge requests API](https://docs.gitlab.com/api/merge_requests/)
+- [Pipelines API](https://docs.gitlab.com/api/pipelines/) and [Jobs API](https://docs.gitlab.com/api/jobs/), for gate 3
+- [Commits API](https://docs.gitlab.com/api/commits/), for commit statuses and a commit's parents
+- [Discussions API](https://docs.gitlab.com/api/discussions/), for gate 5
+- [Merge request reviews](https://docs.gitlab.com/user/project/merge_requests/reviews/), for which tiers and versions can request changes
+- [Users API](https://docs.gitlab.com/api/users/), [Namespaces API](https://docs.gitlab.com/api/namespaces/) and [Metadata API](https://docs.gitlab.com/api/metadata/)
 - [Branches API](https://docs.gitlab.com/api/branches/)
 - [Projects API](https://docs.gitlab.com/api/projects/)
 - [Notes API](https://docs.gitlab.com/api/notes/) and [Issues API](https://docs.gitlab.com/api/issues/)
@@ -132,27 +135,253 @@ On GitHub it does, because a reviewer integration there can be scoped to one con
 
 ## Watch
 
-**No session in this copy can subscribe to GitLab MR activity.** So a session working a GitLab MR is woken by `watching.md`'s watcher, and the watcher's GitLab template arrives in phase 5b. Until then, rely on the fallback check-in alone: schedule it 45 to 60 minutes out, as the core says, and 10 to 15 minutes out when the thing you are waiting on finishes without anyone pushing or commenting. Do not improvise a polling loop: `watching.md` says why.
+**No session in this copy can subscribe to GitLab MR activity**, so a session working a GitLab MR arms `watching.md`'s watcher, with its [GitLab template](watching.md#gitlab). The watcher prints the fallback check-in itself: 45 to 60 minutes out, as the core says.
+
+**Almost everything a GitLab reviewer does reaches the watcher.** A reviewer here answers with a job, a note or a thread, and the watcher sees all three. The exception is a request for changes or an approval, which changes a reviewer's state without a note the watcher reads. When that is what you are waiting on, arm the check-in 10 to 15 minutes out rather than 45 to 60.
 
 ### Asking a reviewer for a newer review
 
-Where the integration has a trigger comment, post it as a note on the MR:
+The core's rule that resolving a thread does not clear gate 4 asks the reviewer for a newer review "where the integration has a way". On GitLab a reviewer runs as a CI job, so there are two ways, both acting on the current head only:
 
-```sh
-glab api --hostname <host> -X POST projects/<P>/merge_requests/<iid>/notes -f body='<trigger comment>'
-```
+- **Retry the review job** in the head's pipeline, found by [Gate 3](#gate-3-checks):
 
-GitLab's own "re-request review" is not mapped in this copy. Which reviewers have a trigger, and how gate 4 reads their answer, comes with the gates in phase 5b.
+  ```sh
+  glab api --hostname <host> -X POST projects/<P>/jobs/<job id>/retry
+  ```
+
+  The response is the new job: read its `id` and `status` (`pending`). Retry a job from the head's pipeline and no other: a job from an older pipeline checks out that pipeline's commit and would review the old head again.
+- **Create a merge request pipeline**, where no single job is the reviewer or the head has no pipeline yet:
+
+  ```sh
+  glab api --hostname <host> -X POST projects/<P>/merge_requests/<iid>/pipelines
+  ```
+
+  Read `id`, `sha` and `status`. This runs every job the project's MR pipeline rules select, not only the reviewer, so it costs a full pipeline. It creates a detached or merged results pipeline, never a branch pipeline, so a project whose CI config has no MR pipeline rules gets nothing from it. Prefer the retry.
+
+GitLab's "re-request review" button notifies a person and starts nothing, so it is not one of the ways.
 
 ## The gates
 
-**The GitLab gate mappings are not in this copy yet.** `gates.md` asks each gate as a question any forge can answer, and its links go to the GitHub answers. None of those answers is right for an MR. Reading a failed job's trace, for `ci.logs: gitlab-jobs`, comes with them.
+`gates.md` asks each of the six gates as a question any forge can answer. This is how GitLab answers it.
 
-So on a GitLab change request the driver **does not evaluate the gates and does not merge**, whatever YOLO says. When a GitLab MR has no outstanding work, or would otherwise be gated:
+**Read the MR once per evaluation**, with the single-MR read from [Find](#find), and evaluate every gate against that one reading:
 
-- report that this copy of the driver cannot gate GitLab change requests yet, naming the MR's `Link`, and that a newer release may
-- stop working that row: no merge, no gate report, no `ready to merge`
-- do not mark it `Blocked`. Nothing is wrong with the phase, and a person can still merge it in the UI. When they do, the driver notices on its next wake, by Find, and §7 runs as for any merge.
+```sh
+glab api --hostname <host> projects/<P>/merge_requests/<iid>
+```
+
+The head sha is the MR's `sha`. Every gate below is about that sha, and a gate result is discarded the moment it changes, as the core says.
+
+**`review.required` entries work on GitLab as `marker` entries only.** See [Gate 6](#gate-6-reviewer).
+
+### Gate 1: draft
+
+The MR passes when `draft == false`.
+
+### Gate 2: labels
+
+The MR's own `labels`, an array of label names, compared with `blocking_labels`. A scoped label such as `workflow::blocked` is compared by its whole name.
+
+### Gate 3: checks
+
+Three sources, all for the head sha: the jobs of the head's pipeline, its trigger jobs, and external commit statuses. `ci.required`, where set, names jobs (and trigger jobs and external statuses) by `name`. A job from `parallel` or `parallel: matrix` has a name per instance, such as `test 1/3` or `test: [3.2, pg]`, and `ci.required` names each one it needs.
+
+**Find the head's pipeline.** List the MR's pipelines:
+
+```sh
+glab api --hostname <host> --paginate "projects/<P>/merge_requests/<iid>/pipelines?per_page=100"
+```
+
+From each, read `id`, `sha`, `ref` and `status`. A pipeline **belongs to this head** when either:
+
+- its `sha` equals the head sha. That is a branch pipeline or a detached MR pipeline, which run on the source branch's commit; or
+- its `ref` is `refs/merge-requests/<iid>/merge` or `refs/merge-requests/<iid>/train`, and the commit it ran on has the head sha among its parents. That is a merged results or merge train pipeline. It runs on a merge commit GitLab made from the head and the target branch, so its `sha` is never the head sha. Read the parents with:
+
+  ```sh
+  glab api --hostname <host> projects/<P>/repository/commits/<pipeline sha>
+  ```
+
+  and check that `parent_ids` contains the head sha.
+
+Any other pipeline is not this head's, however recent. **The head's pipeline is the newest one that belongs to this head**, the highest `id`. That is the one pipeline GitLab's own "pipelines must succeed" check reads.
+
+The MR's `head_pipeline` is a shortcut to the same answer, and GitLab describes it as the pipeline for the source branch's head. Use it only after applying the same test to it: just after a push it can still name the previous head's pipeline, and a merged results pipeline's `sha` would fail a plain comparison with the head.
+
+**Read its jobs and its trigger jobs:**
+
+```sh
+glab api --hostname <host> --paginate "projects/<P>/pipelines/<id>/jobs?per_page=100"
+glab api --hostname <host> --paginate "projects/<P>/pipelines/<id>/trigger_jobs?per_page=100"
+```
+
+From each, read `id`, `name`, `status`, `allow_failure`, `web_url` and, for a failure, `failure_reason`. The jobs list leaves out retried attempts unless asked (`include_retried=true`), so each name appears once, as its latest attempt. `trigger_jobs` is the GitLab 19.2 name; an older server answers the same request at `pipelines/<id>/bridges`, which 19.2 deprecated.
+
+**A trigger job counts as one check, with its own status, and the child pipeline it starts is not read.** GitLab's own pipeline status counts it the same way. A trigger with `strategy: depend` mirrors the child pipeline's result, which is how a project says the child gates the merge; without it, the trigger job succeeds once the child is created, and the child's result gates nothing here either. So `ci.required` can name a trigger job, and cannot name a job inside a child pipeline. A failed trigger job's cause is read from the child, under [Reading a failure](#reading-a-failure).
+
+**Read external commit statuses** on the head sha:
+
+```sh
+glab api --hostname <host> --paginate "projects/<P>/repository/commits/<head sha>/statuses?per_page=100"
+```
+
+Read `id`, `name`, `status`, `allow_failure`, `description` and `target_url`. This endpoint also returns the jobs of every pipeline that ran on that sha, so keep only entries that are not jobs: drop any whose `id` is a job or trigger job id read above, and any whose `target_url` is a job page of this project (`https://<host>/<project path>/-/jobs/<id>`). What remains was posted by something outside the project's CI.
+
+**Every counted job, trigger job and status either passes, blocks or waits:**
+
+| `status` | Verdict |
+|---|---|
+| `success` | Pass |
+| `skipped` | Pass. Its rules did not select it, or an earlier failure stopped it, and that failure is read in its own row |
+| `failed`, with `allow_failure: true` | Pass, as GitHub's `neutral` does. GitLab shows it as a warning and does not fail the pipeline for it |
+| `failed` | Block |
+| `canceled` | Block |
+| `manual`, with `allow_failure: true` | Pass. An optional manual job: nobody has to run it, and GitLab's pipeline does not wait for it |
+| `manual`, with `allow_failure: false` | Block. A blocking manual job holds the pipeline until a person plays it, and playing it is the person's decision, never the driver's |
+| `created`, `waiting_for_resource`, `preparing`, `waiting_for_callback`, `pending`, `running`, `scheduled`, `canceling` | Wait. Still running or about to; `scheduled` is a delayed job, and `canceling` becomes `canceled` |
+| Anything not in this table | Block, and name the status. A status this file does not know is not a pass |
+
+Those are the thirteen job statuses the jobs API documents. External statuses are posted with six of them (`pending`, `running`, `success`, `failed`, `canceled`, `skipped`), and read by the same rows.
+
+**What counts as zero checks**, which blocks unless `ci.allow_none: true`:
+
+- no pipeline belongs to this head, and no external status is on the head sha; or
+- the head's pipeline has no jobs, as a pipeline skipped by `[skip ci]` has.
+
+A pipeline that **failed with no jobs** is not zero checks: that is a CI configuration GitLab could not run. Read it with `glab api --hostname <host> projects/<P>/pipelines/<id>` and report its `yaml_errors`; it blocks. Right after a push the head's pipeline can take a few seconds to appear, so read again once before calling a head checkless.
+
+**A name in `ci.required` that matches nothing** blocks, and the report names it. A typo there otherwise counts nothing and reports nothing.
+
+`review.required[].check` does not apply on GitLab (see [Gate 6](#gate-6-reviewer)), so the fourth step of `gates.md`'s **Which checks count** subtracts nothing here. A review job counts like any other job, so a reviewer that cannot run turns this gate red. Put its name in `ci.ignore_checks` only if a reviewer that fails should not stop the merge.
+
+#### Reading a failure
+
+Per the repo's `ci.logs`:
+
+- **`gitlab-jobs`**, and **`auto`**, which resolves to it on GitLab. Fetch the failed job's full trace, and read it from the end, where the error is:
+
+  ```sh
+  glab api --hostname <host> projects/<P>/jobs/<job id>/trace > job.log
+  tail -n 200 job.log
+  ```
+
+  The trace is plain text, not JSON. Widen the tail when the error starts higher up. `glab ci trace <job id> -R https://<host>/<project path>` prints the same log, but streams it while the job runs and prompts when no job is given, so the API form is the one to use. A `failure_reason` other than `script_failure`, such as `runner_system_failure` or `stuck_or_timeout_failure`, says the runner failed rather than the code: say that, since the trace may not show anything the change caused.
+- **A failed trigger job.** Read the child: its `downstream_pipeline.id`, then that pipeline's jobs and the failed one's trace, as above. A multi-project trigger's child lives in another project; where the token cannot read it, link its `downstream_pipeline.web_url`.
+- **A failed external status** has no log here. Read its `description`, and link its `target_url`.
+- **`actions` and `check-output`** are GitHub's values. On a GitLab repo, say once that they do not apply and read with `gitlab-jobs`.
+
+A job's own page, the one to link when its trace does not say why it failed, is its `web_url`.
+
+**One retry per head for a suspected flake**, as `gates.md` allows, with the same call as [Asking a reviewer for a newer review](#asking-a-reviewer-for-a-newer-review):
+
+```sh
+glab api --hostname <host> -X POST projects/<P>/jobs/<job id>/retry
+```
+
+Say on the MR, in a note, which job you retried and why. Read whether a retry already happened from the forge, never from memory: list the head pipeline's jobs with `include_retried=true`, and a name that appears more than once has had its retry.
+
+### Gate 4: changes requested
+
+A reviewer requests changes on GitLab by submitting a review with **Request changes**, and the request stays until that reviewer approves, or removes it, or someone overrides it. So GitLab keeps one state per reviewer, and that state is already the latest: the core's "a later review by the same author supersedes it" is built in.
+
+**Two reads, either of which is proof that changes are requested:**
+
+```sh
+glab api --hostname <host> projects/<P>/merge_requests/<iid>/reviewers
+```
+
+Each entry has a `user` and a `state`. A `state` of `requested_changes` is a request for changes by that `user.username`. And the MR's own `detailed_merge_status` reads `requested_changes` when "the merge request has reviewers who have requested changes". Read both: `detailed_merge_status` names only one reason an MR cannot merge, so a running pipeline or an unresolved thread can hide a request for changes from it.
+
+**Absence is not proof, because not every instance can request changes.** It arrived in GitLab 16.11 behind a feature flag and was on by default from 17.2, and it is a Premium and Ultimate feature: on Free, a review submitted with "Request changes" becomes a comment. An instance that cannot record a request for changes reports none, and that looks exactly like "no changes requested". So decide once per session whether this instance can tell you:
+
+- **The version.** `glab api --hostname <host> version`, field `version`. Below 17.2 it cannot tell you, unless a request for changes has been seen on it.
+- **The tier, on gitlab.com.** `glab api --hostname gitlab.com namespaces/<top-level group, encoded>`, field `plan`. `free` cannot tell you.
+- **The tier, on a self-managed instance**, cannot be read without administrator access. Treat it as unknown.
+
+| Found | Verdict |
+|---|---|
+| A reviewer in `requested_changes`, or `detailed_merge_status: requested_changes` | **Block**, naming the reviewers. Positive evidence counts on any instance |
+| Neither, on an instance known to support it: 17.2 or later, on a paid plan | **Pass** |
+| Neither, on an instance that cannot tell you, or where you could not establish that it can | **Off**: this gate does not block, and the report line says why |
+| `review.changes_requested_blocks: false` | **Off**, by configuration |
+
+The report line for the third row says that the instance cannot report requested changes, so nobody reads it as a pass:
+
+```
+4 reviews      OFF: this instance cannot report requested changes (GitLab 17.8, tier not readable on a self-managed instance)
+4 reviews      OFF: this instance cannot report requested changes (gitlab.com, free plan)
+4 reviews      FAIL: changes requested by @alice
+```
+
+Clearing a request for changes is the reviewer's to do. The core's rule for a bot's latest review blocking still applies: ask it for a newer review by [Asking a reviewer for a newer review](#asking-a-reviewer-for-a-newer-review), and where that cannot clear it, mark the row `Blocked` with that reason.
+
+### Gate 5: threads
+
+List the MR's discussions:
+
+```sh
+glab api --hostname <host> --paginate "projects/<P>/merge_requests/<iid>/discussions?per_page=100"
+```
+
+Each has an `id`, `individual_note`, and `notes`, and each note has `id`, `type`, `author` (`id`, `username`), `body`, `system`, `resolvable` and `resolved`.
+
+A discussion is a thread for this gate when any of its notes has `resolvable: true`, and it is resolved when every one of those has `resolved: true`. **On GitLab a general thread is resolvable too.** A finding posted as a thread on the MR's overview, with no diff position (`type: DiscussionNote`), gates exactly as a thread on a diff line (`type: DiffNote`) does. Only a plain comment, `individual_note: true`, is not resolvable, so a reviewer that posts only plain comments gives this gate nothing to check, as `gates.md` says of top-level comments.
+
+**Reply in the thread, then resolve it:**
+
+```sh
+jq -n --rawfile body reply.md '{body: $body}' > reply.json
+glab api --hostname <host> -X POST projects/<P>/merge_requests/<iid>/discussions/<discussion id>/notes --input reply.json
+glab api --hostname <host> -X PUT projects/<P>/merge_requests/<iid>/discussions/<discussion id> -F resolved=true
+```
+
+`-F` sends `true` as a boolean. The response to the last call is the discussion, with its notes now `resolved: true`. Resolving needs the Developer role or above, or to be the MR's author.
+
+A project with **All threads must be resolved** turned on refuses the merge itself while a thread is open (`detailed_merge_status: discussions_not_resolved`), so `review.threads_must_resolve: false` does not get an MR past that setting.
+
+#### Whose thread it is
+
+The core treats a bot's thread and a person's thread differently, in **Answering a review** and in `gates.md`'s gate 5. On GitLab a thread is the author's of its first note, `notes[0].author`, and that author is **a bot** when either:
+
+- their `username` is in the `logins` of a `marker` entry in `review.required`, matched case-insensitively; or
+- GitLab marks the user as a bot: `glab api --hostname <host> users/<author id>`, field `bot` is `true`. Project and group access tokens, and service accounts, post as bot users.
+
+Anyone else is a person, and their thread stays open by the core's rules.
+
+### Gate 6: reviewer
+
+**Only `marker` entries work on GitLab.** An entry's other ways to be satisfied are GitHub's: a review or inline comment by its `logins`, a `check` judged by `proof`, a 👍 reaction, a review-state record, and `rereview: optional`. None of them is mapped here. A plan that configures any of them for a GitLab repo is told so at Reconcile, once, naming the entries and the repo, with the advice to use a `marker` entry. Until it changes, such an entry is unsatisfied and gate 6 blocks on it.
+
+**Read the marker from the MR's notes:**
+
+```sh
+glab api --hostname <host> --paginate "projects/<P>/merge_requests/<iid>/notes?per_page=100"
+```
+
+Read `id`, `body`, `author.username`, `system` and `type`. A marker counts only in a note with `system: false` whose `type` is not `DiffNote`: a plain comment (`type: null`) or a general thread's note (`DiscussionNote`), both of which sit on the MR's overview, where the contract puts it. A marker in a `DiffNote` is in a thread on the diff, the case `gates.md`'s table rejects.
+
+Then match it exactly as `gates.md`'s **The review marker** says: the line is `<!-- phases:review v=1 reviewer=<name> sha=<sha> -->`, `reviewer` equals the entry's `marker`, `sha` equals the head sha in full, and, when the entry lists `logins`, `author.username` is one of them. Login matching is case-insensitive, and GitLab adds no suffix to a bot's username, so a project access token's bot user is matched by its username as shown.
+
+**In a merged results pipeline the marker still names the head.** The reviewer job runs on a merge commit there, and a reviewer that meets the contract takes the sha from the source branch (`CI_MERGE_REQUEST_SOURCE_BRANCH_SHA`), as `codex-mr-review` does. A marker that names a merged results pipeline's own commit names a sha that is never the head: it is not proof. Say so in the report, since the fix is in the reviewer, not in the MR.
+
+```
+6 reviewer     PASS (codex marker @ a1b2c3d)
+6 reviewer     BLOCK: no codex marker for a1b2c3d (latest is for 9f8e7d6)
+6 reviewer     BLOCK: entry `logins: [codex-bot]` has no marker, and only marker entries work on GitLab
+```
+
+**The reviewed heads for `stuck.max_review_rounds`** are the distinct full shas named by markers that satisfy a configured `marker` entry by the rules above, apart from being the current head: right reviewer, right author where `logins` is set, a top-level note, `v=1`, a full sha. Two markers for one sha are one round. Read them from the notes on every wake, as the core says.
+
+#### The decline reaction
+
+**Does not apply on GitLab, because a reaction is not proof here.** GitHub's reviewer on smart detect answers some PRs with only a 👍. GitLab has reactions (award emoji), but no reviewer this copy supports answers with one, and gate 6 reads markers alone. A 👍 on an MR proves nothing to the driver.
+
+#### `rereview: optional`
+
+**Does not apply on GitLab, because it rests on signs that are not read here.** Its decline rule needs a review, inline comment, 👍 or review-state record from the reviewer, and on GitLab a `marker` entry is satisfied by its marker and nothing else, as `gates.md` says of every marker entry. A reviewer that may skip a commit posts no marker for it, which blocks.
+
+#### Codex's review-state comment
+
+**Does not apply on GitLab, because that comment is something GitHub's Codex integration writes.** On GitLab, Codex runs as a CI job (`codex-mr-review`) and reports through the marker.
 
 ## Write the plan
 
