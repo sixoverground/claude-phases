@@ -11,4 +11,5 @@ ci:
   dispatch: none               # starts itself; the driver triggers it by pushing
   logs: check-output           # check summary + details_url, not raw logs
 
-verify: ci                     # macOS and Xcode cannot exist in a Linux container
+verify: ci                     # in a cloud session: macOS and Xcode cannot exist
+                               # in a Linux container. On a Mac with Xcode, local

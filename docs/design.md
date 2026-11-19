@@ -223,6 +223,8 @@ So the driver resolves a review bot's thread when it disagrees, and the record m
 
 Running tests in-session is preferred: seconds instead of a CI round-trip, and a failure never costs a PR revision. But a Linux container has node and not Xcode, so `verify` is per repo and honest about it.
 
+Where the session runs decides what is realistic. In a cloud container iOS is `ci`. In a session on a Mac with Xcode it is `local`, and the right local step there is a quick build for the simulator before each push, with the full suite left to CI: a build is what catches a phase that does not compile, in seconds, while the suite is slow and already runs on every PR. When a CI runner shares that Mac, the driver's build needs its own DerivedData and a simulator the runner is not using, and the runner one job at a time. Contention between the two is intermittent, which is why the planner's hygiene checklist states it as a rule rather than leaving it to be discovered.
+
 The rule that matters is not which mode you pick but that **the PR body records which path actually ran**. "Tests pass" means something different when CI proved it than when the driver did, and a reviewer should not have to guess which they're looking at.
 
 Note that `local` has no fallback: if the toolchain is missing, verification fails and the phase blocks. `auto` is the mode that drops to CI. Conflating them was itself a bug the reviewer caught.

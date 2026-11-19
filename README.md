@@ -3,13 +3,13 @@
 Plan a large change as a series of small pull requests, then let a Claude Code session build and drive them one at a time. You can monitor, pause, or redirect the work from any Claude client, including your phone.
 
 ```
-   docs/plans/my-app.md              a Claude Code cloud session              GitHub
+   docs/plans/my-app.md              a Claude Code session                    GitHub
   ┌──────────────────────┐          ┌────────────────────────┐          ┌──────────────┐
   │ Phase 0  Merged      │          │  reconcile             │          │  PR #12  ✓   │
   │ Phase 1  Merged      │◀────────▶│  implement             │◀────────▶│  PR #14  ✓   │
   │ Phase 2  In Review   │  status  │  open PR, watch        │  webhook │  PR #17  ⋯   │
-  │ Phase 3  Pending     │  writes  │  fix CI, answer review │  events  │              │
-  │ Driver: running      │          │  merge when green      │          │              │
+  │ Phase 3  Pending     │  writes  │  fix CI, answer review │  or      │              │
+  │ Driver: running      │          │  merge when green      │  watcher │              │
   └──────────────────────┘          └───────────┬────────────┘          └──────────────┘
                                                 │
                                           "run the next phase"
@@ -17,6 +17,8 @@ Plan a large change as a series of small pull requests, then let a Claude Code s
                                                 │
                                          📱 Claude mobile app
 ```
+
+In a cloud session, webhook events wake the driver. In a session on your own machine, a watcher it runs itself does the same job. See [Running locally](#running-locally).
 
 ## Quick start
 
@@ -70,7 +72,7 @@ A regular cloud session also remains conversational. You can ask what it is wait
 
 1. **Plan.** `phase-planner` inspects your repositories, proposes configuration from the evidence it finds, and writes `docs/plans/<project>.md`: a table with one PR-sized row per phase.
 2. **Run.** Tell a Claude Code session "run the next phase". `phase-driver` picks the first `Pending` phase, branches, implements it, verifies it, and opens a PR.
-3. **Watch.** It subscribes to the PR and ends its turn. CI failures and review comments wake it; it fixes them and pushes.
+3. **Watch.** It subscribes to the PR, or in a local session arms a watcher that polls it, and ends its turn. CI failures and review comments wake it; it fixes them and pushes.
 4. **Merge.** With YOLO on, it squash-merges once the gates pass and deletes the branch. With YOLO off it pings you and waits while you merge from your phone, merging nothing and deleting nothing itself.
 5. **Continue.** Either way, the merge advances the plan and the next phase starts. Repeat until done.
 
@@ -173,13 +175,17 @@ See [the configuration reference](skills/phase-planner/references/configuration.
 
 Running tests in the session is fastest, but it is not always possible. The per-repository `verify` setting defaults to `auto`: try locally, fall back to CI, and record in the PR body which path actually ran.
 
-Web and backend code runs locally. Android runs its JVM unit tests locally and leaves instrumented tests to CI. iOS is CI-only, because building needs macOS and Xcode, which no Linux container has.
+Web and backend code runs locally. Android runs its JVM unit tests locally and leaves instrumented tests to CI. iOS is CI-only in a cloud session, because building needs macOS and Xcode, which no Linux container has. When the session runs on a Mac with Xcode, iOS is `local`: a quick build for the simulator before each push, with the full test suite left to CI.
+
+## Running locally
+
+The driver can run in a Claude Code session in a terminal on your own Mac instead of in the cloud: for a forge only your machine can reach, such as a self-managed GitLab behind a VPN, or a toolchain only your machine has, such as Xcode. It arms a watcher where a cloud session would get webhooks, and you can still steer it from your phone with Remote Control. Keeping the session alive is then your job. [docs/running-locally.md](docs/running-locally.md) covers all of it.
 
 ## Installing
 
 ### As a plugin
 
-The [quick start](#quick-start) route. Both skills install together and update together.
+The [quick start](#quick-start) route. Both skills install together and update together. This is also the route for a local session in a terminal: install it where the session runs, since a cloud session does not load plugins installed on your Mac, and a running session keeps the version it loaded until it reloads or restarts.
 
 ```
 /plugin marketplace add sixoverground/claude-phases
@@ -259,7 +265,7 @@ A real-world experience using claude-phases, and how that influenced PR auto-mer
 
 ## Related
 
-[claude-project-manager](https://github.com/sixoverground/claude-project-manager) runs the same idea from a macOS launchd job, firing a scheduled routine per phase. It suits being at your desk with the loop outside the model. This one puts the loop inside a session you can talk to.
+[claude-project-manager](https://github.com/sixoverground/claude-project-manager) runs the same idea, and both can now run on your Mac. The difference is where the loop lives. cpm keeps it outside the model: a launchd job polls GitHub and fires a Claude Code routine per phase, and each routine starts fresh. claude-phases keeps it inside one session you can talk to, which watches its own change requests with a watcher it runs as one of its tools, and can be asked what it is waiting on at any point.
 
 ## License
 
