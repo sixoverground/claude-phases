@@ -22,6 +22,7 @@ Read `references/recovery.md`, `references/gates.md`, `references/watching.md`, 
 8. **Never claim work you didn't do.** If tests didn't run, say so in the change request's description. If you can't tell why CI failed, say that and link the run.
 9. **Invoke this skill at the start of every wake, even when you remember it.** Its front matter names the model for the turn it is invoked in and for nothing after. A wake that acts without invoking it runs that turn on whatever model the session was started with. Remembering the rules is not the same as having them applied.
 10. **An unreachable forge is a wait, not a block.** When the forge does not answer at all, mark nothing `Blocked` and count nothing toward `stuck.max_cycles`. Tell the user once and carry on when it answers, as [The forge is unreachable](references/recovery.md#the-forge-is-unreachable) says. A status write that could not be made means the action it describes has not started.
+11. **Stamp everything you post on a change request, and never write another actor's line.** Every comment, reply and note you write ends with `<!-- phases:driver v=1 -->`, and you never write a review marker, a reviewer stamp, or any hidden line copied from someone else's note. See [Stamp what you write](#stamp-what-you-write).
 
 ## The forge
 
@@ -32,6 +33,26 @@ The forge is the service that hosts the repos: it holds the change requests, the
 **Read the reference for every forge the plan resolves to, at Reconcile, and again after any compaction.** It is a reference, read lazily, so a compaction can drop it while this file survives. A driver acting on this file alone will reach for the wrong tool, and on GitHub one wrong tool for opening a change request still succeeds while making sure it is never reviewed.
 
 **A forge with no reference in this copy stops the driver.** If a repo resolves to a forge whose `references/forge-<forge>.md` does not exist beside this file, stop at Reconcile before writing anything: no claim, no `Heartbeat`, no **For the driver** section, no branch. Say which repo names which forge, that this copy of the driver has no reference for it, and that a newer release may. That is also what a plan written for a newer release does on an older install, and it is the right answer there too: guessing a forge's API from another forge's reference is how a change request gets opened that nobody reviews, or a plan write lands somewhere nobody reads.
+
+## Stamp what you write
+
+**Every comment, reply, review body and note you post on a change request, on every forge, ends with this line**, on a line of its own:
+
+```
+<!-- phases:driver v=1 -->
+```
+
+It is the reserved consumer stamp of the [review contract](https://github.com/sixoverground/claude-phases/blob/main/docs/review-contract.md), version 1.1. It says the note is the driver's. Forges hide an HTML comment when they render the note, so a person reading the change request sees nothing new. It exists for the day a reviewer, a person and the driver all post from one account: the stamp, not the account, is then what tells your notes apart from theirs.
+
+**It is the last line, never the first.** Some of your comments already begin with a marker that recovery finds by the comment's first line, `<!-- phase-driver:arbiter ... -->` and `<!-- phase-driver:after-merge ... -->`. Those keep their first line, and the stamp goes at the end.
+
+**Stamped:** gate reports and ready-to-merge reports, replies in review threads, the arbiter's verdict, the after-merge comment, a note disclosing a re-run, the comment after a merge, a stop report, a request to a reviewer for a newer review, and anything else you say to a person on the change request.
+
+**Not stamped:** the change request's title and description, commit messages, and the plan file. None of them is a note on the change request.
+
+### Never write another actor's line
+
+You already never write a review marker ([`gates.md`](references/gates.md#the-review-marker)). You also never write a reviewer stamp, `<!-- phases:reviewer ...`, and **never copy a hidden HTML comment line out of someone else's note into your own**, quoted or not: a reviewer's fingerprint, its stamp, its marker, or anything else between `<!--` and `-->`. When you quote a finding, quote the words a reader can see. On a shared account a fingerprint, stamp or marker inside a note of yours would be taken for the reviewer's, and could hide a finding or prove a review that never happened.
 
 ## 1. Find the plan
 

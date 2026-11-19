@@ -44,7 +44,7 @@ Subscribe to PR activity for each open phase PR. Webhooks don't reliably deliver
 
 ### Asking a reviewer for a newer review
 
-The core's rule that resolving a thread does not clear gate 4 asks the reviewer for a newer review "where the integration has a way". On GitHub that is re-requesting the review, or its trigger comment such as `@codex review`.
+The core's rule that resolving a thread does not clear gate 4 asks the reviewer for a newer review "where the integration has a way". On GitHub that is re-requesting the review, or its trigger comment such as `@codex review`. The trigger comment is stamped like any other comment you post, as [Stamp what you write](../SKILL.md#stamp-what-you-write) says.
 
 ## The gates
 
@@ -83,6 +83,8 @@ A review's states include `APPROVED`, `CHANGES_REQUESTED` and `COMMENTED`. A req
 ### Gate 5: threads
 
 A review thread is resolved when `isResolved == true`.
+
+A reply you post in a thread, like every comment you post, ends with the driver's stamp, as [Stamp what you write](../SKILL.md#stamp-what-you-write) says.
 
 ### Gate 6: reviewer
 
