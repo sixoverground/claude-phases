@@ -51,7 +51,7 @@ Read `valid` and `errors`, `merged_yaml` (the whole configuration with every `in
 
 ### Resolve each job before reading it
 
-**`merged_yaml` expands includes and does not resolve inheritance.** GitLab's own example response keeps a hidden `.api_test` template and the `extends: [".api_test"]` that points at it, so a job's own mapping there is not the job GitLab runs. Every key this file reads from a job, `rules`, `only`, `except`, `when`, `allow_failure`, `tags` and `trigger`, is read from the **resolved** job, built this way:
+**`merged_yaml` expands includes and does not resolve inheritance.** GitLab's own example response keeps a hidden `.api_test` template and the `extends: [".api_test"]` that points at it, so a job's own mapping there is not the job GitLab runs. Every key this file reads from a job, `rules`, `only`, `except`, `when`, `allow_failure`, `needs`, `tags` and `trigger`, is read from the **resolved** job, built this way:
 
 1. **Hidden jobs are templates.** A key whose name starts with `.` never runs. It is never a job for `ci.required`, never the reviewer's job, and never a job whose tags need a runner. It matters only as a parent.
 2. **Resolve `extends`, parents first.** `extends` is one name or a list. Resolve each parent the same way before using it, through as many levels as the chain has (GitLab allows up to eleven). Then merge in order: the first parent, each later parent over it, and the job's own keys over all of them. Hashes merge key by key, deeply; **anything that is not a hash replaces**, so a later `rules`, `tags`, `script` or array-form `only` replaces the earlier one entirely rather than adding to it. A key set to `null` removes what it inherited.
@@ -66,6 +66,10 @@ Read `valid` and `errors`, `merged_yaml` (the whole configuration with every `in
 For each resolved job that matters, read its conditions against a merge request pipeline into `target_branch`, where `CI_PIPELINE_SOURCE` is `merge_request_event`, `CI_MERGE_REQUEST_TARGET_BRANCH_NAME` is `target_branch`, and `CI_COMMIT_BRANCH` is not set:
 
 **First, whether the project creates merge request pipelines at all.** GitLab requires job rules or `workflow: rules` that match `CI_PIPELINE_SOURCE == "merge_request_event"`, and its merge request pipelines page says that rules defined through `include:` (for example `include:component`) do not satisfy this: they must be in the project's own CI file. So read that file itself (`ci_config_path`, or `.gitlab-ci.yml`) as well as `merged_yaml`, and note where the `merge_request_event` rule lives. If it appears only in included files, say you could not tell whether merge request pipelines are created, and ask.
+
+**Observation comes first.** A job seen finishing (any finished status, not `created`, `pending` or `manual`) in a recent merge request pipeline into `target_branch` from an unprotected source branch counts as **observed**: it is eligible, and a runner served it. That is the ground truth this file calls load-bearing below, and the table that follows is only for jobs you have not seen run. Where the static reading of the CI file contradicts an observation, because the table says a job cannot run and you saw it run, or the reverse, do not refuse. Show both, the observation and the rule you read, and ask.
+
+**The table is partial.** It covers the keywords listed in it and no others. GitLab's job eligibility has more inputs than any table here: child pipelines, `only: variables`, jobs added by pipeline execution policies, compute quotas, and group or locked runners among them. The catch-all row at the end of the table says what to do with the rest.
 
 **Then each job, by its resolved conditions.** `rules` are evaluated in order and the first rule that matches decides; when no rule matches, the job is not added. A rule's `when` then says how it is added: `when: never` means not at all.
 
@@ -85,14 +89,15 @@ For each resolved job that matters, read its conditions against a merge request 
 | `when: manual` with `allow_failure: true` | It is added and never runs unless someone plays it, so gate 3 passes it unrun. Warn that requiring it measures nothing, and leave it out of `ci.required` |
 | `when: on_failure` | It runs only when an earlier job fails, so on a green pipeline it is skipped and passes unrun. Warn that requiring it measures nothing |
 | `rules: changes` or `rules: exists` | Only when the MR touches those paths, or those files exist on the branch, so not on every phase. Treat the job as intermittent and do not require it unless every phase will match |
-| `needs` naming a job that does not run on this MR, without `optional: true` | **No job runs.** GitLab refuses to start the pipeline ("job needs ... job, but it was not added to the pipeline"). Check the `needs` of every required job, and every job they need, against this same table. With `optional: true` the missing job is skipped over and nothing fails |
+| `needs` naming a job that does not run on this MR, without `optional: true` | **No job runs.** GitLab refuses to start the pipeline ("job needs ... job, but it was not added to the pipeline"). Take the job's `needs` from its first matching rule when that rule sets `needs`: a rule's `needs` replaces the job's entirely, and `needs: []` there means it needs nothing. Then check the `needs` of every required job, and every job they need, against this same table. With `optional: true` the missing job is skipped over and nothing fails |
 | `resource_group` | It runs, but one job at a time across every pipeline in the project that uses the group, so it can sit in `waiting_for_resource` behind a deploy. Not a refusal; say so if the group is shared with a long job |
 | `workflow: rules` that create no merge request pipeline | **No job runs in one**. Every required job is refused, and the fix is in `workflow` |
 | A condition on a variable you cannot read, such as a project or group CI/CD variable, a variable set by an `include` from another project, or an expression you cannot evaluate with confidence | **Cannot tell.** Say so, name the job and the rule, and ask |
+| **Any other key** on the resolved job or on its first matching rule that bears on whether the job is created or picked up by a runner, which no row above covers | **Cannot tell.** Name the key, say this file does not model it, ask, and let the first phase MR confirm. A static "yes" needs every such key covered by a row |
 
 **A `parallel` job has no job by its own name.** `parallel: 3` creates `test 1/3` to `test 3/3`, and `parallel: matrix` adds the matrix values, as in `test: [ruby, pg]`. A required name equal to the base name (`test`) matches nothing gate 3 will ever see, so refuse it and list the expanded names.
 
-When a required job does not run by itself on such an MR, by any row above, refuse it as `SKILL.md` §3 says, naming the job and quoting the rule (or the `when`, or the missing `needs`), and the template it came from when it was inherited. Saying which rule is most of the fix, and an inherited rule is fixed in its template or overridden in the job.
+**A static refusal is only for unconditional, documented behaviour**: a row above that says **No** or refuses, with nothing on the job the table does not cover and no observation to the contrary. A static "yes" likewise needs every key that bears on creation or pickup covered by a row; anything else is the catch-all's "cannot tell". When a required job does not run by itself on such an MR by such a row, refuse it as `SKILL.md` §3 says, naming the job and quoting the rule (or the `when`, or the missing `needs`), and the template it came from when it was inherited. Saying which rule is most of the fix, and an inherited rule is fixed in its template or overridden in the job.
 
 ## Workflows → `ci.dispatch`
 
@@ -101,7 +106,7 @@ GitLab has no counterpart to `workflow_dispatch` that the driver uses, so the va
 | Observed | Set |
 |---|---|
 | A GitLab repo, with any CI file or none | `ci.dispatch: push`. The default, `auto`, is GitHub-only. The driver triggers a pipeline by pushing |
-| No CI file at all: the Files API 404s on the configured path | `ci.dispatch: push` still. There is nothing to trigger, and `ci.allow_none` below says what that means |
+| No CI file: the Files API 404s on the configured path | `ci.dispatch: push` still. There is nothing in the project to trigger. That alone is not "no CI configured anywhere": external CI can still post statuses, which `ci.allow_none` below checks |
 
 Note whether jobs that run on pushes to the plan branch exclude `docs/plans/**`. The driver's plan commits carry `[skip ci]`, which GitLab honours for push pipelines; a `rules: changes` exclusion is belt and braces. See the GitLab section of [`hygiene.md`](hygiene.md#gitlab).
 
@@ -135,8 +140,9 @@ From the jobs and trigger jobs, read `name`, `status`, `allow_failure`, `tag_lis
 | Jobs with `allow_failure: true`, a coverage or preview job, a manual deploy | They pass when they fail, so they need nothing. Name only the real ones in `required`, or put noise in `ignore_checks` |
 | A blocking manual job (`when: manual` with `allow_failure: false`) | It blocks the gate until a person plays it, on every phase, whether or not it is in `ci.required`, since with `required: []` every job counts. Requiring it is refused; with `required: []`, say so and ask whether it belongs in the MR pipeline |
 | A trigger job for a child pipeline | It counts as one check with its own status. Name the trigger job, never a job inside the child. Say whether it uses `strategy: depend`: without it, the trigger passes as soon as the child starts |
+| External statuses, and no CI file | External CI. Keep `allow_none: false`, and propose naming the statuses seen in `required`, by the rule in the next row |
 | External statuses, with no job behind them | Like external CI on GitHub: they count when they appear. A name in `required` may be one, but only one seen on recent MR heads into `target_branch`: its start conditions are outside the CI file and cannot be read, so one seen only on MRs into the default branch is not required when targeting a feature branch |
-| No jobs, and no CI file | `allow_none: true`, and say so out loud: nothing will be verifying merges |
+| No jobs, no CI file, and no external status on any recent MR head: no CI configured anywhere | `allow_none: true`, and say so out loud: nothing will be verifying merges |
 | No jobs, but a CI file exists | **Do not set `allow_none: true`.** CI is configured and not running on merge requests: misrouted rules, a stopped runner, or no MR has run yet. Flag it and ask |
 | Any GitLab repo | `ci.logs: gitlab-jobs`, or leave the default `auto`, which resolves to it on GitLab. `actions` and `check-output` are GitHub's and do not apply |
 
@@ -202,7 +208,7 @@ ci:
   logs: gitlab-jobs
 ```
 
-- **No CI file** → `ci: { allow_none: true }`, and say nothing will verify merges.
+- **No CI file** → external CI cannot be observed without MR history, so fold it into the one question: does anything outside the project, such as an external CI service, report on merge requests? Leave `allow_none` at `false` unless the person says nothing does; then `ci: { allow_none: true }`, and say nothing will verify merges.
 - **A CI file, but no MR pipeline has run** → leave `allow_none` at `false`. Say you couldn't confirm jobs run on merge requests, and let the first phase MR settle it.
 
 Then say plainly how much the merge gate is actually checking.
@@ -213,7 +219,7 @@ A job with `tags` runs only on a runner that has every one of them, and a job st
 
 **A protected runner does not serve a phase MR.** A runner whose `access_level` is `ref_protected` runs jobs for protected refs only, and a merge request pipeline may use it only when both the source and the target branch are protected, the source is in the same project, the person triggering it can push or merge to the target, and the project allows merge request pipelines to reach protected runners. Phase branches under `branch_prefix` are normally not protected, so in practice a protected-only runner does not count. Count it only when the person confirms a protected-branch rule covers `branch_prefix` and the target, since this token usually cannot read those rules.
 
-**A runner serves a required job** when it is online, not paused, has every tag the job needs, and is not protected-only by the rule above. For an untagged job, the runner must also take untagged jobs (`run_untagged`), or the project must have instance runners on (`shared_runners_enabled`).
+**A runner serves a required job** when it is online, not paused, has every tag the job needs, and is not protected-only by the rule above. For an untagged job, the runner must also take untagged jobs (`run_untagged`). **Instance runners are runners like any other**: `shared_runners_enabled` only says the project may use them, so each must pass the same tests, online, not paused, not `ref_protected`, the tags or `run_untagged`, before it counts.
 
 **A trigger job needs no runner.** A resolved job with `trigger:` starts a downstream pipeline and runs on GitLab itself: trigger jobs "do not run on a runner and do not execute a `script`." Skip this whole section for it, and check the jobs of its child pipeline only if they are named somewhere they matter, which `ci.required` cannot do.
 
@@ -226,7 +232,7 @@ glab api --hostname <host> "projects/<P>/runners?status=online&per_page=100"
 glab api --hostname <host> runners/<id>
 ```
 
-From the list, `id`, `status`, `paused`, `runner_type` and `description`; from each runner, `tag_list` and `access_level` (`not_protected` or `ref_protected`), which the list does not return. Listing a project's runners needs the Maintainer role, and reading a project or group runner's details needs Maintainer too.
+The project's list includes the instance runners it may use (`runner_type: instance_type`). From the list, `id`, `status`, `paused`, `runner_type` and `description`; from each runner, `tag_list`, `run_untagged` and `access_level` (`not_protected` or `ref_protected`), which the list does not return. Listing a project's runners needs the Maintainer role, and reading a project or group runner's details needs Maintainer too. **An instance runner's details are readable by any authenticated user**, so wherever you have an instance runner's `id`, from the list or from a recent job's `runner`, read it with `runners/<id>` and treat what it says as observed.
 
 **A Developer token is refused (HTTP 403).** Then infer it from recent jobs: find jobs on the recent MR pipelines above that carry the same tags, and read the `runner` recorded on each (`id`, `description`, `runner_type`, `online`, `status`). A runner that ran a job with these tags recently, and that the job record shows as `online`, probably serves them now. The job record does not carry `access_level`, so the strongest evidence is a job it ran **in a merge request pipeline from an unprotected source branch**: a protected-only runner could not have run that one. Say so in exactly these words, filling in the brackets:
 
@@ -237,11 +243,12 @@ In the findings table the runner line ends `(inferred from recent jobs)`.
 | Observed | Do |
 |---|---|
 | An online, unpaused runner with every tag the job needs, `access_level: not_protected` | Nothing. Name it in the findings |
-| An untagged job, on a project with `shared_runners_enabled` or an online, unprotected runner that runs untagged jobs | Nothing |
+| An untagged job, and an observed runner, project, group or instance, that is online, not paused, not `ref_protected` and `run_untagged` | Nothing. Name it in the findings |
+| An untagged job, inferred from a recent untagged job's runner on the Developer path | Name it as inferred, in the wording above with `untagged jobs` for `[tags]` |
 | A trigger job | Nothing: it runs on GitLab, not on a runner |
 | Inferred from recent jobs, shown online | Name it as inferred, in the wording above, with whichever access-level clause is true. Do not refuse; where it may be protected-only, ask |
 | No runner, observed or inferred, serves the job's tags: every matching one is offline, paused, or `ref_protected` | Refuse, as `SKILL.md` §3 says, naming the job, its tags and the runners you saw, and why each does not count. Where the only matching runners are protected-only, say that a phase MR cannot use them and that the fix is a runner registered as not protected, or protected phase branches |
-| No runner information at all: runners refused and no recent job with those tags | Say you could not tell, and ask whether a runner serves those tags |
+| No runner information at all: runners refused and no recent job with those tags, or for an untagged job, no recent untagged job | Say you could not tell, and ask whether a runner serves those tags, or untagged jobs |
 
 ## Permissions → `plan_writes`, and whether YOLO can merge
 
