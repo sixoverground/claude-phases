@@ -1153,8 +1153,8 @@ After merging:
 - Active: 6 — sixoverground/claude-phases
 - UAT-pending: -
 - Review-baselines: -
-- Arbitrations: 10:3
-- Heartbeat: 2026-11-19T14:17:51Z
+- Arbitrations: 10:3, 6:3
+- Heartbeat: 2026-11-19T14:37:26Z
 - Note: -
 
 ## Carried findings
