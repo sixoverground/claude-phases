@@ -3,7 +3,8 @@
 # Combine with forge-gitlab.yml, which sets `forge` and `host`. Names in
 # `required` are job names from the CI file, one per `parallel` instance,
 # and every one of them must run in merge request pipelines into the
-# target branch, on a runner whose tags it matches.
+# target branch, on a runner whose tags it matches. Register the runner as
+# not protected: a protected-only runner cannot run a phase branch's pipeline.
 ci:
   required: []                 # every job counts; name jobs if some are advisory
   ignore_checks: []

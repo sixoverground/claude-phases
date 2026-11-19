@@ -76,8 +76,9 @@ Only for a repo whose forge is `gitlab`. The items above are written for GitHub;
 
 **A protected plan branch, and who may push to it.** The driver writes every status transition to the plan branch. A protected branch where only Maintainers may push refuses a Developer-role token, and so does the plan-PR fallback if only Maintainers may merge. Either allow the driver's role to push to the plan branch (*Allowed to push and merge* under Settings → Repository → Protected branches), give the token the Maintainer role, or put the plan on an unprotected feature branch. Check the branch you will actually use; detection reads it.
 
-**The runner and the driver sharing one Mac.** A self-hosted runner on the same Mac as a local driver is a common setup and works, with three things to get right:
+**The runner and the driver sharing one Mac.** A self-hosted runner on the same Mac as a local driver is a common setup and works, with four things to get right:
 
+- **Register it as not protected.** A runner set to run only on protected branches (`access_level: ref_protected`) cannot run a phase MR's pipeline, because phase branches are not protected, and the jobs wait as `pending`. Leave *Protected* off on the runner, or protect the phase branches and the target branch and allow merge request pipelines to use protected runners.
 - **Separate working copies.** The runner builds in its own directory, the driver works in a clone of its own, and the person's checkout is a third. Never point the driver at the runner's build directory or the other way round.
 - **The Mac stays awake.** A sleeping Mac stops the runner and the driver together, and jobs queue as `pending` until it wakes. Turn off sleep while a plan runs, or accept that it pauses.
 - **Capacity.** A runner with `concurrent = 1` runs one job at a time, so a review job and `build-test` on the same pipeline run in turn, and two repos' pipelines queue behind each other. That is slower, not broken. Raise `concurrent` in the runner's `config.toml` if the Mac can take it.
