@@ -104,7 +104,7 @@ claude --continue                       # or -c
 claude --continue --remote-control      # and reconnect your phone in the same step
 ```
 
-**Even that is optional.** The plan file is the state, so a brand-new session works just as well: start `claude` in the repo and say **"run the next phase"**, or **"status"**. The driver reconciles the plan against the forge and carries on from wherever the last session stopped. `--continue` only saves re-reading the conversation.
+**Even that is optional.** The plan file is the state, so a brand-new session works just as well: start `claude` in the repo and say **"run the next phase"**, or **`resume`** if the plan was paused. The driver reconciles the plan against the forge and carries on from wherever the last session stopped. **`status` is not a way to resume**: it reports progress and writes nothing, so it neither claims the plan nor starts any work. Say it first if you want to see where things stand, then one of the two above. `--continue` only saves re-reading the conversation.
 
 **A dead session no longer holds the plan for 90 minutes.** The plan's Driver State records which process holds it (`Driver-ID`, and `Driver-Host` with the host, pid and start time). A new session on the same Mac sees that the recorded process is gone and takes over at once. A holder on another machine, or one whose process it cannot check, is treated as alive until its heartbeat is 90 minutes old. If you know that session is dead, say **`take over`**, and the driver releases the claim after you confirm.
 
