@@ -112,7 +112,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 26 | claude/authorship-stamps | sixoverground/claude-phases | Review contract 1.1: a reviewer stamps every note it posts and scrubs the reserved `<!-- phases:` prefix; the driver stamps every comment, reply and note it writes and never copies another actor's hidden line | 17 | Merged | [#47](https://github.com/sixoverground/claude-phases/pull/47) | M2 |
 | 27 | claude/whose-note | sixoverground/claude-phases | Who a note is from, read from its stamp and not from its account: the core rule, **Whose thread it is** on both forges, and `@codex review` when a person shares the driver's account | 18 | In Review | [#48](https://github.com/sixoverground/claude-phases/pull/48) | 17 |
 | 28 | claude/watcher-stamps | sixoverground/claude-phases | Both watcher templates skip only the driver's own stamped notes, so a reviewer or a person posting from the driver's account wakes the session | 19 | Pending | - | 18 |
-| 29 | claude/stamp-every-note | sixoverground/codex-mr-review | Stamp every note per contract 1.1, scrub the reserved prefix from model text, never count a driver-stamped note as the tool's own, token docs for both arrangements, v0.2.0, tagged by the driver | 20 | In Progress | - | 17 |
+| 29 | claude/stamp-every-note | sixoverground/codex-mr-review | Stamp every note per contract 1.1, scrub the reserved prefix from model text, never count a driver-stamped note as the tool's own, token docs for both arrangements, v0.2.0, tagged by the driver | 20 | In Review | [sixoverground/codex-mr-review#6](https://github.com/sixoverground/codex-mr-review/pull/6) | 17 |
 | 30 | claude/one-account-setup | sixoverground/claude-phases | Both reviewer arrangements documented side by side, one account with a personal access token and two identities with a project or bot token: `docs/review-setup.md`, `docs/running-locally.md`, hygiene, the profile, `configuration.md`; GitLab detection proposes whichever the project shows | 21 | Pending | - | 19, 20 |
 | 31 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship authorship stamps, both reviewer arrangements and the release fix to `main` | M4 | Pending | - | 17, 18, 19, 21, 22 |
 | 32 | claude/release-not-skippable | sixoverground/claude-phases | A release that text quoted in a squash message cannot skip: a merge-triggered release job, `release.sh --if-missing`, `scripts/check-release.sh`, a warning when a milestone branch carries a skip instruction, hygiene | 22 | Pending | - | 19 |
@@ -1493,7 +1493,7 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-19T21:17:10Z
+- Heartbeat: 2026-11-19T21:24:39Z
 - Note: 18 ready to merge (#48, 838e96c, codex reviewed it clean)
 
 ## Carried findings
