@@ -65,19 +65,34 @@ Read `valid` and `errors`, `merged_yaml` (the whole configuration with every `in
 
 For each resolved job that matters, read its conditions against a merge request pipeline into `target_branch`, where `CI_PIPELINE_SOURCE` is `merge_request_event`, `CI_MERGE_REQUEST_TARGET_BRANCH_NAME` is `target_branch`, and `CI_COMMIT_BRANCH` is not set:
 
-| Observed | It fires on an MR into `target_branch` |
+**First, whether the project creates merge request pipelines at all.** GitLab requires job rules or `workflow: rules` that match `CI_PIPELINE_SOURCE == "merge_request_event"`, and its merge request pipelines page says that rules defined through `include:` (for example `include:component`) do not satisfy this: they must be in the project's own CI file. So read that file itself (`ci_config_path`, or `.gitlab-ci.yml`) as well as `merged_yaml`, and note where the `merge_request_event` rule lives. If it appears only in included files, say you could not tell whether merge request pipelines are created, and ask.
+
+**Then each job, by its resolved conditions.** `rules` are evaluated in order and the first rule that matches decides; when no rule matches, the job is not added. A rule's `when` then says how it is added: `when: never` means not at all.
+
+| Observed | It runs on an MR into `target_branch` |
 |---|---|
-| No `rules`, `only` or `except` | Only if the project runs merge request pipelines at all: a job with no conditions runs in branch pipelines, and in merge request pipelines only where `workflow: rules` creates them. Read `workflow` |
-| A rule on `$CI_PIPELINE_SOURCE == "merge_request_event"` with no other condition | Yes |
-| A rule on `$CI_MERGE_REQUEST_TARGET_BRANCH_NAME` equal to another branch, or to `$CI_DEFAULT_BRANCH` while `target_branch` is not the default branch | **No** |
-| A rule on `$CI_COMMIT_BRANCH`, alone | **No**. That variable is unset in merge request pipelines, so the rule only ever fires in branch pipelines |
+| No `rules`, `only` or `except`, and the project's own CI file has `workflow: rules` that create merge request pipelines | Yes. GitLab's merge request pipelines page shows a job with no `rules` running in the merge request pipeline that a `workflow` rule on `merge_request_event` creates |
+| No `rules`, `only` or `except`, and no such `workflow` | **No.** GitLab's job rules page: "Jobs with no rules default to `except: merge_requests`." The job needs conditions that admit merge request pipelines, or a `workflow` that creates them, before it can be required |
+| The first rule that matches a merge request pipeline into `target_branch` has no `when`, or `when: on_success`, `always` or `delayed` | Yes. `delayed` starts after its `start_in` |
+| The first matching rule has `when: never` | **No**, whatever later rules say |
+| No rule matches a merge request pipeline into `target_branch` | **No.** The job is not added |
+| A rule on `$CI_PIPELINE_SOURCE == "merge_request_event"` with no other condition | Matches. Then read its `when` |
+| A rule on `$CI_MERGE_REQUEST_TARGET_BRANCH_NAME` equal to another branch, or to `$CI_DEFAULT_BRANCH` while `target_branch` is not the default branch | Does not match |
+| A rule on `$CI_COMMIT_BRANCH`, alone | Does not match. That variable is unset in merge request pipelines |
 | `only: [merge_requests]` | Yes |
 | `only` naming branches, or `except: [merge_requests]` | **No** for a merge request pipeline |
-| `rules: changes` | Only when the MR touches those paths, so not on every phase. Treat the job as intermittent |
-| `workflow: rules` that create no merge request pipeline | **No job fires in one**. Every required job is refused, and the fix is in `workflow` |
+| The first matching rule, or the job, has `when: manual` with `allow_failure` false. Inside `rules` that is the default; outside `rules` a manual job defaults to `allow_failure: true` | It is added, and **waits for a person on every phase**: gate 3 blocks on a blocking manual job. Refuse it in `ci.required`, as an MR job that does not run by itself |
+| `when: manual` with `allow_failure: true` | It is added and never runs unless someone plays it, so gate 3 passes it unrun. Warn that requiring it measures nothing, and leave it out of `ci.required` |
+| `when: on_failure` | It runs only when an earlier job fails, so on a green pipeline it is skipped and passes unrun. Warn that requiring it measures nothing |
+| `rules: changes` or `rules: exists` | Only when the MR touches those paths, or those files exist on the branch, so not on every phase. Treat the job as intermittent and do not require it unless every phase will match |
+| `needs` naming a job that does not run on this MR, without `optional: true` | **No job runs.** GitLab refuses to start the pipeline ("job needs ... job, but it was not added to the pipeline"). Check the `needs` of every required job, and every job they need, against this same table. With `optional: true` the missing job is skipped over and nothing fails |
+| `resource_group` | It runs, but one job at a time across every pipeline in the project that uses the group, so it can sit in `waiting_for_resource` behind a deploy. Not a refusal; say so if the group is shared with a long job |
+| `workflow: rules` that create no merge request pipeline | **No job runs in one**. Every required job is refused, and the fix is in `workflow` |
 | A condition on a variable you cannot read, such as a project or group CI/CD variable, a variable set by an `include` from another project, or an expression you cannot evaluate with confidence | **Cannot tell.** Say so, name the job and the rule, and ask |
 
-When a job's rules cannot fire, refuse it as `SKILL.md` §3 says, naming the job and quoting the rule, and the template it came from when it was inherited. Saying which rule is most of the fix, and an inherited rule is fixed in its template or overridden in the job.
+**A `parallel` job has no job by its own name.** `parallel: 3` creates `test 1/3` to `test 3/3`, and `parallel: matrix` adds the matrix values, as in `test: [ruby, pg]`. A required name equal to the base name (`test`) matches nothing gate 3 will ever see, so refuse it and list the expanded names.
+
+When a required job does not run by itself on such an MR, by any row above, refuse it as `SKILL.md` §3 says, naming the job and quoting the rule (or the `when`, or the missing `needs`), and the template it came from when it was inherited. Saying which rule is most of the fix, and an inherited rule is fixed in its template or overridden in the job.
 
 ## Workflows → `ci.dispatch`
 
@@ -118,7 +133,7 @@ From the jobs and trigger jobs, read `name`, `status`, `allow_failure`, `tag_lis
 | A consistent set of jobs | Leave `required: []` (all count), or name them if some are advisory. Names are **job names**, as they appear in the jobs list, one per `parallel` instance |
 | Jobs that appear only sometimes (`rules: changes`, `when: manual`) | Name the stable ones in `required`. A job that runs only sometimes stalls the gate when it's required |
 | Jobs with `allow_failure: true`, a coverage or preview job, a manual deploy | They pass when they fail, so they need nothing. Name only the real ones in `required`, or put noise in `ignore_checks` |
-| A blocking manual job (`when: manual` with `allow_failure: false`) | Say so: it blocks the gate until a person plays it, on every phase. Ask whether it belongs in the MR pipeline |
+| A blocking manual job (`when: manual` with `allow_failure: false`) | It blocks the gate until a person plays it, on every phase, whether or not it is in `ci.required`, since with `required: []` every job counts. Requiring it is refused; with `required: []`, say so and ask whether it belongs in the MR pipeline |
 | A trigger job for a child pipeline | It counts as one check with its own status. Name the trigger job, never a job inside the child. Say whether it uses `strategy: depend`: without it, the trigger passes as soon as the child starts |
 | External statuses, with no job behind them | Like external CI on GitHub: they count when they appear. A name in `required` may be one, but only one seen on recent MR heads into `target_branch`: its start conditions are outside the CI file and cannot be read, so one seen only on MRs into the default branch is not required when targeting a feature branch |
 | No jobs, and no CI file | `allow_none: true`, and say so out loud: nothing will be verifying merges |
@@ -143,7 +158,7 @@ Read `body`, `author.username`, `system` and `type`. Then look in the CI file's 
 |---|---|
 | Marker notes for one reviewer name, by one account | `required: [{ marker: "<name>", logins: ["<that account>"] }]`. Read the account off the notes; list only it |
 | A reviewer job in the CI file (for example `codex-review`, from the `codex-mr-review` CI template, which posts `reviewer=codex`) but no marker on any MR yet | The `marker` entry, with a line in the findings saying no MR has shown a marker yet and the first phase MR will confirm it. Leave `logins` for the account it will post as, and ask which that is |
-| Marker notes, and the reviewer job's rules cannot fire on an MR into `target_branch` | Refuse, by the trigger filters above. The markers came from MRs into another branch |
+| Marker notes, and the reviewer job does not run by itself on an MR into `target_branch` (its rules, a manual `when`, or a missing `needs`) | Refuse, by the trigger filters above. The markers came from MRs into another branch, or from someone playing the job |
 | Neither a marker nor a job that could post one | No `marker` entry. Configuring one is refused in `SKILL.md` §3 |
 | People review, approve or request changes | `required: []`, and say that gates 4 and 5 still apply to them. Gate 4 depends on the instance: requesting changes is a Premium and Ultimate feature from GitLab 17.2 |
 | Nobody reviews | `required: []`, and say plainly that nothing will be checking the driver's work |
@@ -198,7 +213,11 @@ A job with `tags` runs only on a runner that has every one of them, and a job st
 
 **A protected runner does not serve a phase MR.** A runner whose `access_level` is `ref_protected` runs jobs for protected refs only, and a merge request pipeline may use it only when both the source and the target branch are protected, the source is in the same project, the person triggering it can push or merge to the target, and the project allows merge request pipelines to reach protected runners. Phase branches under `branch_prefix` are normally not protected, so in practice a protected-only runner does not count. Count it only when the person confirms a protected-branch rule covers `branch_prefix` and the target, since this token usually cannot read those rules.
 
-**A runner serves a required job** when it is online, not paused, has every tag the job needs, and is not protected-only by the rule above.
+**A runner serves a required job** when it is online, not paused, has every tag the job needs, and is not protected-only by the rule above. For an untagged job, the runner must also take untagged jobs (`run_untagged`), or the project must have instance runners on (`shared_runners_enabled`).
+
+**A trigger job needs no runner.** A resolved job with `trigger:` starts a downstream pipeline and runs on GitLab itself: trigger jobs "do not run on a runner and do not execute a `script`." Skip this whole section for it, and check the jobs of its child pipeline only if they are named somewhere they matter, which `ci.required` cannot do.
+
+**Tags can be CI/CD variables**, such as `tags: [$RUNNER_TAG]`. Where the variable's value cannot be read, say you could not tell which runner it needs, and ask.
 
 Read the tags from the resolved job, by [Resolve each job before reading it](#resolve-each-job-before-reading-it). Then the runners, where the token may:
 
@@ -218,7 +237,8 @@ In the findings table the runner line ends `(inferred from recent jobs)`.
 | Observed | Do |
 |---|---|
 | An online, unpaused runner with every tag the job needs, `access_level: not_protected` | Nothing. Name it in the findings |
-| An untagged job, on a project with `shared_runners_enabled` or an online runner that runs untagged jobs | Nothing |
+| An untagged job, on a project with `shared_runners_enabled` or an online, unprotected runner that runs untagged jobs | Nothing |
+| A trigger job | Nothing: it runs on GitLab, not on a runner |
 | Inferred from recent jobs, shown online | Name it as inferred, in the wording above, with whichever access-level clause is true. Do not refuse; where it may be protected-only, ask |
 | No runner, observed or inferred, serves the job's tags: every matching one is offline, paused, or `ref_protected` | Refuse, as `SKILL.md` §3 says, naming the job, its tags and the runners you saw, and why each does not count. Where the only matching runners are protected-only, say that a phase MR cannot use them and that the fix is a runner registered as not protected, or protected phase branches |
 | No runner information at all: runners refused and no recent job with those tags | Say you could not tell, and ask whether a runner serves those tags |
