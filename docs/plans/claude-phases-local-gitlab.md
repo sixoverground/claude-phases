@@ -109,10 +109,10 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | Pending | - | 13, 14 |
 | 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Merged | [#38](https://github.com/sixoverground/claude-phases/pull/38) | M1 |
 | 25 | claude/codex-review-state | sixoverground/claude-phases | Gate 6 on GitHub reads Codex's `codex-review-state` comment as proof for the head it names, and as a sign for `rereview: optional` | 16 | Merged | [#39](https://github.com/sixoverground/claude-phases/pull/39) | 15 |
-| 26 | claude/authorship-stamps | sixoverground/claude-phases | Review contract 1.1: a reviewer stamps every note it posts and scrubs the reserved `<!-- phases:` prefix; the driver stamps every comment, reply and note it writes and never copies another actor's hidden line | 17 | In Review | [#47](https://github.com/sixoverground/claude-phases/pull/47) | M2 |
-| 27 | claude/whose-note | sixoverground/claude-phases | Who a note is from, read from its stamp and not from its account: the core rule, **Whose thread it is** on both forges, and `@codex review` when a person shares the driver's account | 18 | Pending | - | 17 |
+| 26 | claude/authorship-stamps | sixoverground/claude-phases | Review contract 1.1: a reviewer stamps every note it posts and scrubs the reserved `<!-- phases:` prefix; the driver stamps every comment, reply and note it writes and never copies another actor's hidden line | 17 | Merged | [#47](https://github.com/sixoverground/claude-phases/pull/47) | M2 |
+| 27 | claude/whose-note | sixoverground/claude-phases | Who a note is from, read from its stamp and not from its account: the core rule, **Whose thread it is** on both forges, and `@codex review` when a person shares the driver's account | 18 | In Progress | - | 17 |
 | 28 | claude/watcher-stamps | sixoverground/claude-phases | Both watcher templates skip only the driver's own stamped notes, so a reviewer or a person posting from the driver's account wakes the session | 19 | Pending | - | 18 |
-| 29 | claude/stamp-every-note | sixoverground/codex-mr-review | Stamp every note per contract 1.1, scrub the reserved prefix from model text, never count a driver-stamped note as the tool's own, token docs for both arrangements, v0.2.0, tagged by the driver | 20 | Pending | - | 17 |
+| 29 | claude/stamp-every-note | sixoverground/codex-mr-review | Stamp every note per contract 1.1, scrub the reserved prefix from model text, never count a driver-stamped note as the tool's own, token docs for both arrangements, v0.2.0, tagged by the driver | 20 | In Progress | - | 17 |
 | 30 | claude/one-account-setup | sixoverground/claude-phases | Both reviewer arrangements documented side by side, one account with a personal access token and two identities with a project or bot token: `docs/review-setup.md`, `docs/running-locally.md`, hygiene, the profile, `configuration.md`; GitLab detection proposes whichever the project shows | 21 | Pending | - | 19, 20 |
 | 31 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship authorship stamps, both reviewer arrangements and the release fix to `main` | M4 | Pending | - | 17, 18, 19, 21, 22 |
 | 32 | claude/release-not-skippable | sixoverground/claude-phases | A release that text quoted in a squash message cannot skip: a merge-triggered release job, `release.sh --if-missing`, `scripts/check-release.sh`, a warning when a milestone branch carries a skip instruction, hygiene | 22 | Pending | - | 19 |
@@ -1489,12 +1489,12 @@ After merging:
 - YOLO: off
 - Driver-ID: drv-776734c2
 - Driver-Host: Raphael.local 48542 Tue Nov 17 23:15:56 2026 UTC
-- Active: 17 — sixoverground/claude-phases
+- Active: 18 — sixoverground/claude-phases; 20 — sixoverground/codex-mr-review
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-19T20:59:48Z
-- Note: 17 ready to merge (#47, 8bb5178, codex reviewed it clean)
+- Heartbeat: 2026-11-19T21:11:23Z
+- Note: -
 
 ## Carried findings
 
