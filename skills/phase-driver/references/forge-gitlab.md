@@ -203,9 +203,14 @@ From each, read `id`, `sha`, `ref` and `status`. A pipeline **belongs to this he
 
   and check that `parent_ids` contains the head sha.
 
-Any other pipeline is not this head's, however recent. **The head's pipeline is the newest one that belongs to this head**, the highest `id`. That is the one pipeline GitLab's own "pipelines must succeed" check reads.
+Any other pipeline is not this head's, however recent. **Among the pipelines that belong to this head, merge request pipelines come first**, as GitLab's own merge check has it: "merge request pipelines take precedence over other pipeline types" ([auto-merge docs](https://docs.gitlab.com/user/project/merge_requests/auto_merge/#require-a-successful-pipeline-for-merge)). A merge request pipeline is one whose `source` is `merge_request_event`, or whose `ref` is under `refs/merge-requests/<iid>/` (`head`, `merge` or `train`). So:
 
-The MR's `head_pipeline` is a shortcut to the same answer, and GitLab describes it as the pipeline for the source branch's head. Use it only after applying the same test to it: just after a push it can still name the previous head's pipeline, and a merged results pipeline's `sha` would fail a plain comparison with the head.
+1. If any merge request pipeline belongs to this head, the head's pipeline is the newest of those, the highest `id` among them.
+2. Only if none does, it is the newest branch pipeline that belongs to this head.
+
+Never let a newer branch pipeline stand in for an older merge request pipeline on the same head: a green branch pipeline would hide a red merge request pipeline, which is a false pass.
+
+The MR's `head_pipeline` is not this answer, only a hint. GitLab describes it as the pipeline for the source branch's head, and just after a push it can still name the previous head's pipeline, so gate 3 always chooses by the two steps above. The watcher reads `head_pipeline` only to notice that something changed, which is all a wake needs; the gate decides.
 
 **Read its jobs and its trigger jobs:**
 
