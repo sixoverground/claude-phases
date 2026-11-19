@@ -63,3 +63,21 @@ Only for a plan with milestone rows.
 **A `CLAUDE.md`** describing conventions the driver should follow. It reads it like any session, and phases written to match the codebase's existing style need less review.
 
 **A PR template.** The driver fills the body itself, but a template tells it what the repo expects.
+
+## GitLab
+
+Only for a repo whose forge is `gitlab`. The items above are written for GitHub; these are what a GitLab project needs in their place.
+
+**The review job and `build-test` run in merge request pipelines.** The driver's gate 3 reads the merge request pipeline first, and a marker names the head it reviewed, so the jobs that gate a phase must run in a merge request pipeline into `target_branch` on every push. A job whose `rules` only match branch pipelines (`$CI_COMMIT_BRANCH`) or only the default branch never runs there, and the gate waits for it. Give each a rule on `$CI_PIPELINE_SOURCE == "merge_request_event"`, and make sure `workflow: rules` creates merge request pipelines at all. `build-test` here stands for whatever the project's build and test job is called.
+
+**Plan commits and `[skip ci]`.** The driver ends every plan commit with `[skip ci]`, which GitLab honours for push pipelines. A `rules: changes` exclusion on push-triggered jobs, so they do not run when only `docs/plans/**` changed, is belt and braces, as `paths-ignore` is on GitHub. It matters most where the plan branch deploys.
+
+**"Delete source branch" as a project default** (Settings → Merge requests, *Enable "Delete source branch" option by default*). The driver opens each phase MR with the option on and leaves it off for milestone and integration MRs, so GitLab deletes a phase branch on merge whoever merges it. The project default covers MRs the driver did not open, and is the GitLab form of *Automatically delete head branches*.
+
+**A protected plan branch, and who may push to it.** The driver writes every status transition to the plan branch. A protected branch where only Maintainers may push refuses a Developer-role token, and so does the plan-PR fallback if only Maintainers may merge. Either allow the driver's role to push to the plan branch (*Allowed to push and merge* under Settings → Repository → Protected branches), give the token the Maintainer role, or put the plan on an unprotected feature branch. Check the branch you will actually use; detection reads it.
+
+**The runner and the driver sharing one Mac.** A self-hosted runner on the same Mac as a local driver is a common setup and works, with three things to get right:
+
+- **Separate working copies.** The runner builds in its own directory, the driver works in a clone of its own, and the person's checkout is a third. Never point the driver at the runner's build directory or the other way round.
+- **The Mac stays awake.** A sleeping Mac stops the runner and the driver together, and jobs queue as `pending` until it wakes. Turn off sleep while a plan runs, or accept that it pauses.
+- **Capacity.** A runner with `concurrent = 1` runs one job at a time, so a review job and `build-test` on the same pipeline run in turn, and two repos' pipelines queue behind each other. That is slower, not broken. Raise `concurrent` in the runner's `config.toml` if the Mac can take it.

@@ -4,6 +4,8 @@ Read the repo, don't interrogate the user. Everything below is observable, and o
 
 Run this per repo. Show the evidence, then let them correct it.
 
+**For a repo whose forge is `gitlab`, read [`detection-gitlab.md`](detection-gitlab.md) instead.** It has the same headings, with GitLab's commands, and three sections more. This file is GitHub's.
+
 ## Read current code, not PR history
 
 This file already says that what a workflow *declares* differs from what actually *reports*. The same holds one level up, for the code a plan is written against: **a merged PR describes what was added, not what survived.**

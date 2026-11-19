@@ -1,0 +1,16 @@
+# GitLab CI on a self-hosted macOS runner.
+#
+# Combine with forge-gitlab.yml, which sets `forge` and `host`. Names in
+# `required` are job names from the CI file, one per `parallel` instance,
+# and every one of them must run in merge request pipelines into the
+# target branch, on a runner whose tags it matches.
+ci:
+  required: []                 # every job counts; name jobs if some are advisory
+  ignore_checks: []
+  allow_none: false            # zero jobs blocks. A runner that stopped picking
+                               # up jobs looks identical to a project with no CI
+  dispatch: push               # the only dispatch GitLab supports
+  logs: gitlab-jobs            # the failed job's full trace
+
+verify: auto                   # the runner's toolchain is usually on this Mac,
+                               # so local often works; auto falls back to CI
