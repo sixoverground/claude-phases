@@ -89,7 +89,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 11 | claude/gitlab-driver-core | sixoverground/claude-phases | `references/forge-gitlab.md` part 1: plan reads and writes, finding, opening and merging MRs, milestones, finishing | 5a | Merged | [#41](https://github.com/sixoverground/claude-phases/pull/41) | 4 |
 | 12 | claude/gitlab-gates | sixoverground/claude-phases | `references/forge-gitlab.md` part 2: the six gates, job traces, discussions, the watcher command | 5b | Merged | [#42](https://github.com/sixoverground/claude-phases/pull/42) | 5a |
 | 13 | claude/gitlab-planner | sixoverground/claude-phases | Planner: `references/detection-gitlab.md`, four new refusals, hygiene items, `profiles/ci-gitlab-runner-macos.yml` | 6 | Merged | [#43](https://github.com/sixoverground/claude-phases/pull/43) | 5b |
-| 14 | claude/local-docs-verify | sixoverground/claude-phases | `docs/running-locally.md`, README local sections, `verify: local` for iOS on a Mac | 7 | In Progress | - | 6 |
+| 14 | claude/local-docs-verify | sixoverground/claude-phases | `docs/running-locally.md`, README local sections, `verify: local` for iOS on a Mac | 7 | In Review | [#44](https://github.com/sixoverground/claude-phases/pull/44) | 6 |
 | 15 | claude/tool-scaffold | sixoverground/codex-mr-review | Node CLI skeleton, tests, lint, GitHub Actions CI, `AGENTS.md` | 8 | Merged | [sixoverground/codex-mr-review#1](https://github.com/sixoverground/codex-mr-review/pull/1) | 1 |
 | 16 | claude/review-runner | sixoverground/codex-mr-review | Run `codex exec review` read-only, normalise findings into cloud Codex's shape, print them with `--dry-run` | 9 | Merged | [sixoverground/codex-mr-review#2](https://github.com/sixoverground/codex-mr-review/pull/2) | 8, M1 |
 | 17 | claude/gitlab-posting | sixoverground/codex-mr-review | Post findings as MR discussions, summary note, script-owned marker, fingerprint dedupe | 10 | Merged | [sixoverground/codex-mr-review#3](https://github.com/sixoverground/codex-mr-review/pull/3) | 9 |
@@ -1154,7 +1154,7 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-19T15:39:38Z
+- Heartbeat: 2026-11-19T15:45:35Z
 - Note: -
 
 ## Carried findings
