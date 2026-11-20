@@ -4,6 +4,32 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.14.0]
+
+### GitLab, driven end to end
+
+0.12.0 shipped GitLab support that had never met a GitLab server. A toy plan has now been driven on a private gitlab.com project, from a local session on a Mac, with the driver, the Codex reviewer and the maintainer all on one account. It went through planning, three merge requests, a review finding fixed and re-reviewed, a merge by the driver and a milestone merged by a person. Along the way the session was killed and recovered, and the network was dropped and waited out. [`examples/gitlab-local.md`](https://github.com/sixoverground/claude-phases/blob/main/examples/gitlab-local.md) is that plan, with every wake.
+
+The run corrected four things in the GitLab references and setup guide:
+
+* **`glab mr create` needs a GitLab remote in the current directory.** `-R` names the project but does not free the command from the directory's remotes, so the driver now runs it from the GitLab repo's own clone. `glab mr merge` and `glab api` were unaffected.
+* **A runner started by `brew services` needs its PATH set at registration.** launchd's PATH finds neither Node from nvm nor Codex from Homebrew, and the old check passed in a terminal while a job would have failed. The reviewer setup guide now registers the runner with `--env PATH=...` and checks the way a job will.
+* **A skip instruction holds for plan commits made through the Files API.** Each one leaves a pipeline recorded as `skipped`, with no jobs.
+* **A network outage on a shared Mac fails a review job in progress**, not only the driver's polls. The driver's one retry per head covers it, and the planner's hygiene list now says so.
+
+**GitLab support stays experimental, but only for what the run did not reach:** a self-managed instance, a token with the Developer role, a protected target branch, a reviewer on an identity of its own, and moving a feature branch back in line after a milestone on GitLab.
+
+### The documents say GitHub or GitLab
+
+The README, CONTRIBUTING, SECURITY and design notes describe both forges.
+
+* CONTRIBUTING says how to add a third forge.
+* SECURITY says what one account and two identities each protect, and what a local session can reach on your machine.
+* The design notes explain the forge-neutral core, the review contract and why the script writes the marker, the watcher, and authorship stamps.
+* The plugin's description and the issue templates name GitLab.
+
+This release completes the local and GitLab plan, which began with milestones in [0.10.0](https://github.com/sixoverground/claude-phases/blob/main/CHANGELOG.md#0100) and continued through running locally in [0.11.0](https://github.com/sixoverground/claude-phases/blob/main/CHANGELOG.md#0110), GitLab in [0.12.0](https://github.com/sixoverground/claude-phases/blob/main/CHANGELOG.md#0120), and one account told apart by stamps in [0.13.0](https://github.com/sixoverground/claude-phases/blob/main/CHANGELOG.md#0130).
+
 ## [0.13.0]
 
 ### One account, told apart by stamps
