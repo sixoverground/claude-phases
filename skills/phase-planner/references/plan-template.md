@@ -12,6 +12,8 @@ phases:
                                  # for a self-managed instance
     branch_prefix: claude/
     target_branch: main
+    # release_branch: main     # where milestones and the integration PR
+                               # merge; defaults to the repo's default branch
     verify: auto
     merge: { method: squash }
     ci:
@@ -31,7 +33,7 @@ phases:
     #   prepare: >               # run on target_branch before a milestone PR opens
     #     Bump the version and add a CHANGELOG section.
     #   after_merge: >           # run after a person merges a milestone PR
-    #     Say which version the default branch now carries.
+    #     Say which version the release branch now carries.
 
   repos:
     OWNER/REPO: {}

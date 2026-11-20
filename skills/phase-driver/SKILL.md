@@ -1,6 +1,6 @@
 ---
 name: phase-driver
-description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.14.1.
+description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.15.0.
 model: opus
 ---
 
@@ -61,6 +61,8 @@ Look for `docs/plans/*.md` in the current repo. More than one, and no phase name
 Parse the front matter under `phases:`. That is your entire configuration. Resolve per-repo settings by deep-merging each repo's entry over `defaults`. Never look for configuration anywhere else; there is no other config file.
 
 **The plan branch** is `plan_branch`, or the home repo's default branch when that key is absent. Every read and every write of the plan file uses it. It is usually the default branch; on feature-branch work. Where phases target `feature/x` and nothing reaches `main` until the feature is whole. The plan lives there instead, so that status is visible without merging a phase PR. If `plan_branch` names a branch that doesn't exist, stop and say so. Never fall back to the default branch: a plan read from the wrong branch reports every phase as unstarted, and the driver would start them all a second time.
+
+**The release branch** of a repo is its `release_branch`, or the forge's default branch when that key is absent. It is where that repo's [milestones](#milestones) ship, what [re-sync](#re-sync) brings the target branch back in line with, and what the integration PR of §8 targets. Those three, and the UAT rules that follow them, are the only places it applies; anywhere else, *default branch* means the forge's own. Most repos never set it, and then the two are one branch. A repo sets it when the line it releases to is not the forge's default branch, as when a rewrite lives on a long-running branch beside the shipping product until launch. If `release_branch` names a branch that doesn't exist, open no milestone or integration change request in that repo: mark its milestone row `Blocked`, or say so at §8, and never fall back to the default branch, which would propose shipping the work somewhere nobody chose.
 
 ## 2. Reconcile, always, before anything
 
@@ -148,7 +150,7 @@ Start from the phase's `**UAT.**` items in Phase Details, then refine against wh
 Which checklist goes where depends on YOLO, because YOLO decides whether anyone is stopping to look:
 
 - **YOLO off.** This change request carries its own phase's UAT, **plus** everything in `UAT-pending`, assembled into one script by the rules below. Then clear those ids. Someone is looking at this change request; give them everything nobody has verified yet.
-- **YOLO on.** Omit UAT from the change request and append this phase's id to `UAT-pending` when it merges. The cumulative script. Everything in `UAT-pending`, plus the end-to-end flows that only make sense once every phase has landed. Goes on the **integration PR** at the end of the plan (§8), or on the **final phase**'s change request if no integration PR will exist because phases target the default branch directly. Clear the list when it lands somewhere.
+- **YOLO on.** Omit UAT from the change request and append this phase's id to `UAT-pending` when it merges. The cumulative script. Everything in `UAT-pending`, plus the end-to-end flows that only make sense once every phase has landed. Goes on the **integration PR** at the end of the plan (§8), or on the **final phase**'s change request if no integration PR will exist because phases target the release branch directly. Clear the list when it lands somewhere.
 
 Read the YOLO state **at the moment you open the change request**, not from memory. Toggling mid-plan is expected and `UAT-pending` is what makes it safe: turn YOLO off after three unattended merges and the next change request carries those three alongside its own.
 
@@ -350,7 +352,7 @@ When a change request has no outstanding work, evaluate `references/gates.md` ag
 - **YOLO on.** Not for a milestone PR, which is never yours to merge; see [Milestones](#milestones). Re-read the head SHA as your *last* read before merging, with no other calls in between, and merge with that repo's `merge.method`, as the forge reference's **Merge** says. Then **delete the phase branch**, unless the repo sets `merge.delete_branch: false`. Why the driver does this itself, and what to do when a delete is refused, is in the forge reference's **Delete the branch**.
 - **YOLO off.** Do not merge. Tell the user it's ready, with the change request's link and a per-gate summary, and set the row's `Note` to `ready to merge`. Re-ping only if the head moves and it passes again. Don't nag on a timer.
 
-Delete only a branch **you** created: it must match that repo's `branch_prefix`, and it must not be the plan branch or any repo's `target_branch`. Those three checks are the whole guard, and skipping them is how a driver deletes the branch its own plan lives on. The guard has one exception, and only one: the [re-sync](#re-sync) of a milestone row's own branch, after that row's change request is confirmed merged, and never when that branch is the plan branch.
+Delete only a branch **you** created: it must match that repo's `branch_prefix`, and it must not be the plan branch, any repo's `target_branch`, or any repo's release branch. Those four checks are the whole guard, and skipping them is how a driver deletes the branch its own plan lives on. The guard has one exception, and only one: the [re-sync](#re-sync) of a milestone row's own branch, after that row's change request is confirmed merged, and never when that branch is the plan branch.
 
 `YOLO` lives in the Driver State block. A repo may also pin `yolo: false` in front matter, which wins, config can restrict, never enable.
 
@@ -384,15 +386,15 @@ In that repo's clone, in this order:
 2. If the phase branch is checked out, `git switch --detach origin/<target_branch>`. Detached, so that no local copy of the target branch is created or relied on; §3 branches from the remote-tracking ref.
 3. `git branch -D <branch>`. Capital `-D`, because a squash or rebase merge leaves the branch's own commits off the target branch, and `-d` refuses a branch that has in fact landed.
 
-**The guard is the one every delete has**, checked before step 2: the branch matches that repo's `branch_prefix`, is not the plan branch, and is not any repo's `target_branch`. A milestone row's branch is a `target_branch`, so this never touches it; its [re-sync](#re-sync) is a separate step. **Also leave the branch, and say so once, when the working tree has uncommitted changes, or when the branch's tip is not the change request's final head sha** as the forge reports it. Compare the sha, not the history: after a squash or rebase merge, and once the prune has removed the remote branch, the branch's commits are on no remote ref even when every one of them landed. Anything past that sha, or uncommitted, was not part of what merged, so it is either leftovers or someone's work in progress, and neither is yours to throw away.
+**The guard is the one every delete has**, checked before step 2: the branch matches that repo's `branch_prefix`, is not the plan branch, and is not any repo's `target_branch` or release branch. A milestone row's branch is a `target_branch`, so this never touches it; its [re-sync](#re-sync) is a separate step. **Also leave the branch, and say so once, when the working tree has uncommitted changes, or when the branch's tip is not the change request's final head sha** as the forge reports it. Compare the sha, not the history: after a squash or rebase merge, and once the prune has removed the remote branch, the branch's commits are on no remote ref even when every one of them landed. Anything past that sha, or uncommitted, was not part of what merged, so it is either leftovers or someone's work in progress, and neither is yours to throw away.
 
 This is your clone only, never a person's checkout or a runner's build directory, which is why `merge.delete_branch` does not govern it: that key is about the branch on the forge. **A failure here is not a failure of the merge.** Say so once and carry on; nothing downstream depends on the local branch being gone.
 
 ## Milestones
 
-A milestone row ships a repo's `target_branch` to its default branch at a point the plan names. It is the integration PR of §8, moved to where a later phase needs the work released, and it keeps that change request's one rule: **the driver opens it and never merges it.**
+A milestone row ships a repo's `target_branch` to its [release branch](#1-find-the-plan) at a point the plan names. It is the integration PR of §8, moved to where a later phase needs the work released, and it keeps that change request's one rule: **the driver opens it and never merges it.**
 
-**Recognise it by both signs together:** an `M<n>` id, and a `Branch` equal to the repo's resolved `target_branch`. A row carrying one sign without the other, an `M` id on a `claude/` branch or a phase id on the target branch, is a plan error. Mark it `Blocked`, say which sign is missing, and leave it for a person. A row that is a milestone where the target branch *is* the default branch is the same error: there is nothing to ship.
+**Recognise it by both signs together:** an `M<n>` id, and a `Branch` equal to the repo's resolved `target_branch`. A row carrying one sign without the other, an `M` id on a `claude/` branch or a phase id on the target branch, is a plan error. Mark it `Blocked`, say which sign is missing, and leave it for a person. A row that is a milestone where the target branch *is* the release branch is the same error: there is nothing to ship.
 
 ### Opening a milestone PR
 
@@ -400,7 +402,7 @@ When a milestone row is startable, in order:
 
 1. **Commit `In Progress`** to the plan branch. The claim, as for a phase.
 2. **Prepare.** If the repo sets `milestone.prepare`, follow it on the target branch and push the result as commits straight to that branch. Where the branch refuses direct pushes, put them through one small change request into it under the ordinary gate, and merge it by the ordinary YOLO rule. If preparation fails, or its own checks do not pass, do not open the change request: mark the row `Blocked` with what failed.
-3. **Open the change request** from the target branch to the default branch, titled `Milestone M1: <scope>`, the way the forge reference's **Milestone and integration change requests** says, and for the same reason as a phase PR. The body carries: what ships, phase by phase, each with its change request's link; anything the shipped phases recorded as out of scope, and open Carried findings that name them; the assembled UAT script for every id in `UAT-pending` that this milestone ships plus the milestone's own **UAT**, by the rules in §3; and a line saying **a person merges this change request, not the driver.** Clear those ids from `UAT-pending` in the next write.
+3. **Open the change request** from the target branch to the release branch, titled `Milestone M1: <scope>`, the way the forge reference's **Milestone and integration change requests** says, and for the same reason as a phase PR. The body carries: what ships, phase by phase, each with its change request's link; anything the shipped phases recorded as out of scope, and open Carried findings that name them; the assembled UAT script for every id in `UAT-pending` that this milestone ships plus the milestone's own **UAT**, by the rules in §3; and a line saying **a person merges this change request, not the driver.** Clear those ids from `UAT-pending` in the next write.
 4. **Commit `In Review`** and the `Link`, at once, before any wait.
 
 **An explicit milestone row opens its change request with YOLO on or off.** It is a checkpoint the plan's author put in the table, and later phases wait on it. YOLO decides who merges phase PRs and nothing else.
@@ -412,7 +414,7 @@ When a milestone row is startable, in order:
 Every milestone row in a repo has the same head and base, so head and base alone do not say which milestone a change request belongs to. A change request is this row's when:
 
 - it is the change request in the row's `Link`, where the row has one. The link is authoritative; or
-- with no link, its head is the target branch, its base is the default branch, and **its title starts `Milestone <id>:`** with this row's id. The title is set in step 3 and is the one identifier that survives a crash before step 4.
+- with no link, its head is the target branch, its base is the release branch, and **its title starts `Milestone <id>:`** with this row's id. The title is set in step 3 and is the one identifier that survives a crash before step 4.
 
 A change request that matches head and base but names another id is that other row's, never this one's. Adopt an open change request only for a row whose dependencies are all `Merged` or `Skipped`: a change request found for a row that is not yet startable is a mismatch to report, not one to adopt. Since a repo has at most one open milestone PR, two rows claiming one PR always means one of them is wrong.
 
@@ -429,12 +431,12 @@ The implicit final milestone, §8's integration PR, is not worked this way. §8'
 
 ### Re-sync
 
-After a milestone PR is confirmed merged, bring its target branch back in line with the default branch, by these rules and no others. Read both heads with `git ls-remote`, never from remote-tracking refs.
+After a milestone PR is confirmed merged, bring its target branch back in line with the release branch, by these rules and no others. Read both heads with `git ls-remote`, never from remote-tracking refs.
 
 - **No non-terminal row still targets the branch.** Skip the re-sync. Nothing needs it.
-- **The branch is gone**, as when the repo deletes head branches on merge. Re-create it at the default branch's head, with a lease that requires it still to be absent.
-- **It exists, and its head is an ancestor of the default branch**, as after a merge commit. Fast-forward it to the default branch's head, with a plain push, never a forced one.
-- **It exists, is not an ancestor, and its head is exactly the head the milestone PR was merged at**, as after a squash or rebase merge. Move it to the default branch's head, with a lease on that merged head. Nothing is lost: everything on it reached the default branch in that merge.
+- **The branch is gone**, as when the repo deletes head branches on merge. Re-create it at the release branch's head, with a lease that requires it still to be absent.
+- **It exists, and its head is an ancestor of the release branch**, as after a merge commit. Fast-forward it to the release branch's head, with a plain push, never a forced one.
+- **It exists, is not an ancestor, and its head is exactly the head the milestone PR was merged at**, as after a squash or rebase merge. Move it to the release branch's head, with a lease on that merged head. Nothing is lost: everything on it reached the release branch in that merge.
 - **It holds commits beyond the merged head.** Change nothing. Report it, and start nothing in that repo until a person has sorted it out.
 
 **Every move is conditional on the head you just checked.** Someone can push to the branch between your read and your write, and an unconditional force would delete their commits, which is the one outcome the last case exists to prevent. So the push itself carries the check: the forge reference's **Re-sync a branch** gives the push for each case.
@@ -462,15 +464,15 @@ When every row is `Merged` or `Skipped`, in this order: **open the integration P
 
 **Two actions here, and only one of them is withheld.** *Opening* the integration PR is yours and needs no permission: YOLO means nobody was watching, and this change request is the entire handoff. *Merging* it is never yours. Read "never merge it" below as the second of those, not as the change request being off-limits.
 
-**Everything in this section is YOLO-only.** With YOLO off the developer merged every phase themselves and read every checklist as they went. They know exactly where the branch stands, and opening a change request to their default branch on their behalf presumes a decision they are already positioned to make. The handoff exists because YOLO means nobody was watching.
+**Everything in this section is YOLO-only.** With YOLO off the developer merged every phase themselves and read every checklist as they went. They know exactly where the branch stands, and opening a change request to their release branch on their behalf presumes a decision they are already positioned to make. The handoff exists because YOLO means nobody was watching.
 
 ### The integration PR
 
 Phases usually target a feature branch rather than the default one, so that nothing reaches `main` until the feature is whole. When the last phase merges, that branch is finished and nobody has been asked to look at it as a whole. Every review so far was of one phase against its siblings.
 
-So, with YOLO on: **for each repo whose `target_branch` is not its default branch, which merged at least one phase, and whose resolved `integration_pr` is not `false`, open a change request from `target_branch` to that repo's default branch.** Title it `<project>: <n> phases`. Body: what shipped, phase by phase with links; anything the plan recorded as deliberately out of scope; and any setup the feature needs that no change request could contain.
+So, with YOLO on: **for each repo whose `target_branch` is not its release branch, which merged at least one phase, and whose resolved `integration_pr` is not `false`, open a change request from `target_branch` to that repo's release branch.** Title it `<project>: <n> phases`. Body: what shipped, phase by phase with links; anything the plan recorded as deliberately out of scope; and any setup the feature needs that no change request could contain.
 
-**`integration_pr: false` means no implicit final milestone in that repo.** The plan's author has said how the feature branch reaches the default branch, and it is not through a change request the driver opens. So open nothing from that repo's `target_branch`, and do not treat the plan as unfinished for it. The key has no effect on explicit milestone rows: an author who wrote one wants it opened, and [Milestones](#milestones) opens it. Where no integration PR is opened because of this key, the cumulative UAT script that PR would have carried goes to [the fallback](#the-fallback).
+**`integration_pr: false` means no implicit final milestone in that repo.** The plan's author has said how the feature branch reaches the release branch, and it is not through a change request the driver opens. So open nothing from that repo's `target_branch`, and do not treat the plan as unfinished for it. The key has no effect on explicit milestone rows: an author who wrote one wants it opened, and [Milestones](#milestones) opens it. Where no integration PR is opened because of this key, the cumulative UAT script that PR would have carried goes to [the fallback](#the-fallback).
 
 **Never merge it. YOLO opens this change request and does not merge it**, and that is not an inconsistency. YOLO is a judgement about *phase* change requests. Work the plan produced, scoped by the plan, verified by the driver, gated per phase. This one is the whole feature landing on the branch everything else builds on, and none of that reasoning reaches it. Open it, report it, go idle.
 
@@ -482,11 +484,11 @@ Don't wait on its CI either. Checks that were scoped to the default branch may r
 
 With more than one repo, the **home repo's** integration PR carries the entire script across all repos, and the others link to it. UAT is end-to-end by nature; splitting it by repo produces two lists that each describe half a user journey, the same reason it is not split by phase.
 
-Where `target_branch` *is* the default branch there is no integration PR to open, and the rules stand as they were: the final phase PR carries the cumulative checklist. Same with YOLO off, where every change request carried its own UAT as it went and there is no backlog to hand over.
+Where `target_branch` *is* the release branch there is no integration PR to open, and the rules stand as they were: the final phase PR carries the cumulative checklist. Same with YOLO off, where every change request carried its own UAT as it went and there is no backlog to hand over.
 
 ### The fallback
 
-If the plan completes with `UAT-pending` non-empty and no integration PR carried the cumulative script: every repo targets its default branch, `integration_pr: false` turned it off, or the final phase was skipped or merged before you assembled the list. Assemble the cumulative script by the rules in §3, then:
+If the plan completes with `UAT-pending` non-empty and no integration PR carried the cumulative script: every repo targets its release branch, `integration_pr: false` turned it off, or the final phase was skipped or merged before you assembled the list. Assemble the cumulative script by the rules in §3, then:
 
 - **Where the home repo's forge reference says issues are available**, open an issue there titled `UAT: <project>` with the script, as that reference's **Issue fallback** says, and clear `UAT-pending`.
 - **Otherwise**, post the script as a comment on the last change request the plan merged. Leave `UAT-pending` as it is, and say in the completion summary that the script went to a comment on a merged change request, which nobody is asked to read, and that every id still in `UAT-pending` is unverified.

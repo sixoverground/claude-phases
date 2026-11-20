@@ -59,7 +59,7 @@ glab api --hostname <host> projects/<P>
 | Field | Used by |
 |---|---|
 | `id` | [Find](#find), to tell this project's MRs from a fork's |
-| `default_branch` | Milestones, re-sync and the integration MR |
+| `default_branch` | The release branch, for milestones, re-sync and the integration MR, where the repo sets no `release_branch` |
 | `issues_enabled` | [Issue fallback](#issue-fallback) |
 | `merge_method` (`merge`, `rebase_merge` or `ff`) | [Merge](#merge) |
 | `squash_option` | [Merge](#merge) |
@@ -91,10 +91,10 @@ From each entry, read:
 
 **The `Link` is `references.full`**, `group/project!<iid>`, subgroups included, as `format.md` specifies. Record it as given rather than building it, so a project path with a subgroup is never shortened.
 
-A milestone row's MR has the target branch as source and the default branch as target, so list by both, then pick the one whose title names the row's id, per SKILL.md's **Which PR is a milestone's**:
+A milestone row's MR has the target branch as source and the release branch as target (`release_branch`, or the project's `default_branch`), so list by both, then pick the one whose title names the row's id, per SKILL.md's **Which PR is a milestone's**:
 
 ```sh
-glab api --hostname <host> --paginate "projects/<P>/merge_requests?source_branch=<target_branch>&target_branch=<default_branch>&state=all&per_page=100"
+glab api --hostname <host> --paginate "projects/<P>/merge_requests?source_branch=<target_branch>&target_branch=<release_branch>&state=all&per_page=100"
 ```
 
 One MR, when a later step needs more than the list gives:
@@ -498,7 +498,7 @@ The driver's local copy of the branch is not the forge's to delete. The core rem
 
 ## Milestone and integration change requests
 
-Both are MRs from the repo's `target_branch` to its `default_branch`. Find one by [Find](#find)'s source and target query. Open one by [Open](#open), with **`--remove-source-branch=false`**, passed explicitly rather than left out, because leaving it out applies the project's default, which often deletes the source branch at merge. For a milestone that would delete the branch the re-sync then re-creates, which the core handles. For the integration MR it could delete the plan branch, where the plan lives on the feature branch it ships. A person who wants the branch gone ticks the box themselves when they merge.
+Both are MRs from the repo's `target_branch` to its release branch: `release_branch`, or the project's `default_branch` where that is unset. Find one by [Find](#find)'s source and target query. Open one by [Open](#open), with **`--remove-source-branch=false`**, passed explicitly rather than left out, because leaving it out applies the project's default, which often deletes the source branch at merge. For a milestone that would delete the branch the re-sync then re-creates, which the core handles. For the integration MR it could delete the plan branch, where the plan lives on the feature branch it ships. A person who wants the branch gone ticks the box themselves when they merge.
 
 Pass `--squash-before-merge` from `merge.method` as for a phase. The person who merges can change it.
 

@@ -211,7 +211,7 @@ The same as [`detection.md`](detection.md#the-repos-own-review-rules--stuck): re
 
 ## Release conventions → `milestone.prepare`
 
-The same as [`detection.md`](detection.md#release-conventions--milestoneprepare), with one GitLab source more: jobs in the CI file that run only on the default branch or on tags, a `release:` keyword, or a job that checks a version, each read as resolved by [Resolve each job before reading it](#resolve-each-job-before-reading-it). Quote the job and its rule for every step you put in `prepare`, as you would a check on GitHub.
+The same as [`detection.md`](detection.md#release-conventions--milestoneprepare), with one GitLab source more: jobs in the CI file that run only on the release branch (for the default branch, `$CI_DEFAULT_BRANCH`) or on tags, a `release:` keyword, or a job that checks a version, each read as resolved by [Resolve each job before reading it](#resolve-each-job-before-reading-it). Quote the job and its rule for every step you put in `prepare`, as you would a check on GitHub.
 
 ## Toolchain → `verify`
 

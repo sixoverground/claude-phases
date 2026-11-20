@@ -23,7 +23,7 @@ Apply this **per non-terminal row**, not once per plan, plus every `Merged` mile
 
 ## Milestone rows
 
-Every milestone row in a repo has the same head and base, so a milestone row is matched to its PR by SKILL.md's **Which PR is a milestone's**: the row's `Link` where it has one, and otherwise head equal to the target branch, base equal to the default branch, **and a title starting `Milestone <id>:`** with this row's id. A PR naming another id is never this row's, not even a merged one from an earlier milestone. The same per-row rule applies: the forge is the truth.
+Every milestone row in a repo has the same head and base, so a milestone row is matched to its PR by SKILL.md's **Which PR is a milestone's**: the row's `Link` where it has one, and otherwise head equal to the target branch, base equal to the release branch, **and a title starting `Milestone <id>:`** with this row's id. A PR naming another id is never this row's, not even a merged one from an earlier milestone. The same per-row rule applies: the forge is the truth.
 
 | Plan says | The forge says | What happened | Do this |
 |---|---|---|---|
@@ -40,7 +40,7 @@ The `Merged` rows are why reconcile looks past terminal rows for milestones: a `
 
 `In Progress` with no PR and no preparation commits on the branch at all is the first row of the table in disguise: prepare from the start, then open the PR. Where `milestone.prepare` is absent there is nothing to finish, and the third row reduces to opening the PR.
 
-The last row is why re-sync comes before anything starts in §7. A session that dies after writing `Merged` and before moving the branch leaves a target branch that is gone, or still at its pre-merge head, and a phase branched from either starts from a base that is not the default branch.
+The last row is why re-sync comes before anything starts in §7. A session that dies after writing `Merged` and before moving the branch leaves a target branch that is gone, or still at its pre-merge head, and a phase branched from either starts from a base that is not the release branch.
 
 ## The forge is unreachable
 

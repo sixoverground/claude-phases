@@ -10,7 +10,7 @@ Read this file at Reconcile, and again after any compaction. The core points her
 
 Reconcile asks the forge what is actually true for each row. On GitHub: `list_pull_requests` filtered by that row's head branch in that row's repo, then `pull_request_read{get}` for any match. Ask for PRs in any state, since a merged or closed PR answers the question as much as an open one does.
 
-A milestone row's PR has the target branch as head and the default branch as base, so list by both, then pick the one whose title names the row's id, per SKILL.md's **Which PR is a milestone's**.
+A milestone row's PR has the target branch as head and the release branch (SKILL.md, **Find the plan**) as base, so list by both, then pick the one whose title names the row's id, per SKILL.md's **Which PR is a milestone's**.
 
 ## Open
 
@@ -239,9 +239,9 @@ A failed delete is not a failed merge. Branch protection or a ruleset can forbid
 
 ## Milestone and integration change requests
 
-Both are PRs from the repo's `target_branch` to its default branch, opened the GitHub MCP way and for the same reason as a phase PR (see [Opener identity](#opener-identity)). Find one by [Find](#find).
+Both are PRs from the repo's `target_branch` to its release branch, `release_branch` or the repository's `default_branch`, opened the GitHub MCP way and for the same reason as a phase PR (see [Opener identity](#opener-identity)). Find one by [Find](#find).
 
-**Warn about skip instructions before it is merged.** When you report one ready, read the messages of the commits it would squash, `gh api --paginate repos/<owner>/<repo>/pulls/<n>/commits --jq '.[] | [.sha[0:7], .commit.message] | @tsv'`, and look for any of GitHub's skip instructions: `[skip ci]`, `[ci skip]`, `[no ci]`, `[skip actions]`, `[actions skip]`, matched case-insensitively. A squash merge's default message quotes every one of those messages, and GitHub skips a push-triggered workflow on the default branch when the pushed commit's message contains one, so a release or deploy that runs on that push would not run. If any commit carries one, add to the ready message which commits, and that a squash merge would quote them, so the person can trim the squash message or check afterwards that the workflow ran. It changes nothing and blocks nothing: the merge is still theirs.
+**Warn about skip instructions before it is merged.** When you report one ready, read the messages of the commits it would squash, `gh api --paginate repos/<owner>/<repo>/pulls/<n>/commits --jq '.[] | [.sha[0:7], .commit.message] | @tsv'`, and look for any of GitHub's skip instructions: `[skip ci]`, `[ci skip]`, `[no ci]`, `[skip actions]`, `[actions skip]`, matched case-insensitively. A squash merge's default message quotes every one of those messages, and GitHub skips a push-triggered workflow on the release branch when the pushed commit's message contains one, so a release or deploy that runs on that push would not run. If any commit carries one, add to the ready message which commits, and that a squash merge would quote them, so the person can trim the squash message or check afterwards that the workflow ran. It changes nothing and blocks nothing: the merge is still theirs.
 
 ## Re-sync a branch
 

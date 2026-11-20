@@ -120,7 +120,7 @@ Phases 2 and 3 both depend only on phase 1, so they run **concurrently** in diff
 
 ### Milestone rows
 
-A milestone row ships a repo's `target_branch` to its default branch at a point the plan names, rather than only at the end. It is the row to use when phases land on a feature branch and a later phase needs some of that work released first.
+A milestone row ships a repo's `target_branch` to its release branch, `release_branch` or else the default branch, at a point the plan names, rather than only at the end. It is the row to use when phases land on a feature branch and a later phase needs some of that work released first.
 
 ```markdown
 | PR | Branch            | Repo          | Scope                              | Phase | Status  | Link | Depends |
@@ -133,16 +133,16 @@ A milestone row ships a repo's `target_branch` to its default branch at a point 
 
 **It is told apart by two things together, with no new column:** its `Phase` id is `M` followed by a number, and its `Branch` is the repo's `target_branch`. No phase row can have that branch, since phase branches carry `branch_prefix`. A row with one sign and not the other is an error, and the driver stops on it rather than guess which was meant.
 
-- Its PR goes from that branch to the repo's default branch, titled `Milestone M1: <scope>`.
+- Its PR goes from that branch to the repo's release branch, titled `Milestone M1: <scope>`.
 - Its `Depends` lists the phases it ships.
 - A later phase that needs the work released depends on the milestone row, as phase 2 does above. That dependency is the wait: nothing has to be paused by hand.
 - Milestone rows are appended or inserted like any row and never renumbered.
 
-**The driver opens a milestone PR and never merges it**, with YOLO on or off. A person merges it, every time. The driver then brings the branch back in line with the default branch and starts what the milestone unblocks.
+**The driver opens a milestone PR and never merges it**, with YOLO on or off. A person merges it, every time. The driver then brings the branch back in line with the release branch and starts what the milestone unblocks.
 
-A plan with milestone rows keeps the plan file on the default branch, never on a branch a milestone ships: that branch is deleted on merge and re-created, and the plan would go with it.
+A plan with milestone rows keeps the plan file on the default branch, or on another branch no milestone ships, such as one of its own where the default branch is protected, never on a branch a milestone ships: that branch is deleted on merge and re-created, and the plan would go with it.
 
-**The integration PR is the implicit final milestone.** A plan with no milestone rows ends as it always has: under YOLO, where `target_branch` is not the default branch, the driver opens one PR from it to the default branch and never merges it. A plan that has milestone rows ships through them instead, and no implicit PR is opened.
+**The integration PR is the implicit final milestone.** A plan with no milestone rows ends as it always has: under YOLO, where `target_branch` is not the release branch, the driver opens one PR from it to the release branch and never merges it. A plan that has milestone rows ships through them instead, and no implicit PR is opened.
 
 ### Status vocabulary
 
@@ -333,7 +333,7 @@ Which PR carries the checklist depends on YOLO, because YOLO determines whether 
 | YOLO | Where the checklist goes |
 |---|---|
 | **off** | Every PR carries its own phase's UAT. You're merging each one, so you get the checklist at the moment you decide |
-| **on** | Phases merge unattended, so UAT is deferred to **one comprehensive test script** covering every phase: one runnable list rather than per-phase sections, plus the end-to-end flows that only make sense once everything has landed. It lands on the **integration PR**: `target_branch` → default branch, opened when the plan completes, or on the **final phase's PR** where phases already target the default branch and no integration PR exists |
+| **on** | Phases merge unattended, so UAT is deferred to **one comprehensive test script** covering every phase: one runnable list rather than per-phase sections, plus the end-to-end flows that only make sense once everything has landed. It lands on the **integration PR**: `target_branch` → release branch, opened when the plan completes, or on the **final phase's PR** where phases already target the default branch and no integration PR exists |
 
 **`UAT-pending` in Driver State tracks what hasn't been surfaced yet.** When a phase merges under YOLO on, its id is appended. When a PR carries a UAT checklist, the ids it covered are removed. This is what makes toggling safe: turn YOLO off after three auto-merged phases and the next PR carries its own UAT *plus* the three that nobody has verified. Turn it back on and they accumulate again.
 
@@ -345,7 +345,7 @@ Without that list, a mid-plan toggle silently loses UAT for every phase that mer
 
 **The final phase** is the last non-`Skipped` row in table order. Under YOLO it is merged by the driver within minutes of opening, which is why the cumulative checklist belongs on the integration PR wherever one exists: a checklist on a PR nobody had to read is a record, not a prompt.
 
-If a plan finishes with `UAT-pending` non-empty and no integration PR carried the cumulative checklist, which happens when `integration_pr` is `false`, or when every repo targets its default branch and the final phase was skipped or merged before the checklist was assembled, the driver never drops it. Where the forge has issues, it posts the cumulative checklist as an issue titled `UAT: <project>` and clears `UAT-pending`. Where it has none, it posts the checklist as a comment on the last merged PR, leaves `UAT-pending` as it is, and says so in its completion summary.
+If a plan finishes with `UAT-pending` non-empty and no integration PR carried the cumulative checklist, which happens when `integration_pr` is `false`, or when every repo targets its release branch and the final phase was skipped or merged before the checklist was assembled, the driver never drops it. Where the forge has issues, it posts the cumulative checklist as an issue titled `UAT: <project>` and clears `UAT-pending`. Where it has none, it posts the checklist as a comment on the last merged PR, leaves `UAT-pending` as it is, and says so in its completion summary.
 
 Set `uat: false` in a repo's config for repos where manual testing is meaningless.
 
@@ -377,11 +377,11 @@ What a driver does when the plan and GitHub disagree, which is the situation aft
 | `In Review` | PR open | Normal | Re-subscribe, re-evaluate gates |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, advance |
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
-| all rows terminal | - | Complete | With no milestone rows and YOLO on, open the integration PR if `target_branch` is not the default branch and `integration_pr` is not `false`. Then set `Driver: idle` and report |
+| all rows terminal | - | Complete | With no milestone rows and YOLO on, open the integration PR if `target_branch` is not the release branch and `integration_pr` is not `false`. Then set `Driver: idle` and report |
 
 Applied **per row**, not once per plan. With several repos in flight, each recovers independently.
 
-Every milestone in a repo shares one head and base, so a milestone row is matched to its PR by its `Link` where it has one, and otherwise by head equal to the row's branch, base equal to the repo's default branch, **and a title starting `Milestone <id>:`** with the row's id. Recovery also looks at `Merged` milestone rows until they are **settled**: the branch re-synced, and `milestone.after_merge` recorded as done by a marker comment on the PR.
+Every milestone in a repo shares one head and base, so a milestone row is matched to its PR by its `Link` where it has one, and otherwise by head equal to the row's branch, base equal to the repo's release branch, **and a title starting `Milestone <id>:`** with the row's id. Recovery also looks at `Merged` milestone rows until they are **settled**: the branch re-synced, and `milestone.after_merge` recorded as done by a marker comment on the PR.
 
 | Plan says | GitHub says | What happened | Action |
 |---|---|---|---|
