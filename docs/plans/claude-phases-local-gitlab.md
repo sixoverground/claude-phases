@@ -1493,8 +1493,8 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T13:56:20Z
-- Note: Phase 13 claimed; preconditions pass (0.13.0 loaded, codex-mr-review 0.2.0, gitlab-runner 19.6.0, glab as craigphares)
+- Heartbeat: 2026-11-20T13:57:02Z
+- Note: Phase 13: scratch project craigphares/phases-gitlab-trial created (private, shared runners off) with a project runner (tag macos, not protected). Waiting on the maintainer to register the runner and set CODEX_MR_REVIEW_TOKEN
 
 ## Carried findings
 
