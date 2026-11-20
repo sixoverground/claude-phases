@@ -110,18 +110,18 @@ Compare the cap with what the plan allows. With an arbiter, the driver makes up 
 
 ## Release conventions → `milestone.prepare`
 
-Only for a repo that will have a milestone row. A milestone PR is a merge to the default branch, and in many repos that is a release, so it has to carry whatever a release of that repo needs. `milestone.prepare` says what that is, and the driver follows it on the feature branch before it opens the PR.
+Only for a repo that will have a milestone row. A milestone PR is a merge to the release branch (`release_branch`, or the default branch), and in many repos that is a release, so it has to carry whatever a release of that repo needs. `milestone.prepare` says what that is, and the driver follows it on the feature branch before it opens the PR.
 
 Read, in this order:
 
 - `CONTRIBUTING.md` and any release section of the README
 - release scripts, under `scripts/`, `bin/` or a `Makefile` target
 - a changelog, and the shape of its latest entry
-- any check that fails a PR into the default branch for a missing version bump, and what that check reads
+- any check that fails a PR into the release branch for a missing version bump, and what that check reads
 
 | Observed | Set |
 |---|---|
-| A version field a check enforces on PRs into the default branch | `prepare` raises it, naming the file and the field the check reads, and runs that check before the PR opens |
+| A version field a check enforces on PRs into the release branch | `prepare` raises it, naming the file and the field the check reads, and runs that check before the PR opens |
 | Other copies of the version that a check keeps in sync | `prepare` updates each copy, and runs that check too |
 | A changelog with a section per version | `prepare` adds one section in the file's voice, assembled from the shipped phases' PR bodies. Ask phases to carry a sentence or two for it |
 | A release script with a dry run | `prepare` runs the dry run and does not open the PR unless it passes |
@@ -130,7 +130,7 @@ Read, in this order:
 
 **Quote the source for every step** you put in `prepare`: the file and line, or the check's name. A step with no source is a guess about someone else's release process.
 
-**Check whether the version check also fires on PRs into the feature branch.** A check that runs on every PR whatever its base demands a bump per phase, which is a release per phase and the opposite of what a feature branch is for. Scope it to PRs whose base is the default branch first, as its own phase before any other, with a job-level condition so the check shows as skipped rather than vanishing. Until then every phase PR fails it.
+**Check whether the version check also fires on PRs into the feature branch.** A check that runs on every PR whatever its base demands a bump per phase, which is a release per phase and the opposite of what a feature branch is for. Scope it to PRs whose base is the release branch first, as its own phase before any other, with a job-level condition so the check shows as skipped rather than vanishing. Until then every phase PR fails it.
 
 `milestone.after_merge` is rarer. Set it only when something has to happen after a person merges and before later phases can use the release: updating an installed copy, or confirming a deploy. Ask rather than infer; nothing in the repo says what the person does after merging.
 

@@ -11,8 +11,11 @@ ci:
   dispatch: push               # values other than push and none are GitHub-only
   logs: gitlab-jobs            # the failed job's full trace; auto resolves to this
 
+# release_branch: v2           # where milestones and the integration MR merge,
+                               # when it is not the project's default branch
+
 # integration_pr: false        # never open the change request from target_branch
-                               # to the default branch at the end of the plan.
+                               # to the release branch at the end of the plan.
                                # Explicit milestone rows still open. The
                                # cumulative UAT script then goes to a
                                # `UAT: <project>` issue, or, with issues turned

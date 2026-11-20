@@ -4,6 +4,18 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.15.0]
+
+### `release_branch`: milestones that ship somewhere other than the default branch
+
+A milestone shipped `target_branch` to the forge's default branch, and so did the integration PR at the end of a plan. That fits a project that releases from `main`. It does not fit a rewrite growing on a long-running branch beside a product that still ships from the default branch: the first milestone PR would have proposed merging the rewrite into the shipping product.
+
+* **A new per-repo key, `release_branch`,** names where that repo's work is released. Milestone PRs and the integration PR target it, and after a milestone merges the driver brings `target_branch` back in line with it. Unset, it is the forge's default branch, so existing plans behave exactly as before.
+* **Nothing else reads it.** CI scoping, detection and the plan branch's default still mean the forge's default branch.
+* **The planner refuses** a `release_branch` that does not exist, or that is the repo's own `target_branch`. It proposes the key only when asked, since no repo says which branch a team releases to.
+* **Where the default branch is protected,** the planner may put a plan with milestone rows on a branch of its own, or on the release branch, instead of the default branch. Neither may be a branch a milestone ships.
+* **The release branch joins the delete guard,** for the forge and for the driver's local clone.
+
 ## [0.14.1]
 
 ### The driver tidies its own clone

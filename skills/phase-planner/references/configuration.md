@@ -59,13 +59,14 @@ defaults:
 |---|---|---|
 | `branch_prefix` | `claude/` | Prefix for phase branches. Also how the driver recognizes its own branches |
 | `target_branch` | repo's default branch | What phases branch from and merge into |
+| `release_branch` | repo's default branch | Where this repo's work is released: the base of its [milestone](format.md#milestone-rows) PRs and of the integration PR, and what the driver brings `target_branch` back in line with after a milestone merges. Set it when the line you release to is not the forge's default branch, as for a rewrite on a long-running branch beside a product that still ships from `main`. Must exist, and must not be `target_branch`. Nothing else reads it: CI scoping, the plan branch and detection still mean the forge's default branch |
 | `merge.method` | `squash` | `squash`, `merge`, or `rebase` |
-| `merge.delete_branch` | `true` | Delete the phase branch after the driver merges it. **YOLO-only**, with YOLO off the driver never merges, so it never deletes. Only applies to merges the driver performs, a human merging in the UI controls their own checkbox. Only ever deletes a branch matching `branch_prefix`, never the plan branch or a `target_branch`. `false` for repos whose rulesets require branches to persist. Governs the branch on the forge only: the driver removes its own local copy after every merge regardless |
+| `merge.delete_branch` | `true` | Delete the phase branch after the driver merges it. **YOLO-only**, with YOLO off the driver never merges, so it never deletes. Only applies to merges the driver performs, a human merging in the UI controls their own checkbox. Only ever deletes a branch matching `branch_prefix`, never the plan branch, a `target_branch` or a `release_branch`. `false` for repos whose rulesets require branches to persist. Governs the branch on the forge only: the driver removes its own local copy after every merge regardless |
 | `plan_writes` | `direct` | `direct`, or `plan-pr` when the plan branch is protected. `default-branch` is accepted as an alias for `direct`. See below |
 | `yolo` | `true` | `false` pins this repo to manual merges regardless of the global toggle. Config can only restrict, never force |
-| `integration_pr` | `true` | `false` means the driver never opens the implicit final milestone in this repo: the change request from `target_branch` to the default branch when a plan without milestone rows completes. For a team that ships its feature branches its own way. It has no effect on explicit milestone rows, which a plan author wrote on purpose. What it does to the cumulative UAT is in [YOLO](#yolo) |
+| `integration_pr` | `true` | `false` means the driver never opens the implicit final milestone in this repo: the change request from `target_branch` to the release branch when a plan without milestone rows completes. For a team that ships its feature branches its own way. It has no effect on explicit milestone rows, which a plan author wrote on purpose. What it does to the cumulative UAT is in [YOLO](#yolo) |
 | `milestone.prepare` | absent | Prose the driver follows on `target_branch` before it opens a [milestone](format.md#milestone-rows) PR: a version bump, a changelog section, anything a release of this repo needs. Committed straight to the branch. Absent means the milestone PR opens with no preparation |
-| `milestone.after_merge` | absent | Prose the driver follows after a person has merged a milestone PR and the branch is back in line with the default branch: updating an installed copy, confirming that a release happened and starting it when it did not, announcing a release. Absent means nothing runs beyond the re-sync |
+| `milestone.after_merge` | absent | Prose the driver follows after a person has merged a milestone PR and the branch is back in line with the release branch: updating an installed copy, confirming that a release happened and starting it when it did not, announcing a release. Absent means nothing runs beyond the re-sync |
 
 Both milestone keys apply only to milestone rows. Neither runs for the implicit final milestone, the integration PR at the end of a plan with no milestone rows, unless it is set.
 
@@ -392,7 +393,7 @@ Two things to get right:
 
 A feature branch is also usually unprotected, which means `plan_writes` can stay `direct` even when the default branch is locked down.
 
-**With milestone rows, the plan stays on the default branch.** A [milestone](format.md#milestone-rows) ships the feature branch part-way through the plan, and the branch is deleted on merge and re-created from the default branch by the driver. A plan on it would be deleted with it. So leave `plan_branch` at its default, and never set it to a branch a milestone row ships:
+**With milestone rows, the plan stays on the default branch.** A [milestone](format.md#milestone-rows) ships the feature branch part-way through the plan, and the branch is deleted on merge and re-created from the release branch by the driver. A plan on it would be deleted with it. So leave `plan_branch` at its default, or, where the default branch is protected, set it to a branch of the plan's own or to the release branch, and never to a branch a milestone row ships:
 
 ```yaml
 phases:

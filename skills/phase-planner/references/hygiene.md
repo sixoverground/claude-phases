@@ -22,7 +22,7 @@ Watch for it on the first phase PR: a review that describes files rather than ch
 
 ## Prevents wasted CI and accidental deploys
 
-**A release or deploy that a squash message can skip.** Where a merge to the default branch releases or deploys through a push-triggered workflow, a skip instruction in the merge commit's message stops it. Plan commits end `[skip ci]`, and phases that discuss it quote it, so a milestone's squash message, which quotes every commit it squashes, can carry it. Two fixes, and either is enough: trigger the release on the merged change request too (on GitHub, `pull_request_target` with `types: [closed]` and a condition on `merged`, running nothing from the pull request), or have `milestone.after_merge` confirm the release happened and start it when it did not. The driver also warns when a milestone PR's commits carry one.
+**A release or deploy that a squash message can skip.** Where a merge to the release branch releases or deploys through a push-triggered workflow, a skip instruction in the merge commit's message stops it. Plan commits end `[skip ci]`, and phases that discuss it quote it, so a milestone's squash message, which quotes every commit it squashes, can carry it. Two fixes, and either is enough: trigger the release on the merged change request too (on GitHub, `pull_request_target` with `types: [closed]` and a condition on `merged`, running nothing from the pull request), or have `milestone.after_merge` confirm the release happened and start it when it did not. The driver also warns when a milestone PR's commits carry one.
 
 **`paths-ignore: ['docs/plans/**']`** on push-triggered workflows. The driver writes three plan commits per phase to the plan branch. Without this they burn CI minutes, and on a repo that deploys from that branch they trigger deploys. The driver also appends `[skip ci]` to plan commits, but `paths-ignore` is belt and braces.
 
@@ -50,11 +50,11 @@ Turn it on regardless of how you plan to run. It also covers the case the driver
 
 Only for a plan with milestone rows.
 
-**Auto-delete and a milestone's branch.** With *Automatically delete head branches* on, merging a milestone PR deletes the feature branch, since it is that PR's head. That is expected. The driver re-creates it from the default branch before anything else starts in that repo. Leave the setting on; nothing needs changing. Without it, the driver fast-forwards or moves the branch instead.
+**Auto-delete and a milestone's branch.** With *Automatically delete head branches* on, merging a milestone PR deletes the feature branch, since it is that PR's head. That is expected. The driver re-creates it from the release branch before anything else starts in that repo. Leave the setting on; nothing needs changing. Without it, the driver fast-forwards or moves the branch instead.
 
 **A protected feature branch.** The driver commits a milestone's preparation, and any fix to the milestone PR, straight to the feature branch. If that branch rejects direct pushes, each of those becomes a small PR into it under the ordinary gate, which costs a review round apiece. Allow the driver's identity to push to the feature branch, or accept the extra rounds and say so in the plan.
 
-**Version checks scoped to the default branch.** A check that fails any PR without a version bump fires on phase PRs into the feature branch too, and forces a bump per phase. Scope it to PRs whose base is the default branch, with a job-level `if` so it shows as skipped elsewhere. That is a workflow edit and a phase of its own, the first one.
+**Version checks scoped to the release branch.** A check that fails any PR without a version bump fires on phase PRs into the feature branch too, and forces a bump per phase. Scope it to PRs whose base is the release branch, with a job-level `if` so it shows as skipped elsewhere. That is a workflow edit and a phase of its own, the first one.
 
 ## Makes local verification possible
 
