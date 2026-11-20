@@ -1487,13 +1487,13 @@ After merging:
 
 - Driver: running
 - YOLO: off
-- Driver-ID: drv-776734c2
-- Driver-Host: Raphael.local 48542 Tue Nov 17 23:15:56 2026 UTC
-- Active: 13 — claude/gitlab-trial (setting up the gitlab.com scratch project)
+- Driver-ID: drv-ea7de5ba
+- Driver-Host: Raphael.local 45318 Fri Nov 20 14:32:31 2026 UTC
+- Active: 13 — claude/gitlab-trial (driving the toy plan)
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T14:27:18Z
+- Heartbeat: 2026-11-20T14:33:01Z
 - Note: Phase 13 trial: toy plan docs/plans/phases-gitlab-trial.md on craigphares/phases-gitlab-trial (main), driven by this session from the clone ../phases-gitlab-trial; phase 1 merged (!1), phase 2 In Review (!2), M1 pending. Working log: ../phases-gitlab-trial-log.md
 
 ## Carried findings
