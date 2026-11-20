@@ -20,12 +20,24 @@
 # were published by hand and got their zips, v0.4.0 was the first cut by this
 # script and shipped with none, and nothing failed to say so.
 #
-# Usage: scripts/release.sh [--dry-run]
+# --if-missing creates the release only when the version has none, and does
+# nothing at all when it has one: no upload, exit 0. The merge-triggered run in
+# release.yml uses it, because that trigger fires on every merged PR into main
+# and would otherwise rebuild and replace an existing release's zips each time.
+#
+# Usage: scripts/release.sh [--dry-run] [--if-missing]
 
 set -euo pipefail
 
 dry_run=""
-[ "${1:-}" = "--dry-run" ] && dry_run=1
+if_missing=""
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) dry_run=1 ;;
+    --if-missing) if_missing=1 ;;
+    *) echo "release: unknown argument '$arg'" >&2; exit 2 ;;
+  esac
+done
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
@@ -52,6 +64,10 @@ attach_zips() {
 
 if gh release view "$tag" >/dev/null 2>&1; then
   echo "release: $tag already released"
+  if [ -n "$if_missing" ]; then
+    echo "release: --if-missing, so nothing to do"
+    exit 0
+  fi
   [ -n "$dry_run" ] && { echo "release: would ensure skill zips are attached"; exit 0; }
   attach_zips
   exit 0

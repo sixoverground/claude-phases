@@ -65,7 +65,7 @@ defaults:
 | `yolo` | `true` | `false` pins this repo to manual merges regardless of the global toggle. Config can only restrict, never force |
 | `integration_pr` | `true` | `false` means the driver never opens the implicit final milestone in this repo: the change request from `target_branch` to the default branch when a plan without milestone rows completes. For a team that ships its feature branches its own way. It has no effect on explicit milestone rows, which a plan author wrote on purpose. What it does to the cumulative UAT is in [YOLO](#yolo) |
 | `milestone.prepare` | absent | Prose the driver follows on `target_branch` before it opens a [milestone](format.md#milestone-rows) PR: a version bump, a changelog section, anything a release of this repo needs. Committed straight to the branch. Absent means the milestone PR opens with no preparation |
-| `milestone.after_merge` | absent | Prose the driver follows after a person has merged a milestone PR and the branch is back in line with the default branch: updating an installed copy, announcing a release. Absent means nothing runs beyond the re-sync |
+| `milestone.after_merge` | absent | Prose the driver follows after a person has merged a milestone PR and the branch is back in line with the default branch: updating an installed copy, confirming that a release happened and starting it when it did not, announcing a release. Absent means nothing runs beyond the re-sync |
 
 Both milestone keys apply only to milestone rows. Neither runs for the implicit final milestone, the integration PR at the end of a plan with no milestone rows, unless it is set.
 
@@ -191,7 +191,7 @@ For any reviewer that meets the [review contract](https://github.com/sixovergrou
 | Key | Default | Meaning |
 |---|---|---|
 | `marker` | *required* | The reviewer's name, as it writes it in the marker. `[a-z0-9-]+` |
-| `logins` | none | When set, only a marker note authored by one of these accounts counts. Here it authenticates the marker's author and nothing more: a review, inline comment or 👍 from these accounts does **not** satisfy a `marker` entry, as it would a `logins` entry. **Set it on any repo where people outside the project can comment**: a marker is plain text, and without `logins` anyone can type one |
+| `logins` | none | When set, only a marker note authored by one of these accounts counts, and only a reviewer stamp from one of them makes a note the reviewer's. Here it authenticates the marker's and the stamp's author and nothing more: a review, inline comment or 👍 from these accounts does **not** satisfy a `marker` entry, as it would a `logins` entry. **Set it on any repo where people outside the project can comment**: a marker is plain text, and without `logins` anyone can type one. With the reviewer on its own token, it is that token's account. With the reviewer on your own token, it is your own account: it still keeps everyone else out, but no longer separates the reviewer from anything else your account posts |
 
 `proof` and `rereview` are ignored on a `marker` entry. A marker is written by the reviewer's code only once a review has completed, so there is no empty-check case for `proof` to tune. And a reviewer that skips a commit posts no marker for it, so the gate blocks, which is the right answer for an unreviewed commit.
 
@@ -291,7 +291,7 @@ All seven are first-class, and they compose. Require Copilot *and* a Claude chec
 | **GitHub Copilot** | `required: [{ logins: ["copilot-pull-request-reviewer", "github-copilot", "copilot"] }]` | Enable the "Review new pushes" ruleset so anchors track the head |
 | **OpenAI Codex** | `required: [{ logins: ["chatgpt-codex-connector"], rereview: optional }]` | Reviews as a GitHub App with inline comments. On **smart detect** it reviews once and may skip later pushes, which is what `rereview: optional` is for. If it is set to review every push, drop the key and take the stronger default |
 | **Any reviewer that emits the contract** | `required: [{ marker: "<name>", logins: ["<its account>"] }]` | A self-hosted reviewer that posts the [review contract](https://github.com/sixoverground/claude-phases/blob/main/docs/review-contract.md)'s marker after every review. Pin `logins` to the account it posts as. `proof` and `rereview` don't apply |
-| **GitLab with a local Codex review** | `required: [{ marker: "codex", logins: ["<the review token's username>"] }]` | A CI job runs Codex on your own runner and posts the marker. The only reviewer setup mapped on GitLab. The review token must be a different account from the driver's. Profile: `profiles/review-codex-local.yml` |
+| **GitLab with a local Codex review** | `required: [{ marker: "codex", logins: ["<the account the review token posts as>"] }]` | A CI job runs Codex on your own runner and posts the marker. The only reviewer setup mapped on GitLab. The review token is its own identity, or, from `codex-mr-review` 0.2.0, the driver's own account. See review-setup.md for both. Profile: `profiles/review-codex-local.yml` |
 | **Humans only, or nobody** | `required: []` | Gates for `CHANGES_REQUESTED` and thread resolution still apply to human reviews |
 
 See [review-setup.md](https://github.com/sixoverground/claude-phases/blob/main/docs/review-setup.md) for the full walkthrough of each.

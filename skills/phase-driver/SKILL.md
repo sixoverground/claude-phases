@@ -1,6 +1,6 @@
 ---
 name: phase-driver
-description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.12.0.
+description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.13.0.
 model: opus
 ---
 
@@ -22,6 +22,7 @@ Read `references/recovery.md`, `references/gates.md`, `references/watching.md`, 
 8. **Never claim work you didn't do.** If tests didn't run, say so in the change request's description. If you can't tell why CI failed, say that and link the run.
 9. **Invoke this skill at the start of every wake, even when you remember it.** Its front matter names the model for the turn it is invoked in and for nothing after. A wake that acts without invoking it runs that turn on whatever model the session was started with. Remembering the rules is not the same as having them applied.
 10. **An unreachable forge is a wait, not a block.** When the forge does not answer at all, mark nothing `Blocked` and count nothing toward `stuck.max_cycles`. Tell the user once and carry on when it answers, as [The forge is unreachable](references/recovery.md#the-forge-is-unreachable) says. A status write that could not be made means the action it describes has not started.
+11. **Stamp everything you post on a change request, and never write another actor's line.** Every comment, reply and note you write ends with `<!-- phases:driver v=1 -->`, and you never write a review marker, a reviewer stamp, or any hidden line copied from someone else's note. See [Stamp what you write](#stamp-what-you-write).
 
 ## The forge
 
@@ -32,6 +33,26 @@ The forge is the service that hosts the repos: it holds the change requests, the
 **Read the reference for every forge the plan resolves to, at Reconcile, and again after any compaction.** It is a reference, read lazily, so a compaction can drop it while this file survives. A driver acting on this file alone will reach for the wrong tool, and on GitHub one wrong tool for opening a change request still succeeds while making sure it is never reviewed.
 
 **A forge with no reference in this copy stops the driver.** If a repo resolves to a forge whose `references/forge-<forge>.md` does not exist beside this file, stop at Reconcile before writing anything: no claim, no `Heartbeat`, no **For the driver** section, no branch. Say which repo names which forge, that this copy of the driver has no reference for it, and that a newer release may. That is also what a plan written for a newer release does on an older install, and it is the right answer there too: guessing a forge's API from another forge's reference is how a change request gets opened that nobody reviews, or a plan write lands somewhere nobody reads.
+
+## Stamp what you write
+
+**Every comment, reply, review body and note you post on a change request, on every forge, ends with this line**, on a line of its own:
+
+```
+<!-- phases:driver v=1 -->
+```
+
+It is the reserved consumer stamp of the [review contract](https://github.com/sixoverground/claude-phases/blob/main/docs/review-contract.md), version 1.1. It says the note is the driver's. Forges hide an HTML comment when they render the note, so a person reading the change request sees nothing new. It exists for the day a reviewer, a person and the driver all post from one account: the stamp, not the account, is then what tells your notes apart from theirs.
+
+**It is the last line, never the first.** Some of your comments already begin with a marker that recovery finds by the comment's first line, `<!-- phase-driver:arbiter ... -->` and `<!-- phase-driver:after-merge ... -->`. Those keep their first line, and the stamp goes at the end.
+
+**Stamped:** gate reports and ready-to-merge reports, replies in review threads, the arbiter's verdict, the after-merge comment, a note disclosing a re-run, the comment after a merge, a stop report, a request to a reviewer for a newer review, and anything else you say to a person on the change request.
+
+**Not stamped:** the change request's title and description, commit messages, and the plan file. None of them is a note on the change request.
+
+### Never write another actor's line
+
+You already never write a review marker ([`gates.md`](references/gates.md#the-review-marker)). You also never write a reviewer stamp, `<!-- phases:reviewer ...`, and **never copy a hidden HTML comment line out of someone else's note into your own**, quoted or not: a reviewer's fingerprint, its stamp, its marker, or anything else between `<!--` and `-->`. When you quote a finding, quote the words a reader can see. On a shared account a fingerprint, stamp or marker inside a note of yours would be taken for the reviewer's, and could hide a finding or prove a review that never happened.
 
 ## 1. Find the plan
 
@@ -203,9 +224,9 @@ A plan starts without that section, so the first finding creates it, immediately
 
 **Append to it; never add a phase.** Recording is execution and belongs to you. Deciding that a finding is worth a phase means writing scope, acceptance criteria, UAT and dependencies for it, which is planning: it belongs to `phase-planner` and to the person whose plan it is. Tell the user what you recorded and let them ask for a phase. A driver that adds phases because a reviewer suggested something is re-planning a project mid-flight on the say-so of a tool that has read one diff.
 
-Every outcome above resolves a review bot's thread, and that is deliberate. A thread held open only because you disagreed with a bot stalls the phase until a person settles a question the reply has already answered, and under YOLO nobody is coming to settle it. The reply is the record: it stays on the change request, readable, and anyone who thinks you were wrong can reopen the thread. That is why the reasoning has to be checkable.
+Every outcome above resolves a review bot's thread, and that is deliberate. Which threads are a bot's and which a person's is decided by [Whose note it is](references/gates.md#whose-note-it-is). A thread held open only because you disagreed with a bot stalls the phase until a person settles a question the reply has already answered, and under YOLO nobody is coming to settle it. The reply is the record: it stays on the change request, readable, and anyone who thinks you were wrong can reopen the thread. That is why the reasoning has to be checkable.
 
-**A thread a person opened is resolved only when you fixed what it raised or recorded it as out of scope.** Any other answer, minor or wrong, goes in as a reply and the thread stays open for them. They can answer, and resolving their comment for them overrules someone who is present. This holds everywhere a later step says to resolve, the arbiter's verdicts included.
+**A thread a person opened is resolved only when you fixed what it raised or recorded it as out of scope** (a person's, by [Whose note it is](references/gates.md#whose-note-it-is)). Any other answer, minor or wrong, goes in as a reply and the thread stays open for them. They can answer, and resolving their comment for them overrules someone who is present. This holds everywhere a later step says to resolve, the arbiter's verdicts included.
 
 **Resolving a thread does not clear gate 4.** If a bot's latest review is `CHANGES_REQUESTED` and you answer it without pushing, the review still blocks until that bot submits a newer one. Ask it for one where the integration has a way (the forge reference lists them). Where it has none, mark the row `Blocked` with that reason now rather than waiting for `stuck.max_cycles` to find it.
 
@@ -286,7 +307,7 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
 
 4. **Its limits.** Say these in the brief. It may not `accept` an in-scope defect in correctness, security, or data: those are `fix` or `rework`. It may `reject` only with the checkable reasoning [a disagreement needs](#answering-a-review). It never widens the phase or adds one; out of scope is `carry` or `issue`. On a thread a person opened, an `accept` or `reject` goes in as a reply and the thread stays open, [as anywhere else](#answering-a-review).
 5. **Post the verdict before you act on it.** One comment on the change request whose first line is `<!-- phase-driver:arbiter <phase id>:<count> -->`, with the same entry you recorded in step 1, then the overall call, the bar, and each group with its verdict and reasoning. Say whether it came from a separate subagent. Under YOLO the phase can merge without anyone having read the change request, and this comment is how someone reading it afterwards finds out why threads were resolved without a fix.
-6. **Act on it in one push**, by the table, in the turn the verdict lands. Resolve each bot's thread with its reply, and each person's thread only where you fixed or carried what it raised. Where you are sure a verdict lets through something broken, fix it anyway and say so in the reply: the limits run one way, so you can do more than it asks about a defect, never less.
+6. **Act on it in one push**, by the table, in the turn the verdict lands. Resolve each bot's thread with its reply, and each person's thread only where you fixed or carried what it raised, telling them apart by [Whose note it is](references/gates.md#whose-note-it-is). Where you are sure a verdict lets through something broken, fix it anyway and say so in the reply: the limits run one way, so you can do more than it asks about a defect, never less.
 
 **An arbitration is not a stop.** It is what happens instead of the stop at `max_review_rounds`, and instead of the stop a [repo's own rule](#the-repos-own-stop-rules) asks for. The row stays `In Review`, nothing is written to `Review-baselines`, and you go from the verdict to the push without anyone's say-so. If a required reviewer is still reviewing the current head when the verdict lands (a 👀 from it, or its check run in progress), you may hold the push so its findings join the same one, since that saves a round. That hold is a wait like any in §4: end the turn saying what you are waiting on, let its result or your check-in wake you, and push then. The first point at which a person is needed is [Stop for a person](#stop-for-a-person), at the arbitration's count plus `extra_rounds`.
 
@@ -387,7 +408,7 @@ Between opening and the person's merge, a milestone PR is handled like any chang
 - **Scope.** "In scope" means the union of the scopes of the phases the milestone ships, read from their Phase Details, **plus what `milestone.prepare` asked for**. The preparation is your own work on this change request, so a wrong version or a bad changelog line is yours to fix, not to carry. Work none of those covers is out of scope, and goes to Carried findings or an issue as it would on a phase.
 - **Where a fix goes.** A commit pushed straight to the target branch, which is the change request's head, the same as the preparation. No fix change request into the feature branch, unless that branch refuses direct pushes.
 - **The head moving.** Every fix commit moves the head, so the gate result is discarded and re-evaluated against the new head, and gate 6 needs the reviewer at that head, exactly as on a phase PR. Rounds are counted the same way, as reviewed heads, starting from the head the change request opened at, so the preparation's commits are not rounds. `Review-baselines` and `Arbitrations` take the milestone's id, as in `M1:3`. The arbiter's brief names every shipped phase's details.
-- **When the gates pass.** Tell the person it is ready, with the per-gate summary, and set the row's `Note` to `ready to merge`, as for a phase with YOLO off. Then wait. A row that reaches a stop goes `Blocked` like any other.
+- **When the gates pass.** Tell the person it is ready, with the per-gate summary, and set the row's `Note` to `ready to merge`, as for a phase with YOLO off. Include the warning about skip instructions in its commits, where the forge reference's **Milestone and integration change requests** says to. Then wait. A row that reaches a stop goes `Blocked` like any other.
 
 The implicit final milestone, §8's integration PR, is not worked this way. §8's rule for it stands.
 

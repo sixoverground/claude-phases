@@ -4,6 +4,22 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.13.0]
+
+### One account, told apart by stamps
+
+The driver, a reviewer and you can now all post from one account. Before, the driver told them apart by account, which meant a reviewer had to have an account of its own, and your own comments on a change request never woke a local session.
+
+* **Review contract 1.1.** A reviewer stamps every note it posts with `<!-- phases:reviewer v=1 reviewer=<name> -->`, and `<!-- phases:driver v=1 -->` is reserved for the driver. The marker is unchanged, so existing reviewers keep working.
+* **The driver stamps its comments.** Every comment, reply and note it posts on a change request ends with its own hidden stamp, and it never copies a reviewer's hidden lines into its notes.
+* **Whose note it is.** Where the account cannot say, the stamp does. A note from your own account without the driver's stamp is yours: the driver answers it and leaves your thread open. A note carrying a reviewer's stamp from an allowed account is the reviewer's, even when that account is also yours. Reviewers on their own accounts, such as cloud Codex, are recognised exactly as before. Notes written by an earlier driver carry no stamp, so they read as yours.
+* **Your own comments wake a local session.** The watcher skips only the driver's own stamped notes, so a comment you post from your account, or a reviewer posting from it, now wakes the driver. After upgrading, the first poll of an open change request reports the old driver's notes once.
+* **Both reviewer arrangements, side by side.** The reviewer setup guide documents two ways to give the GitLab review job its token: your own personal access token, which works on any tier including gitlab.com Free, or a project access token or bot user of its own. Each comes with when to pick it and what it protects, and the personal token comes with a warning about who can read it. The planner proposes whichever a project's review notes show, and asks when they show none.
+
+### A release that a squash message cannot skip
+
+0.12.0 reached `main` with no release: its squash merge quoted a commit containing `[skip ci]`, and GitHub skipped the release workflow. The workflow now also runs when a pull request is merged into `main`, and creates the release only if the version has none. A new `scripts/check-release.sh` says whether the version on `main` has its tag, its release and every skill zip, and prints the repair when it does not. When the driver reports a milestone ready, it names any commit whose message carries a skip instruction.
+
 ## [0.12.0]
 
 ### GitLab, experimentally

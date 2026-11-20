@@ -44,7 +44,7 @@ Subscribe to PR activity for each open phase PR. Webhooks don't reliably deliver
 
 ### Asking a reviewer for a newer review
 
-The core's rule that resolving a thread does not clear gate 4 asks the reviewer for a newer review "where the integration has a way". On GitHub that is re-requesting the review, or its trigger comment such as `@codex review`.
+The core's rule that resolving a thread does not clear gate 4 asks the reviewer for a newer review "where the integration has a way". On GitHub that is re-requesting the review, or its trigger comment such as `@codex review`. The trigger comment is stamped like any other comment you post, as [Stamp what you write](../SKILL.md#stamp-what-you-write) says.
 
 ## The gates
 
@@ -83,6 +83,21 @@ A review's states include `APPROVED`, `CHANGES_REQUESTED` and `COMMENTED`. A req
 ### Gate 5: threads
 
 A review thread is resolved when `isResolved == true`.
+
+A reply you post in a thread, like every comment you post, ends with the driver's stamp, as [Stamp what you write](../SKILL.md#stamp-what-you-write) says.
+
+#### Whose thread it is
+
+The core decides whose a note is by [Whose note it is](gates.md#whose-note-it-is), and a thread is its first comment's. On GitHub the fields are:
+
+- **The first comment** of a review thread: `comments(first: 1)` on the thread in GraphQL, or the review comment with no `in_reply_to_id` in REST. Its `body` holds any stamp or marker, and `author.login` (GraphQL) or `user.login` (REST) its author.
+- **The account the driver acts as**: `gh api user --jq .login`. Compare logins case-insensitively, ignoring a trailing `[bot]`.
+- **A bot account**: GitHub types it as one, `user.type == "Bot"` in REST or `author.__typename == "Bot"` in GraphQL. Cloud Codex, Copilot, `claude[bot]` and other GitHub Apps are found this way, exactly as before stamps.
+- **An author in `logins`**: in the `logins` of a `review.required` entry and **not** the account the driver acts as. On one account the author is the driver's own, and only a reviewer stamp or marker in the body makes the comment a reviewer's.
+
+So a thread is **a reviewer's** when its first comment carries no driver stamp and either its author is a `Bot`, or is in a `logins` that is not the driver's own, or the comment carries a reviewer stamp or marker naming a configured `marker` entry from one of its `logins` where it lists any. It is **the driver's** when its first comment is from the driver's account and carries the driver stamp. Anything else is **a person's**, including an unstamped comment from the driver's own account.
+
+A comment the driver wrote before it stamped its comments reads as a person's, which errs toward a wake and an open thread, as the core says.
 
 ### Gate 6: reviewer
 
@@ -225,6 +240,8 @@ A failed delete is not a failed merge. Branch protection or a ruleset can forbid
 ## Milestone and integration change requests
 
 Both are PRs from the repo's `target_branch` to its default branch, opened the GitHub MCP way and for the same reason as a phase PR (see [Opener identity](#opener-identity)). Find one by [Find](#find).
+
+**Warn about skip instructions before it is merged.** When you report one ready, read the messages of the commits it would squash, `gh api --paginate repos/<owner>/<repo>/pulls/<n>/commits --jq '.[] | [.sha[0:7], .commit.message] | @tsv'`, and look for any of GitHub's skip instructions: `[skip ci]`, `[ci skip]`, `[no ci]`, `[skip actions]`, `[actions skip]`, matched case-insensitively. A squash merge's default message quotes every one of those messages, and GitHub skips a push-triggered workflow on the default branch when the pushed commit's message contains one, so a release or deploy that runs on that push would not run. If any commit carries one, add to the ready message which commits, and that a squash merge would quote them, so the person can trim the squash message or check afterwards that the workflow ran. It changes nothing and blocks nothing: the merge is still theirs.
 
 ## Re-sync a branch
 

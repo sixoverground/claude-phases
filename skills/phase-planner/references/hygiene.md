@@ -22,6 +22,8 @@ Watch for it on the first phase PR: a review that describes files rather than ch
 
 ## Prevents wasted CI and accidental deploys
 
+**A release or deploy that a squash message can skip.** Where a merge to the default branch releases or deploys through a push-triggered workflow, a skip instruction in the merge commit's message stops it. Plan commits end `[skip ci]`, and phases that discuss it quote it, so a milestone's squash message, which quotes every commit it squashes, can carry it. Two fixes, and either is enough: trigger the release on the merged change request too (on GitHub, `pull_request_target` with `types: [closed]` and a condition on `merged`, running nothing from the pull request), or have `milestone.after_merge` confirm the release happened and start it when it did not. The driver also warns when a milestone PR's commits carry one.
+
 **`paths-ignore: ['docs/plans/**']`** on push-triggered workflows. The driver writes three plan commits per phase to the plan branch. Without this they burn CI minutes, and on a repo that deploys from that branch they trigger deploys. The driver also appends `[skip ci]` to plan commits, but `paths-ignore` is belt and braces.
 
 Less of a concern when the plan branch isn't the default branch, since push triggers are often pinned to the default, but preview deploys usually aren't, so check rather than assume.
@@ -78,7 +80,12 @@ Only for a repo whose forge is `gitlab`. The items above are written for GitHub;
 
 **The review job must not be `allow_failure: true`.** A marker reviewer that fails posts no marker, so gate 6 blocks, which is right. A job allowed to fail also shows gate 3 a pass, so the only sign of a broken reviewer is a phase waiting on gate 6 with every check green. Let it fail red. This holds for any job that runs a `marker` reviewer.
 
-**The review job's token variable must not be protected.** GitLab gives a protected CI/CD variable only to pipelines on protected branches, and phase branches are not protected, so the job fails on every phase MR saying its token is missing. Mark it masked and not protected. And make it a different account from the one the driver acts as, or `logins` stops meaning anything and the watcher, which ignores the driver's own notes, never wakes for the reviewer.
+**The review job's token variable must not be protected.** GitLab gives a protected CI/CD variable only to pipelines on protected branches, and phase branches are not protected, so the job fails on every phase MR saying its token is missing. Mark it masked and not protected.
+
+**Whose account the review token is.** Two arrangements work, and the plan's `logins` names whichever account the token posts as:
+
+- **The reviewer on its own identity**: a project access token (Premium or Ultimate on gitlab.com; any license on a self-managed instance, created by a Maintainer or Owner) or a bot user's token (any tier). The forge then enforces who can write as the reviewer, and the token reaches only the project. Pick it where other people can push to the project, or where the tier and your role allow a project token.
+- **The reviewer on your own personal access token**, with a reviewer that meets review contract 1.1 and so stamps every note it posts. Works on any tier, gitlab.com Free included. A CI variable is readable by anyone who can change the pipeline, and a personal token reaches everything your account can, so pick it only on a project that is yours alone.
 
 **Plan commits and `[skip ci]`.** The driver ends every plan commit with `[skip ci]`, which GitLab honours for push pipelines. A `rules: changes` exclusion on push-triggered jobs, so they do not run when only `docs/plans/**` changed, is belt and braces, as `paths-ignore` is on GitHub. It matters most where the plan branch deploys.
 
