@@ -1493,8 +1493,8 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T01:46:32Z
-- Note: -
+- Heartbeat: 2026-11-20T01:54:18Z
+- Note: M4 ready to merge (#52, 410da71, codex reviewed it clean)
 
 ## Carried findings
 
