@@ -510,23 +510,23 @@ Never merge either. That is the core's rule, and nothing on GitLab changes it.
 
 ## Re-sync a branch
 
-The core says which case applies and that every move is conditional on the head just checked. Git's own leases do that on any forge, so on GitLab the pushes are the same as on GitHub:
+The core says which case applies and that every move is conditional on the head just checked. Git's own leases do that on any forge, so on GitLab the pushes are the same as on GitHub, with `<release sha>` the release branch's head, never the default branch's unless the two are one branch:
 
 | Case | Push |
 |---|---|
-| Re-create | `git push --force-with-lease=refs/heads/<target_branch>: origin <default sha>:refs/heads/<target_branch>` (an empty lease means "must not exist") |
-| Fast-forward | `git push origin <default sha>:refs/heads/<target_branch>` (a plain push refuses anything but a fast-forward) |
-| Squash or rebase | `git push --force-with-lease=refs/heads/<target_branch>:<merged head sha> origin <default sha>:refs/heads/<target_branch>` |
+| Re-create | `git push --force-with-lease=refs/heads/<target_branch>: origin <release sha>:refs/heads/<target_branch>` (an empty lease means "must not exist") |
+| Fast-forward | `git push origin <release sha>:refs/heads/<target_branch>` (a plain push refuses anything but a fast-forward) |
+| Squash or rebase | `git push --force-with-lease=refs/heads/<target_branch>:<merged head sha> origin <release sha>:refs/heads/<target_branch>` |
 
 Read both heads with `git ls-remote`, as the core says. The "merged head" is the milestone MR's `sha` at merge, and the commit the merge made is its `merge_commit_sha`, or its `squash_commit_sha` when it was squashed and the project made no merge commit.
 
 **The branches API can re-create a branch, and cannot move one.** The re-create case may instead go through:
 
 ```sh
-glab api --hostname <host> -X POST projects/<P>/repository/branches -f branch=<target_branch> -f ref=<default sha>
+glab api --hostname <host> -X POST projects/<P>/repository/branches -f branch=<target_branch> -f ref=<release sha>
 ```
 
-which creates the branch only if no branch of that name exists, the same condition as the empty lease. Read `commit.id` from the response and check it is `<default sha>`. The API documents no refusal for an existing name, so if it answers anything but `201 Created`, re-read both heads and apply the core's rules again. Prefer it only where git cannot push to the host from this session.
+which creates the branch only if no branch of that name exists, the same condition as the empty lease. Read `commit.id` from the response and check it is `<release sha>`. The API documents no refusal for an existing name, so if it answers anything but `201 Created`, re-read both heads and apply the core's rules again. Prefer it only where git cannot push to the host from this session.
 
 **There is no API to move an existing branch to a new sha.** Deleting and re-creating it is not a move: it is unconditional, so it could drop a commit pushed between the read and the delete, which is the outcome the core's last case exists to prevent. GitLab also refuses to delete a protected branch at all. So the fast-forward and squash cases are always the git pushes above.
 

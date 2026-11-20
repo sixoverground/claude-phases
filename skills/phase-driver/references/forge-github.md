@@ -245,13 +245,13 @@ Both are PRs from the repo's `target_branch` to its release branch, `release_bra
 
 ## Re-sync a branch
 
-The core says which case applies and that every move is conditional on the head just checked. On GitHub the push for each case is:
+The core says which case applies and that every move is conditional on the head just checked. `<release sha>` is the release branch's head (SKILL.md, **The release branch**), read with `git ls-remote` as the core says, never the default branch's unless the two are one branch. On GitHub the push for each case is:
 
 | Case | Push |
 |---|---|
-| Re-create | `git push --force-with-lease=refs/heads/<target_branch>: origin <default sha>:refs/heads/<target_branch>` (an empty lease means "must not exist") |
-| Fast-forward | `git push origin <default sha>:refs/heads/<target_branch>` (a plain push refuses anything but a fast-forward) |
-| Squash or rebase | `git push --force-with-lease=refs/heads/<target_branch>:<merged head sha> origin <default sha>:refs/heads/<target_branch>` |
+| Re-create | `git push --force-with-lease=refs/heads/<target_branch>: origin <release sha>:refs/heads/<target_branch>` (an empty lease means "must not exist") |
+| Fast-forward | `git push origin <release sha>:refs/heads/<target_branch>` (a plain push refuses anything but a fast-forward) |
+| Squash or rebase | `git push --force-with-lease=refs/heads/<target_branch>:<merged head sha> origin <release sha>:refs/heads/<target_branch>` |
 
 When the update is refused, report the matching command from the table, filled in.
 
