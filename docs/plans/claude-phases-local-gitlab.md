@@ -104,8 +104,8 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Merged | [sixoverground/codex-mr-review#4](https://github.com/sixoverground/codex-mr-review/pull/4) | 10 |
 | 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | Merged | [#45](https://github.com/sixoverground/claude-phases/pull/45) | 7, 11 |
 | 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Merged | [#46](https://github.com/sixoverground/claude-phases/pull/46) | 15, 16, 4, 5a, 5b, 6, 7, 12 |
-| 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project, with the driver and the reviewer on one account; `examples/gitlab-local.md`; fixes the trial exposes | 13 | In Review | [#53](https://github.com/sixoverground/claude-phases/pull/53) | M4, 20 |
-| 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Pending | - | 13 |
+| 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project, with the driver and the reviewer on one account; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Merged | [#53](https://github.com/sixoverground/claude-phases/pull/53) | M4, 20 |
+| 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | In Progress | - | 13 |
 | 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | Pending | - | 13, 14 |
 | 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Merged | [#38](https://github.com/sixoverground/claude-phases/pull/38) | M1 |
 | 25 | claude/codex-review-state | sixoverground/claude-phases | Gate 6 on GitHub reads Codex's `codex-review-state` comment as proof for the head it names, and as a sign for `rereview: optional` | 16 | Merged | [#39](https://github.com/sixoverground/claude-phases/pull/39) | 15 |
@@ -1489,12 +1489,12 @@ After merging:
 - YOLO: off
 - Driver-ID: drv-ea7de5ba
 - Driver-Host: Raphael.local 45318 Fri Nov 20 14:32:31 2026 UTC
-- Active: 13 — claude/gitlab-trial (#53)
+- Active: 14 — claude/gitlab-cleanup
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T15:06:58Z
-- Note: ready to merge
+- Heartbeat: 2026-11-20T15:24:59Z
+- Note: Phase 13 merged (#53). Phase 14 claimed
 
 ## Carried findings
 
@@ -1507,3 +1507,6 @@ After merging:
 
 - [x] **A milestone's squash merge can skip its own release.** On #46 (M2), the squash commit's message quoted a phase commit containing the literal text `[skip ci]` ("don't count on [skip ci] in an MR title", from 5a), so GitHub skipped the push-triggered Release workflow: no `v0.12.0` tag or GitHub release was created, although the plugin update installed 0.12.0 from `main`. Out of scope for M2, whose scope is the phases it ships. Candidates: `milestone.prepare` or the milestone PR body tells the person to trim the squash message of `[skip ci]` and its variants before merging; or `release.yml` also runs on `workflow_dispatch` and the driver's after-merge step checks for the tag and says how to dispatch it. Planned as phase 22, shipping in `M4`: the release job also starts from the merged pull request, which does not read the squash message, and `milestone.after_merge` in this plan now confirms the release and dispatches it when it is missing, which covers `M4`'s own merge.
 
+- **The planner's template and format show `YOLO: on`, while the planner's SKILL.md says to default it off.** Found in phase 13's trial (#53, "Observations for the plan"): `plan-template.md` line 111 and `format.md` line 204 carry `YOLO: on`. Out of scope for phase 13, whose corrections were the GitLab references and docs. A one-line fix in each, if the plan's author wants it in phase 14.
+- **The driver does not check its own phase commit messages for a skip instruction.** On #53 the driver's commit body quoted `[skip ci]` while describing a correction, and GitHub ran no workflow on the PR until the commit was reworded. Phase 22 warns about skip text in a milestone's commits only. Candidate: the same read before opening any change request, in both forge references' **Open**.
+- **Three things the GitLab trial could not exercise.** From #53: the re-sync of a milestone branch on GitLab (the driver skips it when no row targets the branch, which is always so after the last milestone; a toy plan needs a phase after its milestone), recovery from a truly cold start (the trial's new session was resumed with the old conversation), and a reviewer on an identity of its own (gitlab.com Free has no project access tokens). Phase 14's Known gaps should name them; exercising them is a later plan's work.
