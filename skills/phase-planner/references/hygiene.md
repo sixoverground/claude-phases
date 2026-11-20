@@ -22,6 +22,8 @@ Watch for it on the first phase PR: a review that describes files rather than ch
 
 ## Prevents wasted CI and accidental deploys
 
+**A release or deploy that a squash message can skip.** Where a merge to the default branch releases or deploys through a push-triggered workflow, a skip instruction in the merge commit's message stops it. Plan commits end `[skip ci]`, and phases that discuss it quote it, so a milestone's squash message, which quotes every commit it squashes, can carry it. Two fixes, and either is enough: trigger the release on the merged change request too (on GitHub, `pull_request_target` with `types: [closed]` and a condition on `merged`, running nothing from the pull request), or have `milestone.after_merge` confirm the release happened and start it when it did not. The driver also warns when a milestone PR's commits carry one.
+
 **`paths-ignore: ['docs/plans/**']`** on push-triggered workflows. The driver writes three plan commits per phase to the plan branch. Without this they burn CI minutes, and on a repo that deploys from that branch they trigger deploys. The driver also appends `[skip ci]` to plan commits, but `paths-ignore` is belt and braces.
 
 Less of a concern when the plan branch isn't the default branch, since push triggers are often pinned to the default, but preview deploys usually aren't, so check rather than assume.

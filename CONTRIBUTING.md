@@ -37,6 +37,10 @@ claude plugin validate . --strict
 
 CI does not run this yet. Run it before you push if you touched anything under `.claude-plugin/`.
 
+## Releasing
+
+A release is the version in `.claude-plugin/plugin.json` reaching `main`. `.github/workflows/release.yml` creates the tag, the GitHub release and the skill zips, from a push that changes the manifest or from the merged pull request, so a `[skip ci]` quoted in a squash message cannot skip it. Afterwards, `scripts/check-release.sh` says whether the version on `main` has its tag, its release and every zip, and prints the command that repairs it when it does not.
+
 ## Scope
 
 Good contributions: a CI or review provider that the current model handles badly, a recovery case the driver gets wrong, a gate that deadlocks on a setup nobody anticipated.

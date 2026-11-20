@@ -65,7 +65,7 @@ defaults:
 | `yolo` | `true` | `false` pins this repo to manual merges regardless of the global toggle. Config can only restrict, never force |
 | `integration_pr` | `true` | `false` means the driver never opens the implicit final milestone in this repo: the change request from `target_branch` to the default branch when a plan without milestone rows completes. For a team that ships its feature branches its own way. It has no effect on explicit milestone rows, which a plan author wrote on purpose. What it does to the cumulative UAT is in [YOLO](#yolo) |
 | `milestone.prepare` | absent | Prose the driver follows on `target_branch` before it opens a [milestone](format.md#milestone-rows) PR: a version bump, a changelog section, anything a release of this repo needs. Committed straight to the branch. Absent means the milestone PR opens with no preparation |
-| `milestone.after_merge` | absent | Prose the driver follows after a person has merged a milestone PR and the branch is back in line with the default branch: updating an installed copy, announcing a release. Absent means nothing runs beyond the re-sync |
+| `milestone.after_merge` | absent | Prose the driver follows after a person has merged a milestone PR and the branch is back in line with the default branch: updating an installed copy, confirming that a release happened and starting it when it did not, announcing a release. Absent means nothing runs beyond the re-sync |
 
 Both milestone keys apply only to milestone rows. Neither runs for the implicit final milestone, the integration PR at the end of a plan with no milestone rows, unless it is set.
 
