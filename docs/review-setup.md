@@ -237,10 +237,19 @@ The review needs a machine with the Codex CLI logged in, which usually means a M
 npm install -g github:sixoverground/codex-mr-review#v0.2.0
 codex-mr-review --version
 codex login
-bash -lc 'command -v codex codex-mr-review'
 ```
 
-The last line checks that both are on the `PATH` of a login shell, which is what the shell executor runs. Register the runner with the `shell` executor and a tag, and leave **Protected** off, as [hygiene](../skills/phase-planner/references/hygiene.md#gitlab) explains for any runner a phase MR's pipeline needs. Keep the runner user's `~/.codex/AGENTS.md` empty: the tool ignores Codex's `config.toml` but Codex still reads that file, and the tool warns when it has content.
+**Give the runner a `PATH` that reaches them.** A runner started with `brew services start gitlab-runner` is a launchd agent, and launchd hands it `/usr/bin:/bin:/usr/sbin:/sbin`. The shell executor runs each job in a bash login shell, which adds only what `~/.bash_profile` or `~/.profile` says, and a zsh user usually has neither. So `node` from nvm, and `codex` from Homebrew, are not found, and the job fails before it reviews anything. Set the `PATH` when you register, with every directory the job needs:
+
+```sh
+gitlab-runner register --non-interactive --url https://<host> --token <runner token> \
+  --executor shell \
+  --env "PATH=$(dirname "$(command -v node)"):$(dirname "$(command -v codex)"):/usr/bin:/bin:/usr/sbin:/sbin"
+brew services start gitlab-runner
+env -i HOME="$HOME" PATH="<the PATH you set>" bash -lc 'command -v node codex codex-mr-review'
+```
+
+The `--env` line becomes `environment = [...]` under the runner in `~/.gitlab-runner/config.toml`, where you can change it later. The last line runs the check the way a job will; it must print three paths. Seen in the first GitLab trial, on a Mac with Node from nvm and zsh as the login shell: `bash -lc` with launchd's `PATH` found none of them. Create the runner token under the project's **Settings > CI/CD > Runners** (or `POST /user/runners`) with a tag, and leave **Protected** off, as [hygiene](../skills/phase-planner/references/hygiene.md#gitlab) explains for any runner a phase MR's pipeline needs. Keep the runner user's `~/.codex/AGENTS.md` empty: the tool ignores Codex's `config.toml` but Codex still reads that file, and the tool warns when it has content.
 
 ### Add the job
 

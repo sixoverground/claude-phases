@@ -161,7 +161,7 @@ There is no atomic cross-repo merge, because three PRs can't land as one transac
 
 The only required platforms are GitHub and Claude Code. Languages, CI providers, review tools, and branch conventions are configurable.
 
-**GitLab is supported too, experimentally**, on gitlab.com or a self-managed instance (`forge: gitlab`). It was written against `glab` and GitLab's API documentation and tested with stand-ins, but no plan has yet been driven end to end on a real GitLab project, so expect rough edges and report them. The label comes off once one has. Review there runs as a CI job that posts the [review contract](docs/review-contract.md)'s marker; see [GitLab with a local Codex review](docs/review-setup.md#gitlab-with-a-local-codex-review).
+**GitLab is supported too, experimentally**, on gitlab.com or a self-managed instance (`forge: gitlab`). It was written against `glab` and GitLab's API documentation and tested with stand-ins, and one plan has since been driven end to end on gitlab.com ([examples/gitlab-local.md](examples/gitlab-local.md)). A self-managed instance has not, so expect rough edges there and report them. Review there runs as a CI job that posts the [review contract](docs/review-contract.md)'s marker; see [GitLab with a local Codex review](docs/review-setup.md#gitlab-with-a-local-codex-review).
 
 CI is modelled as three separable capabilities rather than a list of vendors, so a setup nobody anticipated still works:
 
@@ -255,7 +255,7 @@ Treat the first plan you drive as a test, and read [SECURITY.md](SECURITY.md) be
 - [Review contract](docs/review-contract.md). What a reviewer you build must post for the merge gate to read it.
 - [Running locally](docs/running-locally.md). Driving a plan from a terminal on your own Mac, with a watcher instead of webhooks.
 - [Design notes](docs/design.md). Why the rules are what they are, and what a green check doesn't tell you.
-- [Examples](examples/). A two-phase single repo, a four-repo cross-platform plan, and a feature-branch plan with a milestone.
+- [Examples](examples/). A two-phase single repo, a four-repo cross-platform plan, a feature-branch plan with a milestone, and the plan from the first GitLab run with an account of every wake.
 - [Profiles](profiles/). Copy-paste config for common CI and review setups.
 - [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md).
 

@@ -288,6 +288,19 @@ An explicit milestone opens with YOLO on or off, where the implicit one opens on
 
 **The re-sync moves a branch only when nothing can be lost.** It is the one place the driver applies force to a ref it did not create, so it refuses on any doubt. It re-creates a deleted branch, fast-forwards one that is behind, and moves one after a squash only if its head is exactly the head that was merged, with a lease on that head so a concurrent push is never overwritten. Anything else is left alone and reported.
 
+## The first GitLab run
+
+A toy plan on a private gitlab.com project: two phases and a milestone, driven from a local session on a Mac, with the project's only runner on that same Mac and Codex reviewing through `codex-mr-review`. One account did everything: the driver, the reviewer's token and the maintainer's own comments. The plan, and every wake it took, are in [`examples/gitlab-local.md`](../examples/gitlab-local.md).
+
+It confirmed the design and corrected the prose:
+
+- **The stamps carried the one-account case.** Nineteen notes across three merge requests, all from one account. The driver read the reviewer's finding as a bot's thread, resolved it after the fix, and left the maintainer's own thread open after disagreeing with it. The watcher woke for the reviewer and for the person, and never for the driver's own replies. Nothing in the account told them apart; only the stamps did.
+- **Recovery and waiting behaved as written.** A session killed mid-phase was replaced by one that took over on the same host and finished the phase from the plan and the forge. A network outage was reported once and waited out, with nothing marked `Blocked`. The recovery was not from a truly cold start, since the new session was resumed with the old one's conversation, and the next run should start one with none.
+- **Three things the references had wrong or left open.** `glab mr create -R` still needs a GitLab remote in the current directory. A runner under launchd gets a `PATH` that finds neither Node nor Codex until you set one at registration. And `[skip ci]` does skip pipelines for plan commits made through the Files API, which the reference had not been able to say. Each is now corrected where it lives, naming the run.
+- **One thing a phase on the same Mac should expect.** The runner and Codex share the network, so an outage fails a review in progress as well as the driver's polls. The driver's one retry per head covers it.
+
+What it did not reach: a self-managed instance, a Developer-role token, a protected target branch, a reviewer on an identity of its own, and the re-sync of a milestone branch, which the driver correctly skipped because no row still targeted it. A self-managed instance differs on most of those, so the first plan on one is the next test.
+
 ## Things deliberately not done
 
 **Writing status inside the phase PR.** Breaks resume. Non-negotiable.
