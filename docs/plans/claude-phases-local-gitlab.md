@@ -104,7 +104,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Merged | [sixoverground/codex-mr-review#4](https://github.com/sixoverground/codex-mr-review/pull/4) | 10 |
 | 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | Merged | [#45](https://github.com/sixoverground/claude-phases/pull/45) | 7, 11 |
 | 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Merged | [#46](https://github.com/sixoverground/claude-phases/pull/46) | 15, 16, 4, 5a, 5b, 6, 7, 12 |
-| 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project, with the driver and the reviewer on one account; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Pending | - | M4, 20 |
+| 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project, with the driver and the reviewer on one account; `examples/gitlab-local.md`; fixes the trial exposes | 13 | In Progress | - | M4, 20 |
 | 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Pending | - | 13 |
 | 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | Pending | - | 13, 14 |
 | 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Merged | [#38](https://github.com/sixoverground/claude-phases/pull/38) | M1 |
@@ -1489,12 +1489,12 @@ After merging:
 - YOLO: off
 - Driver-ID: drv-776734c2
 - Driver-Host: Raphael.local 48542 Tue Nov 17 23:15:56 2026 UTC
-- Active: -
+- Active: 13 — claude/gitlab-trial (setting up the gitlab.com scratch project)
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T02:00:37Z
-- Note: M4 settled (0.13.0 released and installed). Phase 13 waits on its precondition: this session must restart to load 0.13.0; the gitlab.com scratch project, runner and review token are not set up yet
+- Heartbeat: 2026-11-20T13:56:20Z
+- Note: Phase 13 claimed; preconditions pass (0.13.0 loaded, codex-mr-review 0.2.0, gitlab-runner 19.6.0, glab as craigphares)
 
 ## Carried findings
 
