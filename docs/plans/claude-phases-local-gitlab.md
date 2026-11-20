@@ -104,7 +104,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 18 | claude/ci-template-install | sixoverground/codex-mr-review | `.gitlab-ci.yml` job template, one-command install, secret hygiene, README, v0.1.0 | 11 | Merged | [sixoverground/codex-mr-review#4](https://github.com/sixoverground/codex-mr-review/pull/4) | 10 |
 | 19 | claude/review-setup-marker | sixoverground/claude-phases | `docs/review-setup.md` section for GitLab plus local Codex, `profiles/review-codex-local.yml`, planner detects a marker reviewer, GitLab marked experimental | 12 | Merged | [#45](https://github.com/sixoverground/claude-phases/pull/45) | 7, 11 |
 | 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Merged | [#46](https://github.com/sixoverground/claude-phases/pull/46) | 15, 16, 4, 5a, 5b, 6, 7, 12 |
-| 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project, with the driver and the reviewer on one account; `examples/gitlab-local.md`; fixes the trial exposes | 13 | In Progress | - | M4, 20 |
+| 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project, with the driver and the reviewer on one account; `examples/gitlab-local.md`; fixes the trial exposes | 13 | In Review | [#53](https://github.com/sixoverground/claude-phases/pull/53) | M4, 20 |
 | 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Pending | - | 13 |
 | 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | Pending | - | 13, 14 |
 | 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Merged | [#38](https://github.com/sixoverground/claude-phases/pull/38) | M1 |
@@ -1489,12 +1489,12 @@ After merging:
 - YOLO: off
 - Driver-ID: drv-ea7de5ba
 - Driver-Host: Raphael.local 45318 Fri Nov 20 14:32:31 2026 UTC
-- Active: 13 — claude/gitlab-trial (driving the toy plan)
+- Active: 13 — claude/gitlab-trial (#53)
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T14:59:30Z
-- Note: Phase 13: toy plan complete on craigphares/phases-gitlab-trial (!1, !2, M1 !3 all merged). Writing examples/gitlab-local.md and the corrections on claude/gitlab-trial. Working log: ../phases-gitlab-trial-log.md
+- Heartbeat: 2026-11-20T15:04:13Z
+- Note: Phase 13 trial done; #53 open with the example and corrections
 
 ## Carried findings
 
