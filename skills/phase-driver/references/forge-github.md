@@ -231,7 +231,7 @@ Merge with that repo's `merge.method` (`squash`, `merge` or `rebase`). The merge
 
 **Deleting the branch is yours to do because the API will not.** GitHub's merge endpoint has no equivalent of the UI's "delete branch after merge" checkbox, so a driver that merges and stops leaves a branch behind for every phase it shipped, while phases a human merged get cleaned up. Nobody notices until the branch list is half stale and it is no longer obvious which of them are finished.
 
-The core's guard on which branches may be deleted applies unchanged.
+The core's guard on which branches may be deleted applies unchanged. This deletes the branch on GitHub; the driver's local copy is removed separately, after any merge, by the core's [Tidy the local clone](../SKILL.md#tidy-the-local-clone).
 
 A failed delete is not a failed merge. Branch protection or a ruleset can forbid it, and so can the environment the session runs in: a sandboxed one may permit pushes and PR operations while refusing ref deletion at both the git and API layers. Say so once and carry on, because the phase is merged either way and nothing downstream depends on the branch being gone.
 

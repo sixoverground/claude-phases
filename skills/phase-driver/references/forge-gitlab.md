@@ -488,9 +488,11 @@ A merge whose response says the MR is now `merged` is the merge. Confirm it by [
 
 ## Delete the branch
 
-**The server deletes it, and the driver deletes nothing itself.** A phase MR is opened with `--remove-source-branch=true` unless `merge.delete_branch: false`, and GitLab then deletes the source branch at merge, whoever merges: the driver, or a person in the UI, for whom the box is ticked already and who can untick it. That is the gap the GitHub reference describes, closed by the server rather than by the driver.
+**The server deletes it, and the driver deletes nothing on the forge itself.** A phase MR is opened with `--remove-source-branch=true` unless `merge.delete_branch: false`, and GitLab then deletes the source branch at merge, whoever merges: the driver, or a person in the UI, for whom the box is ticked already and who can untick it. That is the gap the GitHub reference describes, closed by the server rather than by the driver.
 
 The core's guard on which branches may be deleted still holds, and is enforced at [Open](#open): only a phase MR, whose branch matches `branch_prefix`, or a plan-write MR, is ever opened with the flag. A milestone or integration MR never is, so the plan branch and a `target_branch` are never deleted by a merge.
+
+The driver's local copy of the branch is not the forge's to delete. The core removes it in [Tidy the local clone](../SKILL.md#tidy-the-local-clone), after any merge, on either forge.
 
 **A branch still there after a merge** means the project or a protection rule kept it. GitLab does not delete a protected branch. Say so once, and recommend the project's *Delete source branch* default under Settings → Merge requests, or the protection rule's exception, as the GitHub reference recommends its own setting. The phase is merged either way.
 

@@ -1,6 +1,6 @@
 ---
 name: phase-driver
-description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.14.0.
+description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.14.1.
 model: opus
 ---
 
@@ -72,6 +72,7 @@ Run this on every invocation and every wake, including when you think you know t
 4. Apply `references/recovery.md` per row. Where the plan and the forge disagree, **the forge is the truth**, fix the plan, never assume.
 5. Rewrite `Heartbeat` and, if you took over, `Driver-ID` and `Driver-Host`.
 6. If the plan has no `## For the driver` section, add it in that same write, between the title paragraph and `## PR Sequence`. Plans written before the section existed lack it, and without it a session that loses this file has nothing to send it back.
+7. **Tidy what a crash left behind.** For each `Merged` phase row whose branch still exists in that repo's local clone, [tidy the local clone](#tidy-the-local-clone). A session that died between the merge and the tidy, or a merge this session never saw, leaves exactly that. Never a `Skipped` row's branch: a skipped phase merged nothing, so its branch may hold the only copy of work someone wants back.
 
 ### For the driver
 
@@ -127,7 +128,7 @@ For each, in order:
 
 1. **Ensure the repo is reachable.** If it isn't in the session's scope, add it and clone it. If access is **denied**, the forge answered and said no (401, 403 or 404): mark that row `Blocked` with the error and carry on with the others. One inaccessible repo must not stall the rest. If the forge is **unreachable**, it did not answer at all (a DNS failure, a timeout, a refused connection, a gateway error): that is not `Blocked`, by golden rule 10.
 2. **Commit `In Progress`** to the plan branch. This is the claim, and it comes first.
-3. **Branch** from that repo's `target_branch`, named from the row's `Branch`.
+3. **Branch** from that repo's `target_branch` as the forge has it now: fetch, then branch from the remote-tracking ref (`origin/<target_branch>`), never from a local branch of the same name, which is only as fresh as the last time something updated it. Name the branch from the row's `Branch`.
 4. **Implement** the phase against its Phase Details: scope, acceptance criteria, risks. Match the surrounding code. Stay inside the phase's scope: if you find unrelated problems, note them in the change request's description rather than fixing them.
 5. **Verify** per that repo's `verify`:
    - `local`. Run the tests and build. They must pass before you push.
@@ -362,7 +363,7 @@ The unmoved head is what this rule turns on, so it says nothing about a phase th
 However the change request merged. You, the user from their phone, or anyone else:
 
 1. Stop watching that change request, as [references/watching.md](references/watching.md) says.
-2. **Commit `Merged`** to the plan branch. If YOLO was on and the change request carried no UAT checklist, append that phase's id to `UAT-pending` in the same write.
+2. **Commit `Merged`** to the plan branch. If YOLO was on and the change request carried no UAT checklist, append that phase's id to `UAT-pending` in the same write. Then [tidy the local clone](#tidy-the-local-clone) for that phase's branch.
 3. Comment on the change request and tell the user.
 4. **Start whatever rows that unblocks**, in the same turn, unless `Driver: paused`.
 5. **If that was the last row**, meaning every row is now `Merged` or `Skipped`, go to §8, in this same turn.
@@ -372,6 +373,20 @@ A merge always advances the plan. YOLO changes who presses the button, never whe
 **When the merged change request is a milestone row's**, the steps run in this order instead: commit `Merged`; [re-sync](#re-sync) the target branch; run that repo's `milestone.after_merge`, if set, and then post its marker comment on the milestone PR (see [Settled](#settled)); tell the user, including anything `after_merge` produced; then start whatever it unblocks, and go to §8 if it was the last row. Re-sync comes before anything starts, because a phase branched from a target branch that is still the pre-merge one, or gone, starts from the wrong base.
 
 Step 5 is the one that gets skipped, so it is worth saying why it exists. Every other transition here is chained: §5 sends a merge to §7, and step 4 sends an unblocked row back to §3. The last merge is the one where step 4 finds nothing to start and the list simply ends, which feels like a completed turn because the previous merges ended the same way. It is not one. Finishing is a transition like any other, and §8 is unreachable from here unless you take it.
+
+### Tidy the local clone
+
+**After a phase's change request merges, however it merged, remove that phase's branch from your own clone of the repo.** The forge removes the remote branch: GitLab at merge, GitHub by the delete in §5. Nothing removes the local one. A clone driven through a whole plan otherwise ends with one stale branch per phase, and `git branch` stops being a list of the work still in flight.
+
+In that repo's clone, in this order:
+
+1. `git fetch --prune origin`, so the remote-tracking refs of branches the forge deleted go too.
+2. If the phase branch is checked out, `git switch --detach origin/<target_branch>`. Detached, so that no local copy of the target branch is created or relied on; §3 branches from the remote-tracking ref.
+3. `git branch -D <branch>`. Capital `-D`, because a squash or rebase merge leaves the branch's own commits off the target branch, and `-d` refuses a branch that has in fact landed.
+
+**The guard is the one every delete has**, checked before step 2: the branch matches that repo's `branch_prefix`, is not the plan branch, and is not any repo's `target_branch`. A milestone row's branch is a `target_branch`, so this never touches it; its [re-sync](#re-sync) is a separate step. **Also leave the branch, and say so once, when the working tree has uncommitted changes, or when the branch's tip is not the change request's final head sha** as the forge reports it. Compare the sha, not the history: after a squash or rebase merge, and once the prune has removed the remote branch, the branch's commits are on no remote ref even when every one of them landed. Anything past that sha, or uncommitted, was not part of what merged, so it is either leftovers or someone's work in progress, and neither is yours to throw away.
+
+This is your clone only, never a person's checkout or a runner's build directory, which is why `merge.delete_branch` does not govern it: that key is about the branch on the forge. **A failure here is not a failure of the merge.** Say so once and carry on; nothing downstream depends on the local branch being gone.
 
 ## Milestones
 
