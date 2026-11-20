@@ -1485,16 +1485,16 @@ After merging:
 
 ## Driver State
 
-- Driver: running
+- Driver: idle
 - YOLO: off
 - Driver-ID: drv-ea7de5ba
 - Driver-Host: Raphael.local 45318 Fri Nov 20 14:32:31 2026 UTC
-- Active: M3 — feature/local-gitlab (#56)
+- Active: -
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T15:51:19Z
-- Note: M3 merged; confirming the release
+- Heartbeat: 2026-11-20T15:51:48Z
+- Note: Plan complete. M3 merged as 0.14.0, released with both zips and installed on the driving Mac. Open carried findings: four, listed below. UAT pending: none. Issue #54 (plugin name fails the strict validator) is open for the maintainer
 
 ## Carried findings
 
