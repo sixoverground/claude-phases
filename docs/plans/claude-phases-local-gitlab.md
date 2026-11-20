@@ -1493,8 +1493,8 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T14:08:18Z
-- Note: Phase 13: toy plan on craigphares/phases-gitlab-trial (main), phase 1 MR !1 open with a planted defect, waiting on its pipeline and the codex marker
+- Heartbeat: 2026-11-20T14:27:18Z
+- Note: Phase 13 trial: toy plan docs/plans/phases-gitlab-trial.md on craigphares/phases-gitlab-trial (main), driven by this session from the clone ../phases-gitlab-trial; phase 1 merged (!1), phase 2 In Review (!2), M1 pending. Working log: ../phases-gitlab-trial-log.md
 
 ## Carried findings
 
