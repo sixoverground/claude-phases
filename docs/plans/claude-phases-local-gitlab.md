@@ -1489,12 +1489,12 @@ After merging:
 - YOLO: off
 - Driver-ID: drv-776734c2
 - Driver-Host: Raphael.local 48542 Tue Nov 17 23:15:56 2026 UTC
-- Active: M4 — sixoverground/claude-phases
+- Active: -
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T01:59:29Z
-- Note: M4 merged; re-sync and after_merge next
+- Heartbeat: 2026-11-20T02:00:37Z
+- Note: M4 settled (0.13.0 released and installed). Phase 13 waits on its precondition: this session must restart to load 0.13.0; the gitlab.com scratch project, runner and review token are not set up yet
 
 ## Carried findings
 
