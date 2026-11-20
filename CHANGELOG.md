@@ -4,6 +4,17 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.14.1]
+
+### The driver tidies its own clone
+
+A local driver's clone kept every phase branch it had ever made. The forge deleted each one at merge (GitLab through `--remove-source-branch`, GitHub through the driver's own delete), but the local copies stayed, and after a plan `git branch` listed every phase as though it were still in flight.
+
+* **After any merge**, by the driver or by a person, the driver now prunes deleted remote branches and removes that phase's local branch from its clone. It leaves the branch, and says so, when the tip is not the change request's final head sha or the working tree has uncommitted changes. The usual delete guard applies, so a milestone's branch, a `target_branch` and the plan branch are never touched.
+* **Reconcile removes what a crash left behind:** the local branch of any `Merged` row. A `Skipped` row's branch is kept.
+* **A phase branches from `origin/<target_branch>`** after a fetch, never from a local branch of the same name, which can be stale.
+* `merge.delete_branch` still governs only the branch on the forge.
+
 ## [0.14.0]
 
 ### GitLab, driven end to end

@@ -117,7 +117,7 @@ git clone https://github.com/acme/acme-web.git ~/phases/acme-web
 cd ~/phases/acme-web && claude --remote-control
 ```
 
-The driver checks out phase branches, resets, rebases and force-pushes with leases. In your checkout that moves your working tree under you and can lose uncommitted work. In a runner's build directory it changes what the runner is building. A clone costs one `git clone` per repo.
+The driver checks out phase branches, resets, rebases and force-pushes with leases. In your checkout that moves your working tree under you and can lose uncommitted work. In a runner's build directory it changes what the runner is building. A clone costs one `git clone` per repo. The driver keeps it tidy itself: after each phase merges it prunes the deleted remote branches and removes that phase's local branch, so `git branch` in the clone lists only work still in flight.
 
 If a CI runner runs on the same Mac, the [hygiene checklist](../skills/phase-planner/references/hygiene.md) has the rest: separate DerivedData for an Xcode build, a simulator the runner does not use, one job at a time on the runner.
 
