@@ -29,6 +29,17 @@ body:
       description: The plugin version, or the commit SHA if you installed from a clone.
 
   - type: dropdown
+    id: forge
+    attributes:
+      label: Forge
+      options:
+        - GitHub
+        - GitLab on gitlab.com
+        - GitLab, self-managed
+    validations:
+      required: true
+
+  - type: dropdown
     id: install
     attributes:
       label: How the skills are installed
@@ -44,7 +55,7 @@ body:
     id: setup
     attributes:
       label: CI and review setup
-      description: Which CI reports on your PRs, and which reviewer. A `profiles/` name is enough if you used one.
+      description: Which CI reports on your PRs or MRs, and which reviewer. A `profiles/` name is enough if you used one. On GitLab, say whether the reviewer posts from your own account or one of its own.
 
   - type: checkboxes
     id: yolo

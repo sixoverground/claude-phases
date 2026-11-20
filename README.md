@@ -3,7 +3,7 @@
 Plan a large change as a series of small pull requests, then let a Claude Code session build and drive them one at a time. You can monitor, pause, or redirect the work from any Claude client, including your phone.
 
 ```
-   docs/plans/my-app.md              a Claude Code session                    GitHub
+   docs/plans/my-app.md              a Claude Code session               GitHub or GitLab
   ┌──────────────────────┐          ┌────────────────────────┐          ┌──────────────┐
   │ Phase 0  Merged      │          │  reconcile             │          │  PR #12  ✓   │
   │ Phase 1  Merged      │◀────────▶│  implement             │◀────────▶│  PR #14  ✓   │
@@ -22,7 +22,7 @@ In a cloud session, webhook events wake the driver. In a session on your own mac
 
 ## Quick start
 
-You need a GitHub repository and a Claude Code session with permission to create branches and pull requests.
+You need a Claude Code session and a repository on GitHub, or a project on GitLab, where it can create branches and pull requests (GitLab calls them merge requests). On GitLab, read [Running locally](docs/running-locally.md) and [GitLab with a local Codex review](docs/review-setup.md#gitlab-with-a-local-codex-review) first: the session usually runs on your own Mac, and review runs as a CI job on a runner you own.
 
 **1. Install the plugin.**
 
@@ -58,13 +58,13 @@ That is the loop. Start with YOLO off while you learn how the driver behaves in 
 - **`phase-planner`** turns a project into a dependency-aware sequence of PR-sized phases.
 - **`phase-driver`** implements those phases and coordinates their branches, checks, reviews, and merges.
 
-The plugin uses a Markdown plan in your repository as its durable state and GitHub as its view of the outside world. The skills themselves are instructions for Claude Code, so the session acts with the same repository permissions you gave it.
+The plugin uses a Markdown plan in your repository as its durable state and the forge, GitHub or GitLab, as its view of the outside world. The skills themselves are instructions for Claude Code, so the session acts with the same repository permissions you gave it.
 
 ## Why the plan is the state
 
 Long-running agent work needs somewhere durable to keep its place. A cloud session's container can be reclaimed, its context can compact, and the session can stop between opening a PR and recording that it did.
 
-So the plan file *is* the state. A new session can read `docs/plans/my-app.md`, compare it with GitHub, reconstruct what happened, and continue without relying on memory. Everything else in the design follows from that. The plan also points back at the driver skill, since a session that has lost the skill still has the plan, and the plan is where it will look.
+So the plan file *is* the state. A new session can read `docs/plans/my-app.md`, compare it with the forge, reconstruct what happened, and continue without relying on memory. Everything else in the design follows from that. The plan also points back at the driver skill, since a session that has lost the skill still has the plan, and the plan is where it will look.
 
 A regular cloud session also remains conversational. You can ask what it is waiting for, pause it, change merge authority, or resolve a blocker without being at the machine where the run began.
 
@@ -84,12 +84,12 @@ The driver merges a phase PR only after every configured gate passes. Each gate 
 
 | Gate | Passes when |
 |---|---|
-| Not a draft | The PR isn't a draft |
+| Not a draft | The PR or MR isn't a draft |
 | No blocking label | No `do-not-merge` / `wip` / `blocked` |
-| Checks green | Every counted check concluded `success`, `skipped`, or `neutral`. Zero checks blocks unless you opt out |
-| No changes requested | No reviewer's latest review is `CHANGES_REQUESTED` |
+| Checks green | Every counted check concluded `success`, `skipped`, or `neutral`: check runs on GitHub, the head pipeline's jobs and any external statuses on GitLab. Zero checks blocks unless you opt out |
+| No changes requested | No reviewer's latest review requests changes. On GitLab this needs an instance that can record a request for changes; where it can't, the gate says it is off rather than passing |
 | Threads resolved | Every review thread is resolved |
-| Reviewer saw *this* commit | Required reviewers evaluated the current head, not an older push |
+| Reviewer saw *this* commit | Required reviewers evaluated the current head, not an older push. On GitLab the proof is a review marker naming that head |
 
 The final gate is the subtle one. Approval of an earlier commit does not cover code pushed later, so reviewer proof is anchored to the current head SHA. Three separate gates answer three separate questions:
 
@@ -159,17 +159,17 @@ There is no atomic cross-repo merge, because three PRs can't land as one transac
 
 ## Requirements and integrations
 
-The only required platforms are GitHub and Claude Code. Languages, CI providers, review tools, and branch conventions are configurable.
+The required platforms are Claude Code and a forge: GitHub, or GitLab on gitlab.com or a self-managed instance. Languages, CI providers, review tools, and branch conventions are configurable.
 
-**GitLab is supported too, experimentally**, on gitlab.com or a self-managed instance (`forge: gitlab`). It was written against `glab` and GitLab's API documentation and tested with stand-ins, and one plan has since been driven end to end on gitlab.com ([examples/gitlab-local.md](examples/gitlab-local.md)). A self-managed instance has not, so expect rough edges there and report them. Review there runs as a CI job that posts the [review contract](docs/review-contract.md)'s marker; see [GitLab with a local Codex review](docs/review-setup.md#gitlab-with-a-local-codex-review).
+**GitLab** is `forge: gitlab`, with `host` set for a self-managed instance. One plan has been driven end to end on gitlab.com, on the Free plan, with the driver, the reviewer and the maintainer on one account ([examples/gitlab-local.md](examples/gitlab-local.md)). **Still experimental**, because still untried: a self-managed instance, a token with the Developer role, a protected target branch, a reviewer on an identity of its own, and moving a feature branch back in line after a milestone. Expect a command to be wrong there, and report it. Review there runs as a CI job that posts the [review contract](docs/review-contract.md)'s marker; see [GitLab with a local Codex review](docs/review-setup.md#gitlab-with-a-local-codex-review).
 
 CI is modelled as three separable capabilities rather than a list of vendors, so a setup nobody anticipated still works:
 
-- **Observe.** Universal. Every CI that integrates with GitHub reports check runs on the commit, so the merge gate reads Actions, Xcode Cloud, CircleCI, Buildkite, and Jenkins identically.
-- **Dispatch.** Optional. GitHub Actions can be triggered on demand; everything else starts on its own conditions, or on a push.
-- **Read logs.** Tiered. Actions gives real failure text. Other providers give a check summary and a link, and when that isn't enough to diagnose a failure the driver says so and links out instead of guessing.
+- **Observe.** Universal. Every CI that integrates with GitHub reports check runs on the commit, so the merge gate reads Actions, Xcode Cloud, CircleCI, Buildkite, and Jenkins identically. On GitLab it reads the jobs of the head's pipeline and any commit statuses an outside CI posts.
+- **Dispatch.** Optional. GitHub Actions can be triggered on demand; everything else, GitLab CI included, starts on its own conditions, or on a push.
+- **Read logs.** Tiered. Actions and GitLab jobs give real failure text. Other providers give a check summary and a link, and when that isn't enough to diagnose a failure the driver says so and links out instead of guessing.
 
-Review works the same way: Copilot, a Claude review workflow, humans only, several at once, or nobody.
+Review works the same way: Copilot, Codex, a Claude review workflow, humans only, several at once, or nobody. On GitLab a reviewer runs as a CI job and proves its review with a marker note, as the [review contract](docs/review-contract.md) defines; [`codex-mr-review`](https://github.com/sixoverground/codex-mr-review) does that for Codex. The reviewer may post from your own account or from one of its own: either works, and [the reviewer setup](docs/review-setup.md#the-token-one-account-or-two-identities) says when to pick which.
 
 See [the configuration reference](skills/phase-planner/references/configuration.md), and [profiles/](profiles/) for copy-paste starting points.
 
@@ -177,7 +177,7 @@ See [the configuration reference](skills/phase-planner/references/configuration.
 
 Running tests in the session is fastest, but it is not always possible. The per-repository `verify` setting defaults to `auto`: try locally, fall back to CI, and record in the PR body which path actually ran.
 
-Web and backend code runs locally. Android runs its JVM unit tests locally and leaves instrumented tests to CI. iOS is CI-only in a cloud session, because building needs macOS and Xcode, which no Linux container has. When the session runs on a Mac with Xcode, iOS is `local`: a quick build for the simulator before each push, with the full test suite left to CI.
+Web and backend code runs locally. Android runs its JVM unit tests locally and leaves instrumented tests to CI. A cloud session leaves iOS to CI, because building needs macOS and Xcode, which no Linux container has. When the session runs on a Mac with Xcode, iOS is `local`: a quick build for the simulator before each push, with the full test suite left to CI.
 
 ## Running locally
 
@@ -233,6 +233,7 @@ Working, and built with its own phased plan. Every commit here arrived through t
 - [x] `phase-planner` skill
 - [x] Examples, profiles, and install instructions
 - [x] Driven a feature in repositories other than this one
+- [x] GitLab: the driver, the planner, a local session with a watcher, and Codex reviewing in your own CI, driven end to end once on gitlab.com. See [The first GitLab run](docs/design.md#the-first-gitlab-run)
 
 ### First production run
 
