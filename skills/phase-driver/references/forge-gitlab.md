@@ -499,6 +499,8 @@ Both are MRs from the repo's `target_branch` to its `default_branch`. Find one b
 
 Pass `--squash-before-merge` from `merge.method` as for a phase. The person who merges can change it.
 
+**Warn about skip instructions before it is merged**, as the GitHub reference does. When you report one ready, read the messages of its commits, `glab api --hostname <host> --paginate "projects/<P>/merge_requests/<iid>/commits?per_page=100"`, field `message`, for `[skip ci]` or `[ci skip]`, matched case-insensitively, which GitLab honours for push pipelines. A squash commit's message can quote them, and then the pipeline on the target branch does not run. Name the commits in the ready message. It changes nothing and blocks nothing.
+
 **The integration MR opens unless the repo's resolved `integration_pr` is `false`**, by §8. With it `false`, open nothing from that repo's `target_branch`, and the cumulative UAT goes to [Issue fallback](#issue-fallback).
 
 Never merge either. That is the core's rule, and nothing on GitLab changes it.

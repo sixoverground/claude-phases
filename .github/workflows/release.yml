@@ -29,9 +29,30 @@ name: Release
 # `workflow_dispatch` re-runs the same job by hand, which is how a release that
 # is missing its zips gets them without a version bump: release.sh finds the tag
 # present and attaches the assets anyway.
+#
+# Three ways a release starts, then:
+#
+#   1. A push to main that changes plugin.json. The ordinary path.
+#   2. A pull request merged into main (`pull_request_target`, `closed`). This
+#      exists because GitHub skips a push-triggered workflow when the pushed
+#      commit's message contains `[skip ci]`, `[ci skip]`, `[no ci]`,
+#      `[skip actions]` or `[actions skip]`. A squash merge's message quotes the
+#      messages of every commit it squashes, and plan commits end `[skip ci]`
+#      by convention, so a milestone's squash merge can carry one. M2's did,
+#      and 0.12.0 reached main with no tag and no release. The closing event is
+#      not a push, so it does not read the squash message. It runs on every
+#      merged PR, which is why it uses `release.sh --if-missing`: it creates a
+#      release only where the version has none, and otherwise does nothing.
+#   3. `workflow_dispatch`, the repair, as above.
+#
+# `scripts/check-release.sh` says whether the version on main has its tag, its
+# release and its zips, and prints the repair when it does not.
 
 on:
   pull_request:
+  # Merged PRs only; the job's condition checks `merged`. See the header.
+  pull_request_target:
+    types: [closed]
   push:
     branches: [main]
     # Only the manifest. Every other push to main is not a release, and a job
@@ -64,8 +85,18 @@ jobs:
 
   release:
     name: Tag and release
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
+    # One merge can start this job twice, from the push and from the merged PR.
+    # Queued, never cancelled, so the second sees the first's release and stops.
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
     # The only job here that needs to write, kept narrow. PR runs never hold a
     # write token because they never reach this job.
     permissions:
@@ -76,6 +107,12 @@ jobs:
       # build its zips, and hand them to `gh release create --target main` —
       # publishing a tag that points at main's code with a feature branch's
       # assets attached. The marketplace serves main, so main is what ships.
+      #
+      # It is also what makes `pull_request_target` safe here. That trigger runs
+      # with a write token in this repository's context, and it is dangerous
+      # only for a job that runs the pull request's code. This job checks out
+      # main and nothing else. Keep it that way: never check out the pull
+      # request's head or merge ref in this job, and never run a script from it.
       - uses: actions/checkout@v4
         with:
           ref: main
@@ -83,4 +120,10 @@ jobs:
       - name: Tag and release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: scripts/release.sh
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = pull_request_target ]; then
+            scripts/release.sh --if-missing
+          else
+            scripts/release.sh
+          fi
