@@ -7,11 +7,22 @@ body:
       value: |
         CI is modelled as three capabilities (observe, dispatch, read logs) rather than a list of vendors, so an unanticipated provider is meant to work. When one does not, that is a gap worth naming.
 
+  - type: dropdown
+    id: forge
+    attributes:
+      label: Forge
+      options:
+        - GitHub
+        - GitLab on gitlab.com
+        - GitLab, self-managed
+    validations:
+      required: true
+
   - type: textarea
     id: setup
     attributes:
       label: Your setup
-      description: The CI provider, the reviewer, and how they report on a pull request.
+      description: The CI provider, the reviewer, and how they report on a pull request or merge request.
     validations:
       required: true
 
@@ -26,6 +37,6 @@ body:
   - type: textarea
     id: check-names
     attributes:
-      label: Check names on a real PR
-      description: The exact names as GitHub reports them, and their conclusions. Detection guesses from workflow files are often wrong; this is the ground truth.
+      label: Check names on a real PR or MR
+      description: The exact names as GitHub reports them, or the job names in the merge request's pipeline on GitLab, and their conclusions. Detection guesses from workflow files are often wrong; this is the ground truth.
       render: text

@@ -175,7 +175,7 @@ Arm whatever wakes you for each open phase PR, as [references/watching.md](refer
 
 **The check-in message is written for a session that has nothing.** It is the one message you send to a future self, and that self may have compacted and lost this file. So it says to invoke `phase-driver`, names the plan file, says to reconcile, and says nothing else. Do not put state or conclusions in it: the plan already holds the state, and a reading recorded in a check-in is re-read as fact on every wake after it. Observed: a driver woken without this file in context merged a green change request and did not start the next phase, because the rule to do so was in here.
 
-Message the user what you started and where. Then **end your turn.** Sleeping is correct; there is nothing to poll.
+Message the user what you started and where. Then **end your turn.** Sleeping is correct; there is nothing for you to poll, since the subscription or the watcher does that and wakes you.
 
 **A wait is never a question for the user.** Whatever you are waiting on, whether CI, a reviewer or the arbiter, ends the wait itself: its webhook, its completion notification or your check-in wakes you, and you act on that wake. So when you end a turn on a wait, say what you are waiting on and what you will do when it lands. Never ask the user to say `continue`, `go` or anything else to release it. Only three things wait on a person: a row in `Blocked`, a merge with YOLO off, and a question this skill tells you to ask. Observed: after an arbitration, a driver held its push until Codex finished reviewing the head, ended its turn waiting for `continue`, and sat idle after Codex finished until the user came back to ask why.
 
