@@ -142,7 +142,7 @@ A person's note asking `@codex review` reaches the watcher as a `review request`
 
 Reactions are not on the list: no gate reads them on GitLab. A request for changes is not either, because it adds no note; see the GitLab reference's **Watch**.
 
-It needs `glab`, authenticated for the host, a `jq` binary (recent macOS ships one in `/usr/bin`; `glab api` has no `--jq` of its own), and bash 3.2. It was tested under macOS's `/bin/bash` 3.2 against a stand-in `glab` that replayed canned API responses and could be made to fail. It has not yet been run against a GitLab server.
+It needs `glab`, authenticated for the host, a `jq` binary (recent macOS ships one in `/usr/bin`; `glab api` has no `--jq` of its own), and bash 3.2. It was tested under macOS's `/bin/bash` 3.2 against a stand-in `glab` that replayed canned API responses and could be made to fail. It then ran under Monitor against gitlab.com for the whole of the first GitLab trial, [`examples/gitlab-local.md`](https://github.com/sixoverground/claude-phases/blob/main/examples/gitlab-local.md), which lists every line it printed: a finding, a marker, a moved head, a person's note and thread, a review request, a merge, and a network outage reported once and then its end. It never woke the session for the driver's own stamped notes.
 
 ```bash
 HOST='[GitLab host, e.g. gitlab.com or gitlab.example.com]'

@@ -6,7 +6,7 @@ A narrative account of the runs behind these rules, including the missing integr
 
 ## Design at a glance
 
-Five principles account for most of the system:
+Six principles account for most of the system:
 
 | Principle | Consequence |
 |---|---|
@@ -15,6 +15,7 @@ Five principles account for most of the system:
 | Only one driver may advance a plan | Driver identity, heartbeats, and blob SHAs form an optimistic lock |
 | A green check is weak evidence | Merge readiness is split into independent CI, review, and thread gates |
 | YOLO delegates phase merges, not final release judgment | The driver may merge phase PRs, but never the final integration PR |
+| The rules name no forge | The core asks questions; one reference per forge, GitHub or GitLab, says how that forge answers them |
 
 If you are new to the project, read [The plan file is the state](#the-plan-file-is-the-state), [What a green check does not prove](#what-a-green-check-does-not-prove), and [Finishing a plan](#finishing-a-plan) first. The remaining sections explain edge cases and the real runs that uncovered them.
 
@@ -22,7 +23,7 @@ If you are new to the project, read [The plan file is the state](#the-plan-file-
 
 A Claude Code cloud session is ephemeral. Its container is reclaimed after inactivity, its context compacts as it grows, and it can die at any moment: mid-implementation, between opening a PR and recording it, between merging and advancing.
 
-That fact drives the design. A fresh session must reconstruct the world from the plan file and GitHub, with no memory of what came before.
+That fact drives the design. A fresh session must reconstruct the world from the plan file and the forge, with no memory of what came before.
 
 ### Status is written outside the phase PR, on the plan branch
 
@@ -288,6 +289,55 @@ An explicit milestone opens with YOLO on or off, where the implicit one opens on
 
 **The re-sync moves a branch only when nothing can be lost.** It is the one place the driver applies force to a ref it did not create, so it refuses on any doubt. It re-creates a deleted branch, fast-forwards one that is behind, and moves one after a squash only if its head is exactly the head that was merged, with a lease on that head so a concurrent push is never overwritten. Anything else is left alone and reported.
 
+## One core, one reference per forge
+
+The driver was written against GitHub, and its rules were full of GitHub: `create_or_update_file` and a blob `sha`, check runs, `CHANGES_REQUESTED`, review threads. Supporting GitLab by adding a GitLab branch to every rule would have doubled each rule and made the two forges drift apart one sentence at a time.
+
+So the rules were split from the mechanics first, before any GitLab code existed. `SKILL.md`, `gates.md` and `recovery.md` now ask questions any forge can answer: is this a draft, did every counted check pass, did a required reviewer evaluate this head, what is the write token. `forge-github.md` and `forge-gitlab.md` each answer them under the same headings. A plan names its forge per repo, and with no `forge` key it is GitHub, exactly as before the key existed.
+
+The split was done behaviour-neutral, in its own phases, with GitHub as the only forge, so that any change in behaviour would show up as a change in a GitHub run rather than hide inside a new forge's first run. A forge reference the installed copy does not have stops the driver at Reconcile, before it writes anything: guessing one forge's API from another's reference is how a change request gets opened that nobody reviews.
+
+## The review contract, and why the script owns the marker
+
+On GitHub, a reviewer proves it looked at a commit through the forge: a review or an inline comment carries the commit it was made on, and a check run carries its head. GitLab gives a self-hosted reviewer nothing like that. A job can post notes, and a note says nothing about which commit it judged.
+
+So a reviewer proves it with a line of its own, the review marker, `<!-- phases:review v=1 reviewer=<name> sha=<full sha> -->`, posted on the merge request after a review completes. [The review contract](review-contract.md) says what a reviewer must post and what it must never post, so that a reviewer built outside this repo can gate a phase. Gate 6 on GitLab reads markers and nothing else.
+
+**The script writes the marker, never the model.** A model asked to end its review with a marker can write one for a review that failed halfway, or copy a sha from the diff it read rather than the one the pipeline ran on. So in `codex-mr-review` the sha comes from the pipeline's variables, the marker is posted by the script only after the review succeeded, and the model's own text is scrubbed of the reserved `<!-- phases:` prefix before anything is posted. A review that fails posts no marker, and the gate blocks, which is the right answer to a review that did not happen.
+
+**A marker is plain text, so `logins` says whose count.** Anyone who can comment can type one. The plan's `marker` entry names the accounts allowed to post it, and a marker from anyone else is ignored.
+
+## The watcher
+
+A cloud session is woken by webhooks. A session on your own machine has none, and a GitLab project may be reachable only from that machine. Polling from inside the conversation would cost a model turn per poll, all night.
+
+So the driver arms a small shell loop, the watcher, under Claude Code's Monitor. It polls the forge once a minute, keeps a snapshot per change request, and stays silent until something changes. Then it prints one line, which is a complete wake message: invoke the skill, reconcile this plan, and here is what changed. Waiting costs nothing, and each wake is a turn spent on a real event.
+
+It holds no state that matters. Its snapshots only decide what to print, so a session that dies loses nothing with its watcher, and the next session's Reconcile arms a new one. It reports a forge that stops answering once, backs off, and reports it answering again, so a night on a laptop that changes networks is two lines, not a stalled plan. And it prints its own fallback check-in by the wall clock, so a Mac that slept through the deadline checks in on the first poll after waking.
+
+## Authorship stamps
+
+The driver used to know who wrote a note by its account. Its own notes came from its account, a reviewer's from a bot account, and a person's from anyone else. With the driver, the reviewer and the person all on one account, which is how most people would run GitLab, every one of those readings collapses. The watcher would ignore the person, and the resolve rules would treat the reviewer's findings as the person's own threads.
+
+So every note says who wrote it, in a hidden line. The driver ends everything it posts with `<!-- phases:driver v=1 -->`. A reviewer meeting the contract's version 1.1 puts `<!-- phases:reviewer v=1 reviewer=<name> -->` in every note it posts. A note with neither is a person's, whatever account posted it.
+
+A stamp is trusted only from an account allowed to write it: the driver's from the account the driver acts as, a reviewer's from that reviewer's `logins`. Anything the reading is unsure of counts as a person's, because a person's thread staying open and a person's note waking the driver are the safe sides of both mistakes. The driver never writes another actor's line, not a marker, not a reviewer stamp, and not a hidden line copied out of someone else's note.
+
+Two identities still work as they always did. A reviewer on its own account is a reviewer by its account, with no stamp needed. The stamps decide only where the account cannot.
+
+## The first GitLab run
+
+A toy plan on a private gitlab.com project: two phases and a milestone, driven from a local session on a Mac, with the project's only runner on that same Mac and Codex reviewing through `codex-mr-review`. One account did everything: the driver, the reviewer's token and the maintainer's own comments. The plan, and every wake it took, are in [`examples/gitlab-local.md`](../examples/gitlab-local.md).
+
+It confirmed the design and corrected the prose:
+
+- **The stamps carried the one-account case.** Nineteen notes across three merge requests, all from one account. The driver read the reviewer's finding as a bot's thread, resolved it after the fix, and left the maintainer's own thread open after disagreeing with it. The watcher woke for the reviewer and for the person, and never for the driver's own replies. Nothing in the account told them apart; only the stamps did.
+- **Recovery and waiting behaved as written.** A session killed mid-phase was replaced by one that took over on the same host and finished the phase from the plan and the forge. A network outage was reported once and waited out, with nothing marked `Blocked`. The recovery was not from a truly cold start, since the new session was resumed with the old one's conversation, and the next run should start one with none.
+- **Three things the references had wrong or left open.** `glab mr create -R` still needs a GitLab remote in the current directory. A runner under launchd gets a `PATH` that finds neither Node nor Codex until you set one at registration. And `[skip ci]` does skip pipelines for plan commits made through the Files API, which the reference had not been able to say. Each is now corrected where it lives, naming the run.
+- **One thing a phase on the same Mac should expect.** The runner and Codex share the network, so an outage fails a review in progress as well as the driver's polls. The driver's one retry per head covers it.
+
+What it did not reach: a self-managed instance, a Developer-role token, a protected target branch, a reviewer on an identity of its own, and the re-sync of a milestone branch, which the driver correctly skipped because no row still targeted it. A self-managed instance differs on most of those, so the first plan on one is the next test.
+
 ## Things deliberately not done
 
 **Writing status inside the phase PR.** Breaks resume. Non-negotiable.
@@ -300,10 +350,18 @@ An explicit milestone opens with YOLO on or off, where the implicit one opens on
 
 **A machine-readable status block alongside the human table.** Two sources of truth for one value diverge. The table is the status; front matter is config; Driver State is liveness.
 
+**Shipping the watcher as a script.** It is a template in `watching.md` that the driver fills in and runs, not a file installed with the plugin. A script would need installing, versioning and a path on every machine, and a skill uploaded to claude.ai cannot carry one. The template travels with the reference that explains it.
+
+**Posting to GitHub from `codex-mr-review`.** GitHub has its own Codex reviewer, which the driver already reads. A second way to get the same review there would be a second setup to keep working for no new capability.
+
+**New rules for reading a self-hosted Codex review.** On GitLab, Codex's review is read through the marker, exactly as any other reviewer meeting the contract would be. Gate 6 has no Codex-specific case there, so a different reviewer, a Claude review job for example, needs no change to the driver.
+
 ## Known gaps
 
 **Nobody notices a dead session.** A dying session cannot report its own death, so a stalled phase looks the same as a slow one. The natural fix is a watchdog on a cold heartbeat, which is what cpm already is, and the strongest argument for eventually connecting the two projects.
 
-**The head can move between the final gate check and the merge.** `merge_pull_request` accepts no expected-SHA, so the window can be narrowed. Re-read the head as the last call before merging, but not closed.
+**The head can move between the final gate check and the merge, on GitHub.** `merge_pull_request` accepts no expected-SHA, so the window can be narrowed. Re-read the head as the last call before merging, but not closed. On GitLab the merge carries the gated head, `glab mr merge --sha`, and GitLab's documentation says it merges only if the head is still that commit, which closes the window. The GitLab run merged that way but never raced it, so the refusal itself is still documented rather than seen.
+
+**What the GitLab run left untested.** A self-managed instance, a token with the Developer role, a protected target branch, a reviewer on an identity of its own, moving a feature branch back in line after a milestone on GitLab, and recovery from a truly cold start there. The GitLab references say so where each would matter, and say what to do when one fails.
 
 **Rate limits are invisible.** A review consuming a large chunk of a subscription's allowance, re-running on every push, can hit a limit mid-phase. A rate-limited reviewer looks like a stalled gate.

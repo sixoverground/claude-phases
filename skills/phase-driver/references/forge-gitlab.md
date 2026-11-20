@@ -6,9 +6,9 @@ On GitLab a change request is a **merge request**, and this file calls it an MR.
 
 Read this file at Reconcile, and again after any compaction, as the core says of every forge reference.
 
-**GitLab support is experimental.** Nothing in this file has driven a real GitLab project end to end yet: no plan has been read and written, no MR opened, gated and merged, and no milestone re-synced on a GitLab server by a driver following it. Until one has, treat a command that fails here as this file being wrong, say so, and do not work around it by guessing. The label comes off when a real project has been driven through all of that.
+**GitLab support is experimental.** One plan has been driven end to end by a driver following this file, on gitlab.com, and [`examples/gitlab-local.md`](https://github.com/sixoverground/claude-phases/blob/main/examples/gitlab-local.md) is that plan with an account of every wake: the plan read and written through the Files API, three MRs opened, gated and merged, a review finding answered, a milestone opened for a person to merge, a session killed and recovered, and a network outage waited out. It has not met a self-managed instance, a Developer-role token, a protected target branch, a reviewer on an identity of its own, or a milestone branch that needed re-syncing, and those are what "experimental" now means. Treat a command that fails here as this file being wrong, say so, and do not work around it by guessing.
 
-**What it was checked against.** Every command here was checked against `glab` 1.131.0 (`glab version`) and the GitLab REST API documentation as published in November 2026. No command in this copy has yet been run against a GitLab server. `glab` flags change between versions, and a self-managed instance can lag gitlab.com by several releases, so a field documented today may be missing on an older server. Where one is, the call fails or the field reads `null`: say which, and treat it as this file being wrong for that server, never as a reason to guess. Re-check these pages when either moves:
+**What it was checked against.** Every command here was checked against `glab` 1.131.0 (`glab version`) and the GitLab REST API documentation as published in November 2026. The commands for setup, Find, Open, the six gates, a job retry, a merge request pipeline, threads, the plan read and write, and Merge were then run against gitlab.com 19.7.0-pre, Free plan, in that trial; the re-sync pushes, the plan-PR fallback and the issue fallback were not. `glab` flags change between versions, and a self-managed instance can lag gitlab.com by several releases, so a field documented today may be missing on an older server. Where one is, the call fails or the field reads `null`: say which, and treat it as this file being wrong for that server, never as a reason to guess. Re-check these pages when either moves:
 
 - [`glab` command reference](https://docs.gitlab.com/cli/)
 - [Repository files API](https://docs.gitlab.com/api/repository_files/)
@@ -122,6 +122,7 @@ glab mr create -R https://<host>/<project path> \
 - **`--squash-before-merge=true`** when `merge.method` is `squash`, and `=false` otherwise. Pass it either way, for the same reason.
 - **`--yes`** makes sure nothing waits on a prompt. With a title and a description given, `glab` 1.131.0 asks nothing anyway.
 - Do not pass `--fill`, which pushes and fills the title from commits, `--push`, or `--auto-merge`.
+- **Run it from the repo's own clone.** `-R` names the project, but `glab mr create` still reads the current directory's git remotes, and from a directory whose remotes are all on another host it refuses: `none of the git remotes configured for this repository point to a known GitLab host`, leaving a recovery file under `glab-cli/recover/` and no MR. Seen in the trial with `glab` 1.131.0, opening the milestone MR from the plan's home repo on GitHub. `glab mr merge` and `glab api` did not care.
 
 The output of `glab mr create` is not a field anything reads. **After it returns, run [Find](#find) for the branch**, and take the MR's `iid` and `references.full` from there. That is the same read Reconcile uses, so the `Link` the core records next is the one a later session will find again.
 
@@ -442,7 +443,7 @@ glab: You are attempting to update a file that has changed since you started edi
 
 That, and only that message, is the stale-write conflict the core's lock rules handle in **Writing to the plan**. Any other refusal of a plan write is not a conflict, so never retry it as one: a 403 or a 400 saying the branch is protected or you may not push means the token cannot write the plan branch, below. Read every token fresh, as the GitHub reference says of its sha: when the plan branch is also a `target_branch`, merging a phase MR moves it.
 
-**`[skip ci]` in the commit message skips the branch pipeline** that a push to the plan branch would otherwise start. GitLab honours it in any capitalisation. Its documentation does not say in so many words that a commit made through this API is treated as a push for this purpose, so if plan commits start pipelines, say so once.
+**`[skip ci]` in the commit message skips the branch pipeline** that a push to the plan branch would otherwise start. GitLab honours it in any capitalisation, and it holds for a commit made through this API: in the trial, every plan write through the Files API left a pipeline on the plan branch with status `skipped` and no jobs, as a `git push` with the same message did. So a skipped plan commit still appears in the pipeline list; nothing ran. If plan commits ever start jobs, say so once.
 
 ### `plan_writes: plan-pr` on GitLab
 
@@ -587,4 +588,4 @@ git clone https://<host>/<project path>.git <a directory of the driver's own>
 
 The driver checks out branches, resets, rebases and force-pushes with leases. Done in a person's checkout, that moves their working tree under them and can lose uncommitted work; done in a runner's build directory, it changes what the runner builds. A clone of its own costs one clone per repo per session.
 
-Run `glab` from that clone or from anywhere else: the explicit `--hostname` and `-R` above mean the current directory never decides which instance or project a call reaches.
+Run `glab` from that clone. The explicit `--hostname` and `-R` above mean the current directory never decides which instance or project a call reaches, but `glab mr create` refuses outright from a directory with no remote on the host, as [Open](#open) says, so a driver whose home repo is on another forge runs it from here.

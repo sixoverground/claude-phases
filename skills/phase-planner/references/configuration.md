@@ -41,7 +41,7 @@ A repo is named by its project path on its forge: `owner/name` on GitHub, `group
 
 Neither key has an off switch: every repo lives on some forge, and leaving both unset is GitHub on `github.com`, exactly as before the keys existed. Set them under `defaults` when every repo is on one forge, or per repo when they are not.
 
-**GitLab support is experimental.** Everything for GitLab was written against `glab` and GitLab's API documentation and tested with stand-ins, but no plan has yet been driven end to end on a real GitLab project. Expect a command or field to be wrong for some server, and report it when one is. The label comes off once a real GitLab project has been driven through planning, a merge request, its pipeline and review, a fix, a merge and a milestone.
+**GitLab support is experimental.** Everything for GitLab was written against `glab` and GitLab's API documentation and tested with stand-ins, then driven end to end once, on gitlab.com's Free plan with one account, through planning, merge requests, their pipelines and review, a fix, merges and a milestone ([`examples/gitlab-local.md`](https://github.com/sixoverground/claude-phases/blob/main/examples/gitlab-local.md)). Still untried, and what "experimental" now means: a self-managed instance, a Developer-role token, a protected target branch, a reviewer on an identity of its own, and the re-sync of a milestone branch. Expect a command or field to be wrong for some server, and report it when one is.
 
 **The home repo's `forge` and `host` decide where the plan is read and written.** Every other repo's decide where that repo's change requests live.
 
