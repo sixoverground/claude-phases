@@ -32,12 +32,30 @@ skills="$(gh api "repos/$repo/contents/skills?ref=main" --jq '.[] | select(.type
 tag="v$version"
 repair="gh workflow run release.yml -R $repo --ref main"
 
+# A lookup is "missing" only when GitHub answers 404. Any other failure, such
+# as a 5xx, a rate limit or an authentication error, means this script cannot
+# tell, and that is exit 2, never a repair instruction.
+err="$(mktemp)"
+trap 'rm -f "$err"' EXIT
+# lookup <api path> <jq filter>: prints the result and returns 0, returns 1 on
+# a 404, and exits 2 on anything else.
+lookup() {
+  if gh api "$1" --jq "$2" 2>"$err"; then return 0; fi
+  if grep -q 'HTTP 404' "$err"; then return 1; fi
+  echo "check-release: could not read $1: $(tr '\n' ' ' < "$err" | cut -c 1-200)" >&2
+  exit 2
+}
+
 missing=""
-if ! gh api "repos/$repo/git/ref/tags/$tag" >/dev/null 2>&1; then
+if ! lookup "repos/$repo/git/ref/tags/$tag" '.ref' >/dev/null; then
   missing="$missing the tag $tag;"
 fi
 
-if ! assets="$(gh release view "$tag" -R "$repo" --json assets --jq '.assets[].name' 2>/dev/null)"; then
+rc=0
+assets="$(lookup "repos/$repo/releases/tags/$tag" '.assets[].name')" || rc=$?
+if [ "$rc" = 2 ]; then
+  exit 2
+elif [ "$rc" != 0 ]; then
   missing="$missing the release $tag;"
 else
   for skill in $skills; do
