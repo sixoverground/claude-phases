@@ -106,7 +106,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 20 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship GitLab support, the planner on GitLab, the local guide and the marker reviewer setup to `main` | M2 | Merged | [#46](https://github.com/sixoverground/claude-phases/pull/46) | 15, 16, 4, 5a, 5b, 6, 7, 12 |
 | 21 | claude/gitlab-trial | sixoverground/claude-phases | End-to-end trial on a gitlab.com scratch project, with the driver and the reviewer on one account; `examples/gitlab-local.md`; fixes the trial exposes | 13 | Merged | [#53](https://github.com/sixoverground/claude-phases/pull/53) | M4, 20 |
 | 22 | claude/gitlab-cleanup | sixoverground/claude-phases | Cleanup: lift or narrow "experimental", docs say GitHub or GitLab, design notes | 14 | Merged | [#55](https://github.com/sixoverground/claude-phases/pull/55) | 13 |
-| 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | In Progress | - | 13, 14 |
+| 23 | feature/local-gitlab | sixoverground/claude-phases | Milestone: ship the trial's corrections and the final documentation to `main` | M3 | In Review | [#56](https://github.com/sixoverground/claude-phases/pull/56) | 13, 14 |
 | 24 | claude/driver-takeover | sixoverground/claude-phases | `take over` releases a dead driver's claim; host and PID in Driver State let a successor on the same machine check whether the holder is running | 15 | Merged | [#38](https://github.com/sixoverground/claude-phases/pull/38) | M1 |
 | 25 | claude/codex-review-state | sixoverground/claude-phases | Gate 6 on GitHub reads Codex's `codex-review-state` comment as proof for the head it names, and as a sign for `rereview: optional` | 16 | Merged | [#39](https://github.com/sixoverground/claude-phases/pull/39) | 15 |
 | 26 | claude/authorship-stamps | sixoverground/claude-phases | Review contract 1.1: a reviewer stamps every note it posts and scrubs the reserved `<!-- phases:` prefix; the driver stamps every comment, reply and note it writes and never copies another actor's hidden line | 17 | Merged | [#47](https://github.com/sixoverground/claude-phases/pull/47) | M2 |
@@ -1489,12 +1489,12 @@ After merging:
 - YOLO: off
 - Driver-ID: drv-ea7de5ba
 - Driver-Host: Raphael.local 45318 Fri Nov 20 14:32:31 2026 UTC
-- Active: M3 — feature/local-gitlab (preparing)
+- Active: M3 — feature/local-gitlab (#56)
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T15:44:05Z
-- Note: Phase 14 merged (#55). M3 preparing 0.14.0
+- Heartbeat: 2026-11-20T15:45:48Z
+- Note: M3 open as #56 (0.14.0); a person merges it
 
 ## Carried findings
 
