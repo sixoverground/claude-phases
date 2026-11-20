@@ -1493,8 +1493,8 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T15:45:48Z
-- Note: M3 open as #56 (0.14.0); a person merges it
+- Heartbeat: 2026-11-20T15:48:16Z
+- Note: ready to merge
 
 ## Carried findings
 
