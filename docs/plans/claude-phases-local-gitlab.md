@@ -1493,8 +1493,8 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: 10:3, 6:3
-- Heartbeat: 2026-11-20T13:57:02Z
-- Note: Phase 13: scratch project craigphares/phases-gitlab-trial created (private, shared runners off) with a project runner (tag macos, not protected). Waiting on the maintainer to register the runner and set CODEX_MR_REVIEW_TOKEN
+- Heartbeat: 2026-11-20T14:08:18Z
+- Note: Phase 13: toy plan on craigphares/phases-gitlab-trial (main), phase 1 MR !1 open with a planted defect, waiting on its pipeline and the codex marker
 
 ## Carried findings
 
