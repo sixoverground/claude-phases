@@ -127,8 +127,8 @@ A local session acts as whatever its tools are logged in as on your Mac, usually
 
 - **Change requests and comments.** On GitHub the driver opens PRs with the GitHub tools the session has; in a local session those normally act as your account. On GitLab, `glab` acts as the account it is authenticated as for that host. Check with `glab auth status --hostname <host>` before a plan starts.
 - **Plan commits** carry the author in your git config, since the driver commits with git.
-- **The watcher ignores its own account.** It skips comments, reviews and reactions by the account `gh` or `glab` is logged in as, so the driver's own gate reports do not wake it. In a local session that account is usually yours, so **your own comments on the change request do not wake the session either.** Talk to the session, in the terminal or from your phone.
-- **Reviewers post as themselves.** A review bot or a review job posts under its own account, which is what the plan's `logins` name. Do not run a reviewer under your own account: the watcher would never see it, and for a `marker` reviewer anyone could then post its marker.
+- **The watcher skips only the driver's own notes.** The driver ends everything it posts with a hidden stamp, and the watcher skips a note only when it comes from the account `gh` or `glab` is logged in as **and** carries that stamp. So the driver's gate reports do not wake it, and **your own comments on the change request do**, even though the driver acts as your account. Reactions are the exception: a 👍 has no body to stamp, so one from your account wakes nothing.
+- **A reviewer can post as itself, or as you.** Both arrangements are supported. A review bot, or a review job on a project access token or a bot user's token, posts under its own account, and the plan's `logins` names that account. A review job on your own personal access token posts as you, stamps every note it writes, and `logins` names you. Which to pick, and what each protects, is in [the reviewer setup](review-setup.md#the-token-one-account-or-two-identities).
 
 ## What a night of waiting costs
 

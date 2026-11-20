@@ -227,14 +227,14 @@ So if Codex leaves neither a review nor a reaction on your first phase PR, that 
 
 ## GitLab with a local Codex review
 
-GitLab has no hosted Codex reviewer, so on a GitLab project the review runs as a CI job on a runner you own, and reports through the [review contract](review-contract.md): inline threads for its findings, then a marker note naming the commit it reviewed. The driver gates on that marker with a `marker` entry. The tool that does this for Codex is [`codex-mr-review`](https://github.com/sixoverground/codex-mr-review). This section describes it at **v0.1.0**; its [README](https://github.com/sixoverground/codex-mr-review/blob/v0.1.0/README.md) is the authority for anything here that changes between versions, such as variables and flags.
+GitLab has no hosted Codex reviewer, so on a GitLab project the review runs as a CI job on a runner you own, and reports through the [review contract](review-contract.md): inline threads for its findings, then a marker note naming the commit it reviewed. The driver gates on that marker with a `marker` entry. The tool that does this for Codex is [`codex-mr-review`](https://github.com/sixoverground/codex-mr-review). This section describes it at **v0.2.0**; its [README](https://github.com/sixoverground/codex-mr-review/blob/v0.2.0/README.md) is the authority for anything here that changes between versions, such as variables and flags.
 
 ### Install the tool on the runner
 
 The review needs a machine with the Codex CLI logged in, which usually means a Mac with a [shell-executor runner](https://docs.gitlab.com/runner/install/osx/). Use a dedicated, non-admin macOS user for the runner, because Codex's read-only sandbox can still read anything that user can. As that user, with Node 20 or later and git:
 
 ```sh
-npm install -g github:sixoverground/codex-mr-review#v0.1.0
+npm install -g github:sixoverground/codex-mr-review#v0.2.0
 codex-mr-review --version
 codex login
 bash -lc 'command -v codex codex-mr-review'
@@ -248,7 +248,7 @@ In the project's `.gitlab-ci.yml`:
 
 ```yaml
 include:
-  - remote: https://raw.githubusercontent.com/sixoverground/codex-mr-review/v0.1.0/templates/codex-review.gitlab-ci.yml
+  - remote: https://raw.githubusercontent.com/sixoverground/codex-mr-review/v0.2.0/templates/codex-review.gitlab-ci.yml
 
 codex-review:
   tags: [your-runner-tag]
@@ -265,26 +265,52 @@ Two settings would quietly break the gate, and the planner's hygiene checklist n
 - **The job must not be `allow_failure: true`.** A review that fails posts no marker, and gate 6 blocks, which is right. But a job allowed to fail also shows gate 3 a pass, so the only sign of a broken reviewer is a phase waiting on gate 6 for a reason the checks do not show.
 - **Its token variable must not be protected.** Phase branches are not protected, and GitLab withholds a protected variable from their pipelines, so the job fails on every phase MR saying the token is missing.
 
-### The token, and why it is a second identity
+### The token: one account, or two identities
 
-Under **Settings > CI/CD > Variables**, add `CODEX_MR_REVIEW_TOKEN`: a project access token or a dedicated bot user's token, with the `api` scope and at least the **Developer** role. Mark it **masked**, and not **protected**, as above.
+The review posts with whatever token you put in `CODEX_MR_REVIEW_TOKEN`, and you have two ways to provide it. **Both are supported.** The driver tells the reviewer's notes apart from yours and its own by the stamps of [review contract 1.1](review-contract.md), so it does not need the reviewer on an account of its own.
 
-**Use a different identity from the driver's.** The driver acts as you, through `glab`. If the reviewer posted as you too, two things would stop working:
+| | (a) One account | (b) Two identities |
+|---|---|---|
+| The reviewer's token | A personal access token of your own account, `api` scope | A project access token, or a dedicated bot user's token, `api` scope, **Developer** role |
+| Where it can be had | Anywhere, on any tier | Project access tokens: [Premium or Ultimate on gitlab.com](https://docs.gitlab.com/user/project/settings/project_access_tokens/), and any license on a self-managed instance, created by a Maintainer or Owner. A bot user: a second account, on any tier |
+| `logins` | Your own username | The token's username, read off its first marker note |
+| Notes appear as | You, told apart by their stamps | The reviewer's own account |
+| Pick it when | The project is yours alone, or a second identity cannot be made | Other people can push to the project, or your tier and role allow a project token |
+| Needs | `codex-mr-review` 0.2.0 or later | Any version |
 
-- `logins` would mean nothing. It is there so that only the reviewer's account can write a marker that counts, and an account the driver also posts as could be any author.
-- The [watcher](../skills/phase-driver/references/watching.md#gitlab) ignores notes from the account the driver acts as, so it would never wake for the reviewer's findings or marker. The phase would move only at the fallback check-in.
+Either way, the variable goes under **Settings > CI/CD > Variables**, marked **masked** and not **protected**, as above.
 
-Two identities are the supported arrangement.
+#### (a) One account
+
+**What to create.** A personal access token of your own account (**User settings > Personal access tokens**, then **Legacy token** from the **Generate token** menu), with the `api` scope. Fine-grained tokens have no single `api` permission, and this setup has not been worked out for them.
+
+> **Before you create it: who can read this token.** A CI/CD variable is readable by anyone who can change the project's pipeline, because a job can print it. A personal access token reaches everything your account can, on every project and group you belong to, not only this one. That is acceptable on a project that is yours alone. **On a project other people can push to, use (b) instead.**
+
+**What `logins` is.** Your own username, the account `glab` is logged in as. It still keeps everyone else out: a marker or reviewer stamp typed by another account counts for nothing. What it no longer separates is the reviewer from anything else your account posts. With one account that is the same trust boundary as the account itself: the person who could type a marker is the person running the review.
+
+**What you will see on the merge request.** The findings, their threads and the summary note appear under your name. Each carries a hidden reviewer stamp, `<!-- phases:reviewer v=1 reviewer=codex -->`, which is how the driver knows they are the reviewer's. The driver's own notes carry its stamp, and your own comments carry none, so the [watcher](../skills/phase-driver/references/watching.md#gitlab) wakes for the reviewer's notes and for yours, and never for the driver's.
+
+**What it does and does not protect.** It protects the gate from everyone outside your account. It relies on the driver and the tool keeping to their stamps, rather than on the forge, to tell your account's three writers apart.
+
+#### (b) Two identities
+
+**What to create.** A project access token (the project's **Settings > Access tokens**), with the `api` scope and the **Developer** role, which gives the reviewer a bot user of its own, named like `project_123_bot_4ffca233d8298ea1`. On gitlab.com that needs Premium or Ultimate; on a self-managed instance a Maintainer or Owner can create one on any license. Or a second account you create for the reviewer, added to the project as a Developer, with a personal access token of its own, which works on any tier.
+
+**What `logins` is.** The reviewer token's username. Read it off the token's first marker note rather than guessing it: a project access token's bot username is generated.
+
+**What you will see on the merge request.** The findings, their threads and the summary note appear under the reviewer's own account. They carry the reviewer stamp too, from 0.2.0, but the driver does not need it: the account already says they are the reviewer's.
+
+**What it does and does not protect.** The forge enforces what one account leaves to the stamps: only the reviewer's token can write as the reviewer, and the token reaches only this project. Your own comments wake the driver here too.
 
 ### The config
 
-Read the reviewer token's username off its first marker note rather than guessing it: a project access token's bot user has a generated username, such as `project_123_bot_<hash>`.
+`logins` is the account the review token posts as: your own username on (a), the token's username on (b), read off its first marker note.
 
 ```yaml
 review:
   required:
     - marker: "codex"
-      logins: ["<the reviewer token's username>"]
+      logins: ["<the account the review token posts as>"]
 ```
 
 `codex` is the template's default reviewer name, `CODEX_MR_REVIEW_REVIEWER`. The [`review-codex-local.yml`](../profiles/review-codex-local.yml) profile has this with its comments. `rereview` and `proof` do not apply to a `marker` entry: a review that runs posts a marker, and one that does not leaves the gate blocked.
@@ -297,7 +323,7 @@ By the same rules as a Codex review on GitHub, in [Answering a review](../skills
 
 ### On GitHub
 
-A reviewer that meets the contract can gate a GitHub repo through the same `marker` entry, since gate 6 reads markers on either forge. `codex-mr-review` does not post to GitHub. On GitHub, use [OpenAI Codex](#openai-codex) above, or a reviewer of your own that emits the contract.
+A reviewer that meets the contract can gate a GitHub repo through the same `marker` entry, since gate 6 reads markers on either forge. One that meets contract 1.1 can share your account there as well. `codex-mr-review` does not post to GitHub. On GitHub, use [OpenAI Codex](#openai-codex) above, or a reviewer of your own that emits the contract.
 
 ### Another reviewer through the same job
 
@@ -367,6 +393,6 @@ If it doesn't re-run **by design**, because the reviewer decides per push whethe
 Open a throwaway merge request with a deliberate flaw, and check four things:
 
 1. **The review job ran** in the MR's pipeline and passed. If the MR has no pipeline at all, the project's own file has no merge request rule: see **Add the job** above. If it is `pending`, no online runner has its tags. If it failed saying the token is missing, the variable is protected.
-2. **Its findings are threads on diff lines**, under the reviewer token's account, not yours.
-3. **The summary note ends with a marker** naming the reviewer and the MR's head sha in full. Compare it with the head shown on the MR's **Commits** tab. Read the note's author here: that username goes in `logins`.
+2. **Its findings are threads on diff lines.** On (b), they are under the reviewer token's account, not yours. On (a), they are under yours, and each finding's source (**Edit**, or the API's `body`) ends with the reviewer stamp, `<!-- phases:reviewer v=1 reviewer=codex -->`.
+3. **The summary note ends with a marker** naming the reviewer and the MR's head sha in full. Compare it with the head shown on the MR's **Commits** tab. Read the note's author here: that username goes in `logins`, yours on (a) and the token's on (b). On (a), also post a comment as yourself with a driver waiting: it should wake the session.
 4. **A second push produces a second marker**, naming the new head. A job that ran once and not again leaves the gate blocked the first time the driver pushes a fix.
