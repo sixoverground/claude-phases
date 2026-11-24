@@ -14,6 +14,12 @@ ci:
 # release_branch: v2           # where milestones and the integration MR merge,
                                # when it is not the project's default branch
 
+# offline:                     # a self-managed host behind a VPN is the usual
+#   max_minutes: 90            # outage. Work under a landed claim carries on
+                               # through it by default; set 90 only where a
+                               # driver on another machine could take the plan
+                               # over, or `offline: false` to wait instead
+
 # integration_pr: false        # never open the change request from target_branch
                                # to the release branch at the end of the plan.
                                # Explicit milestone rows still open. The
