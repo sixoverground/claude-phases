@@ -81,7 +81,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 |----|--------|------|-------|-------|--------|------|---------|
 | 1 | claude/arbitrate-word | sixoverground/claude-phases | `arbitrate`: a person asks for a fresh arbitration, at a review-round stop or early in the current budget, defined by the existing baseline and `Arbitrations` rules | 0 | Merged | #67 |  |
 | 2 | claude/local-pass-milestone | sixoverground/claude-phases | The local review pass runs before a milestone PR's fix pushes, with `{base}` at the PR's head before the fix; the preparation's commits get none | 1 | Merged | #68 | 0 |
-| 3 | feature/followups | sixoverground/claude-phases | Milestone: ship `arbitrate` and the local pass on milestone fix pushes to `main` as 0.16.1 | M1 | In Review | #69 | 0, 1 |
+| 3 | feature/followups | sixoverground/claude-phases | Milestone: ship `arbitrate` and the local pass on milestone fix pushes to `main` as 0.16.1 | M1 | Merged | #69 | 0, 1 |
 
 Row `M1` is a milestone row: its branch is the repo's `target_branch`, its PR goes to `main`, and its `Depends` lists what it ships. The driver opens it and never merges it.
 
@@ -272,5 +272,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-24T17:57:20Z
-- Note: M1 ready to merge (#69)
+- Heartbeat: 2026-11-24T18:01:24Z
+- Note: -
