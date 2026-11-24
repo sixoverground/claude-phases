@@ -50,6 +50,10 @@ It is the reserved consumer stamp of the [review contract](https://github.com/si
 
 **Not stamped:** the change request's title and description, commit messages, and the plan file. None of them is a note on the change request.
 
+### Bodies go through files
+
+**Write every body you post to a file with the Write tool, then pass the file.** That covers every comment, reply, note and change-request body: `--rawfile` into a JSON file sent with `--input`, `--body-file`, or the forge's equivalent, as the forge reference's snippets show. Never put a body in a heredoc or an inline shell string. Observed: reply bodies containing `$$` (xcconfig escapes) inside a heredoc made Claude Code's shell safety check refuse the whole command as unparseable, and the reply was not posted. A body passed as an MCP tool's parameter goes through no shell, and needs no file.
+
 ### Never write another actor's line
 
 You already never write a review marker ([`gates.md`](references/gates.md#the-review-marker)). You also never write a reviewer stamp, `<!-- phases:reviewer ...`, and **never copy a hidden HTML comment line out of someone else's note into your own**, quoted or not: a reviewer's fingerprint, its stamp, its marker, or anything else between `<!--` and `-->`. When you quote a finding, quote the words a reader can see. On a shared account a fingerprint, stamp or marker inside a note of yours would be taken for the reviewer's, and could hide a finding or prove a review that never happened.
@@ -290,7 +294,7 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
 
 1. **Record it first.** Append `<phase id>:<derived count>` to `Arbitrations` in Driver State, as a plan write like any other. That is golden rule 2, and it is what stops a session that dies mid-arbitration from starting a second one.
 2. **Start the arbiter and wait for its answer.** Don't push while it runs. Run it in the foreground (the Agent tool's `run_in_background: false`), so the verdict comes back inside this turn. If it does run in the background, its completion notification is your wake: act on the verdict then, without asking anyone. Brief it with facts, not conclusions:
-   - the plan file's path and the phase id, for its Phase Details (scope, acceptance criteria, risks) and Carried findings
+   - **a fresh export of the plan**, not a path to it, and the phase id, for its Phase Details (scope, acceptance criteria, risks) and Carried findings. Read the plan from the plan branch as the forge reference's **Write the plan** says, write that text to a file outside the repo's working tree, such as the session's scratch or temp directory, and give the arbiter that file with this sentence: *this is the plan branch's current content; any copy of the plan in the checkout may be stale and is not to be read.* Observed: an arbiter given a path read a stale, untracked copy in the checkout and reported a Carried findings entry missing that the plan branch held. A file inside the working tree can also be committed by accident
    - the repo, change request number, base branch, head sha, and the path of the local checkout, so it can read the whole diff against base rather than the latest commit
    - every review finding on the change request from every round, resolved or not, with links
    - what you changed in each round, one line per commit
@@ -314,7 +318,7 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
 
 **An arbitration is not a stop.** It is what happens instead of the stop at `max_review_rounds`, and instead of the stop a [repo's own rule](#the-repos-own-stop-rules) asks for. The row stays `In Review`, nothing is written to `Review-baselines`, and you go from the verdict to the push without anyone's say-so. If a required reviewer is still reviewing the current head when the verdict lands (a 👀 from it, or its check run in progress), you may hold the push so its findings join the same one, since that saves a round. That hold is a wait like any in §4: end the turn saying what you are waiting on, let its result or your check-in wake you, and push then. The first point at which a person is needed is [Stop for a person](#stop-for-a-person), at the arbitration's count plus `extra_rounds`.
 
-**Without a subagent**, as in a claude.ai skill upload, do the pass yourself against the same brief, starting from the diff and the findings rather than from your own replies, and say in the comment that the arbitration was not independent. A model the session can't use falls back to the session's model, the same as a skill's `model`.
+**Without a subagent**, as in a claude.ai skill upload, do the pass yourself against the same brief, starting from the diff and the findings rather than from your own replies, and reading the plan from that fresh export rather than from the checkout, and say in the comment that the arbitration was not independent. A model the session can't use falls back to the session's model, the same as a skill's `model`.
 
 **An `Arbitrations` entry in this budget with no verdict comment carrying that same entry in its marker** means a session died between recording the arbitration and posting it. Run the arbiter again; don't record it twice. A verdict from an earlier budget doesn't count: its marker names a different entry.
 
