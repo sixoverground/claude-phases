@@ -342,7 +342,7 @@ Each has an `id`, `individual_note`, and `notes`, and each note has `id`, `type`
 
 A discussion is a thread for this gate when any of its notes has `resolvable: true`, and it is resolved when every one of those has `resolved: true`. **On GitLab a general thread is resolvable too.** A finding posted as a thread on the MR's overview, with no diff position (`type: DiscussionNote`), gates exactly as a thread on a diff line (`type: DiffNote`) does. Only a plain comment, `individual_note: true`, is not resolvable, so a reviewer that posts only plain comments gives this gate nothing to check, as `gates.md` says of top-level comments.
 
-**Reply in the thread, then resolve it.** The reply's body, like every note you post, ends with the driver's stamp, as [Stamp what you write](../SKILL.md#stamp-what-you-write) says:
+**Reply in the thread, then resolve it.** The reply's body, like every note you post, ends with the driver's stamp, as [Stamp what you write](../SKILL.md#stamp-what-you-write) says. Write `reply.md` with the Write tool, never a heredoc, as [Bodies go through files](../SKILL.md#bodies-go-through-files) says:
 
 ```sh
 jq -n --rawfile body reply.md '{body: $body}' > reply.json
@@ -543,7 +543,7 @@ jq -n --arg title 'UAT: <project>' --rawfile description <script file> '{title: 
 glab api --hostname <host> -X POST projects/<P>/issues --input issue.json
 ```
 
-A long body goes in a JSON file through `--input`, as the plan write does, so it reaches the server unchanged. Record the issue by its `references.full`, `group/project#<iid>`.
+A long body goes in a JSON file through `--input`, as the plan write does, so it reaches the server unchanged. The script file itself is written with the Write tool, as [Bodies go through files](../SKILL.md#bodies-go-through-files) says. Record the issue by its `references.full`, `group/project#<iid>`.
 
 **Where it is `false`**, the project has no issues, and the core's no-issues fallback applies: for the UAT script, a comment on the last merged MR, with `UAT-pending` left as it is and the summary saying so. A comment is a note, and ends with the driver's stamp like every note you post:
 

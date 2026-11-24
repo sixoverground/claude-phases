@@ -84,7 +84,7 @@ A review's states include `APPROVED`, `CHANGES_REQUESTED` and `COMMENTED`. A req
 
 A review thread is resolved when `isResolved == true`.
 
-A reply you post in a thread, like every comment you post, ends with the driver's stamp, as [Stamp what you write](../SKILL.md#stamp-what-you-write) says.
+A reply you post in a thread, like every comment you post, ends with the driver's stamp, as [Stamp what you write](../SKILL.md#stamp-what-you-write) says. Post it with the GitHub MCP tools, whose body parameter goes through no shell. Where you post through `gh` instead, write the body to a file with the Write tool and pass it with `--body-file` or `-F body=@<file>`, never a heredoc, as [Bodies go through files](../SKILL.md#bodies-go-through-files) says.
 
 #### Whose thread it is
 
@@ -259,4 +259,4 @@ When the update is refused, report the matching command from the table, filled i
 
 Where the core sends something to "an issue on the forge", on GitHub that is a GitHub issue in that repo: a standalone defect, the arbiter's `issue` verdict, and the UAT fallback at the end of a plan, which is an issue titled `UAT: <project>` with the outstanding items.
 
-Issues are available on GitHub, so the core's UAT fallback opens one here rather than posting the script as a comment.
+Issues are available on GitHub, so the core's UAT fallback opens one here rather than posting the script as a comment. Its body follows [Bodies go through files](../SKILL.md#bodies-go-through-files) wherever it goes through `gh`.
