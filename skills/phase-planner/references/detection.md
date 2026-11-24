@@ -138,6 +138,18 @@ Read, in this order:
 
 `milestone.after_merge` is rarer. Set it only when something has to happen after a person merges and before later phases can use the release: updating an installed copy, or confirming a deploy. Ask rather than infer; nothing in the repo says what the person does after merging.
 
+## A local pass before each push → `review.local`
+
+Propose `review.local` when the repo's required reviewer is Codex (`chatgpt-codex-connector`), so the local pass runs the same kind of review the PR will get, **and** `codex-mr-review --version` succeeds on the planning machine, as the Xcode row below probes `xcodebuild`. Propose exactly:
+
+```yaml
+review:
+  local:
+    command: "codex-mr-review review --base {base} --head {head} --dry-run"
+```
+
+Never a line without `--dry-run`: without it the tool posts its review and marker, and a local run would pass gate 6. Say three things in the findings: it is a property of this machine, so a session where the command is missing skips the pass and says so; it adds one Codex run per push; and it never stands in for the real reviewer. Where the command is absent, propose nothing and mention the option in a sentence.
+
 ## Toolchain → `verify`
 
 From the repo's files:

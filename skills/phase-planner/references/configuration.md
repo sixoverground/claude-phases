@@ -281,6 +281,24 @@ What separates them is the reviewer's own contract. Smart detect reviews every P
 
 **Considered and rejected: making the decline conditional on diff size**, so a large push could not be waved through. It sounds prudent and is not. The reviewer saw that push and declined; a line count is a strictly worse signal than the judgment it would be overriding, and encoding it would mean the gate second-guessing the reviewer it is configured to trust.
 
+#### `review.local`
+
+| Key | Default | Meaning |
+|---|---|---|
+| `review.local.command` | unset | A shell line the driver runs in the repo's clone once before every push of a phase branch. `{base}` becomes the fetched `origin/<target_branch>`, `{head}` the commit about to be pushed. Unset, no local pass runs |
+
+```yaml
+review:
+  local:
+    command: "codex-mr-review review --base {base} --head {head} --dry-run"
+```
+
+**It must be a command that prints findings and posts nothing.** A command that posts would put a review, or a review marker, on the change request from a local run, and could satisfy gate 6 with no review in CI. `codex-mr-review` posts unless it is given `--dry-run`, so the documented line always carries it. Add `--format json` for machine-readable output.
+
+What it is for: fixing what the real reviewer would find before the push, so a round is not spent on it. What it is not: a review. It never counts as a reviewed head, never satisfies gate 6, and posts nothing but the driver's own stamped disclosure of what it found and what was done. It runs **once per push**, never again over its own fixes, which is the cap that keeps it from looping where `stuck.max_review_rounds` cannot see it. There is no `required` setting: a session where the command is missing or fails skips the pass, says so, and pushes.
+
+It is a property of the machine as much as the repo, since the command has to be installed where the driver runs, and it costs one more review run per push against the same allowance and, on a shared Mac, the same runner as the real reviewer.
+
 ### Reviewer setups
 
 All seven are first-class, and they compose. Require Copilot *and* a Claude check if you want both.

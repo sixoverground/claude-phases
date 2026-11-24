@@ -213,6 +213,18 @@ The same as [`detection.md`](detection.md#the-repos-own-review-rules--stuck): re
 
 The same as [`detection.md`](detection.md#release-conventions--milestoneprepare), with one GitLab source more: jobs in the CI file that run only on the release branch (for the default branch, `$CI_DEFAULT_BRANCH`) or on tags, a `release:` keyword, or a job that checks a version, each read as resolved by [Resolve each job before reading it](#resolve-each-job-before-reading-it). Quote the job and its rule for every step you put in `prepare`, as you would a check on GitHub.
 
+## A local pass before each push → `review.local`
+
+Propose `review.local` when the repo's reviewer is `codex-mr-review`, the `marker` entry recognised above, **and** `codex-mr-review --version` succeeds on the planning machine, as the Xcode row below probes `xcodebuild`. Propose exactly:
+
+```yaml
+review:
+  local:
+    command: "codex-mr-review review --base {base} --head {head} --dry-run"
+```
+
+Never a line without `--dry-run`: without it the tool posts its review and marker, and a local run would pass gate 6. Say three things in the findings: it is a property of this machine, so a session where the command is missing skips the pass and says so; it adds one Codex run per push; and it never stands in for the real reviewer. Where the command is absent, propose nothing and mention the option in a sentence.
+
 ## Toolchain → `verify`
 
 The same table as [`detection.md`](detection.md#toolchain--verify), including its Xcode row: `ci` in a cloud session, `local` on macOS with `xcodebuild` present, as a quick simulator build with the test suite left to CI. One GitLab case more: where the CI runs on a runner on the same Mac as the driver, the toolchain the runner uses is usually installed there too, so `local` is often right. Confirm it rather than assume it, and see the GitLab section of [`hygiene.md`](hygiene.md#gitlab) for the runner and the driver sharing one machine.
