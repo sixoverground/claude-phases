@@ -4,6 +4,17 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.16.1]
+
+### `arbitrate`: a person asks for a fresh arbitration
+
+* **A new word, with no new state.** Where an arbiter is configured and a reviewer is required, `arbitrate` at a review-round stop is `continue` plus an arbitration at once: a new budget that arbitrates immediately rather than at its own threshold. Before the threshold, with no arbitration yet in the budget, it is an early arbitration in the current one. It never gives a budget a second arbitration, and where it does not apply the driver writes nothing and says why.
+* **The baseline is written one below the current count.** An arbitration belongs to a budget only when its entry is above the baseline, so `continue`'s baseline at the current count would leave an arbitration recorded there outside the new budget, and the next wake would arbitrate again. One below makes the effective count 1, the same rule a repo's own stop rule already follows. With the defaults, arbitrated at 3 and stopped at 6, `arbitrate` writes a baseline of 5 and an arbitration at 6, answers heads 7 and 8 under the new verdict, and stops at 9. The baseline, the arbitration and the row's return to `In Review` go in one plan write.
+
+### The local review pass on a milestone PR's fix pushes
+
+* **`review.local` now runs before every fix push to a milestone PR**, reviewing only the fix: `{base}` is the milestone PR's head before the fix, read from the forge with `git ls-remote`, so a fix built in several commits is reviewed whole and the phases already reviewed on their own change requests are not read again. The preparation and the push that opens a milestone PR still get no pass. On a phase branch nothing changes.
+
 ## [0.16.0]
 
 ### Working through a forge outage
