@@ -338,7 +338,7 @@ When the forge stops answering, a phase whose claim already landed keeps going i
 
 | Key | Default | Meaning |
 |---|---|---|
-| `offline.max_minutes` | `null` | No limit: offline work runs through the whole outage. A number stops new offline work once the claim's `Heartbeat`, as the plan last showed it, is that many minutes old; the driver commits what it has and waits |
+| `offline.max_minutes` | `null` | No limit: offline work runs through the whole outage. A number stops new offline work once the claim's `Heartbeat`, as the plan last showed it, is that many minutes old; the driver commits what it has and waits, and finishes the phase after reconnect, before publishing it |
 | `offline` | on | `offline: false` turns offline work off, so an outage is a total wait, as before 0.16.0 |
 
 Both go under `defaults` or a repo, like any other key, and the driver reads the row's resolved value. A plan with no `offline` key behaves as `max_minutes: null`. `offline: false` is to `offline` what `stuck.arbiter: null` is to the arbiter.
