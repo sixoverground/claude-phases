@@ -79,7 +79,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 
 | PR | Branch | Repo | Scope | Phase | Status | Link | Depends |
 |----|--------|------|-------|-------|--------|------|---------|
-| 1  | claude/arbitrate-word | sixoverground/claude-phases | `arbitrate`: a person asks for a fresh arbitration, at a review-round stop or early in the current budget, defined by the existing baseline and `Arbitrations` rules | 0 | Pending | - |  |
+| 1 | claude/arbitrate-word | sixoverground/claude-phases | `arbitrate`: a person asks for a fresh arbitration, at a review-round stop or early in the current budget, defined by the existing baseline and `Arbitrations` rules | 0 | In Progress | - |  |
 | 2  | claude/local-pass-milestone | sixoverground/claude-phases | The local review pass runs before a milestone PR's fix pushes, with `{base}` at the PR's head before the fix; the preparation's commits get none | 1 | Pending | - | 0 |
 | 3  | feature/followups | sixoverground/claude-phases | Milestone: ship `arbitrate` and the local pass on milestone fix pushes to `main` as 0.16.1 | M1 | Pending | - | 0, 1 |
 
@@ -264,13 +264,13 @@ After merging:
 
 ## Driver State
 
-- Driver: idle
+- Driver: running
 - YOLO: on
-- Driver-ID: -
-- Driver-Host: -
-- Active: -
+- Driver-ID: 58e3df70
+- Driver-Host: Raphael.local 73385 Tue Nov 24 14:52:15 2026 UTC
+- Active: 0, claude/arbitrate-word
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: -
+- Heartbeat: 2026-11-24T17:48:39Z
 - Note: -
