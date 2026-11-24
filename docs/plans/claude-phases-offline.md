@@ -85,7 +85,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 5 | claude/offline-in-review | sixoverground/claude-phases | Offline fixes on an `In Review` phase, with the review budget re-derived from the forge before anything is pushed | 4 | Merged | #63 | 3 |
 | 6 | claude/local-review-pass | sixoverground/claude-phases | `review.local`: an optional, non-posting, single local review pass before every push; config, detection, profile, disclosure, the arbiter brief | 5 | Merged | #64 | 4 |
 | 7 | claude/offline-cleanup | sixoverground/claude-phases | Cleanup: design notes, the local guide, README, hygiene, and a consistency pass over everything this plan restated in two places | 6 | Merged | #65 | 5 |
-| 8 | feature/offline | sixoverground/claude-phases | Milestone: ship working through a forge outage, the quiet watcher, `review.local` and the two fixes to `main` as 0.16.0 | M1 | In Review | #66 | 0, 1, 2, 3, 4, 5, 6 |
+| 8 | feature/offline | sixoverground/claude-phases | Milestone: ship working through a forge outage, the quiet watcher, `review.local` and the two fixes to `main` as 0.16.0 | M1 | Merged | #66 | 0, 1, 2, 3, 4, 5, 6 |
 
 Row `M1` is a milestone row: its branch is the repo's `target_branch`, its PR goes to `main`, and its `Depends` lists what it ships. The driver opens it and never merges it.
 
@@ -413,5 +413,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-24T16:46:04Z
-- Note: M1 ready to merge (#66)
+- Heartbeat: 2026-11-24T17:39:18Z
+- Note: -
