@@ -75,7 +75,7 @@ pmset -g assertions       # the assertions currently held
 
 To change the sleep settings themselves, use System Settings (Battery, or Energy on a desktop Mac), not this guide.
 
-**A VPN or Wi-Fi drop is a wait, not a failure.** When the forge stops answering, the watcher prints one line saying it is unreachable, keeps polling with a back-off of up to five minutes, and prints one line when it answers again. Seen on this project's run during a Wi-Fi drop: one unreachable line, then one recovered line, and nothing in between. The driver marks nothing `Blocked` for an outage and counts nothing toward its stuck limits. A self-managed host behind a VPN usually fails as a DNS error or a timeout, which the driver reads as unreachable. When the VPN comes back the next poll picks up where it was.
+**A VPN or Wi-Fi drop is a wait, not a failure.** When the forge stops answering, the watcher prints one line saying it is unreachable, keeps polling with a back-off of up to five minutes, and prints one line when it answers again. Seen on this project's run during a Wi-Fi drop: one unreachable line, then one recovered line, and nothing in between. The driver marks nothing `Blocked` for an outage and counts nothing toward its stuck limits. A self-managed host behind a VPN usually fails as a DNS error or a timeout, which the driver reads as unreachable. When the VPN comes back the next poll picks up where it was. In between, the watcher prints no fallback check-ins and a Monitor expiry re-arms silently, so a long outage costs one message each way and nothing else.
 
 ## Steering it from your phone
 

@@ -49,7 +49,7 @@ The forge did not answer at all: a DNS failure, a timeout, a refused connection,
 - **Mark nothing `Blocked`.** Nothing is wrong with any phase. A row blocked for an outage stays blocked after the outage, until a person clears it.
 - **Do not count the wake toward `stuck.max_cycles`.** No gate was evaluated, so no gate failed.
 - **Tell the user once**, not once per poll.
-- **Keep watching.** The watcher backs off to at most five minutes between polls, prints one line when the forge stops answering and one when it answers again. Reconcile then, as on any wake.
+- **Keep watching, and quietly.** The watcher backs off to at most five minutes between polls, prints one line when the forge stops answering and one when it answers again, and prints no check-in in between. With no change request open, arm it with an empty list so the host's own line still wakes you. A Monitor expiry in the meantime is re-armed without a word to the user. Reconcile when it answers, as on any wake. See [When the forge stops answering](watching.md#when-the-forge-stops-answering).
 
 **A status write that could not be made means the action it describes has not started.** Golden rule 2 puts the write first, so a claim that failed to land is no claim: do not branch, push or open anything for it. Retry the write when the forge answers, after reconciling.
 
