@@ -29,6 +29,8 @@ phases:
       max_cycles: 5
       max_review_rounds: 3
       arbiter: { model: fable, extra_rounds: 3 }
+    # offline:                   # work under a landed claim through a forge outage
+    #   max_minutes: 90          # only where a second driver on another machine can reach this plan
     # milestone:                 # only for plans with milestone rows (M1, M2)
     #   prepare: >               # run on target_branch before a milestone PR opens
     #     Bump the version and add a CHANGELOG section.
