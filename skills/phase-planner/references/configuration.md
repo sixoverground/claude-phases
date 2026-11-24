@@ -346,6 +346,8 @@ At `max_review_rounds` the driver stops answering and starts a subagent with a f
 
 **It runs with YOLO off too.** YOLO decides who merges. The arbiter decides who sorts a review loop, and that shouldn't need you either way.
 
+**A person can ask for one.** Saying `arbitrate` at a review-round stop starts a new budget that arbitrates at once, rather than waiting for its own threshold as `continue`'s does; before the threshold, with no arbitration yet in the budget, it is an early one. It needs an arbiter configured and a non-empty `review.required`, and it never gives a budget a second arbitration. The driver's `references/vocabulary.md` has the rule.
+
 Without a subagent, as in a claude.ai skill upload, the driver runs the same pass itself and says so on the PR. A model your organization or auto mode excludes falls back to the session's model.
 
 Counted per row, so one wedged platform never stalls the others.
