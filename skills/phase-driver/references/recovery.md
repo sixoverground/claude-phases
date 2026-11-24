@@ -6,12 +6,16 @@ Apply this **per non-terminal row**, not once per plan, plus every `Merged` mile
 
 **The forge is the truth.** The plan records what a driver intended; the forge records what happened. Where they differ, fix the plan.
 
+**Two rows also read the local clone**, because work done while the forge was unreachable exists nowhere else until it is pushed. The forge column still says only what the forge says; what the clone holds is named in the row's *What happened*. The first matching row wins, so these two sit above the reset they override.
+
 | Plan says | The forge says | What happened | Do this |
 |---|---|---|---|
 | `Pending`, stale heartbeat | no branch, no PR | Never started | Start it normally |
 | `Pending` | open PR on that branch | Died after opening the PR, before recording it | Adopt the PR: write `In Review` + `Link`, watch, evaluate the gate |
 | `In Progress`, foreign ID, heartbeat < 90 min | anything | Another driver is live, or one died recently | Stop. Report. Touch nothing. Two ways out, both in SKILL.md's **Driver-ID**: its `Driver-Host` shows a dead process on this host, or a person says `take over` |
-| `In Progress`, stale | no branch | Claimed, died before doing anything | Reset to `Pending`, then start it normally |
+| `In Progress`, and this session holds the ID by SKILL.md's **Driver-ID** rules, a matching `Driver-Host` included, whatever the heartbeat's age | no branch | **The local clone has a branch of the row's name with commits ahead of `origin/<target_branch>`.** This session's own work, done while the forge was unreachable and not yet pushed | Carry on from it, through [the reconnect sequence](#the-reconnect-sequence). **Never reset it.** A driver on another host cannot see this clone and applies the reset row below; the reconnect sequence's lost-claim branch is what answers that |
+| `In Progress`, and this session took the plan over on this host, from a dead process or a stale heartbeat | no branch | **The local clone has a branch of the row's name with commits ahead of `origin/<target_branch>`.** The previous session's unpushed work, which nobody can be asked about | Treat it as [a branch with no PR](#the-awkward-one-a-branch-with-no-pr): inspect the diff against the phase's scope, then finish it, reset it, or ask |
+| `In Progress`, stale | no branch | Claimed, died before doing anything, and no local branch of the row's name holds commits | Reset to `Pending`, then start it normally |
 | `In Progress`, stale | branch exists, no PR | Died mid-implementation | See below |
 | `In Progress` | open PR on that branch | Died after opening the PR, before recording it | Write `In Review` + `Link`, adopt |
 | `In Review` | PR open | Normal operation | Re-arm the watch, re-evaluate the gate against the current head |
@@ -115,8 +119,10 @@ Tell the user which branch is missing and where the plan was last seen. Restorin
 
 You can't tell from the plan whether the previous driver got most of the way through the phase or died on its first commit. Look at the actual diff against the phase's scope and acceptance criteria.
 
+The branch may be on the forge, or only in this clone, left by a session on this host that worked through an outage and died before pushing. Both are handled the same way, with one difference in the reset below. A local branch can also be stale work from an earlier attempt at the same phase, which is why its existence alone never means adopting it: the diff decides.
+
 - **Substantially complete.** Finish it, verify, and open the PR. Say in the PR body that it was resumed from an interrupted session, so a reviewer knows to look a little harder.
-- **Partial or incoherent.** Don't try to salvage it. Reset the row to `Pending`, delete the branch, and start clean. Half-finished work from a session you can't ask questions of is worth less than starting over.
+- **Partial or incoherent.** Don't try to salvage it. Reset the row to `Pending`, delete the branch, and start clean. Half-finished work from a session you can't ask questions of is worth less than starting over. **A branch that exists only in this clone is renamed, never deleted**: `git branch -m <branch> <branch>-orphaned`, with a numeric suffix if that name is taken. It holds commits the forge never saw, so it may be the only copy of them, and starting clean needs the name, not the deletion.
 - **Can't tell.** Ask. This is one of the few decisions worth a round trip.
 
 ## Adopting a PR you didn't open
