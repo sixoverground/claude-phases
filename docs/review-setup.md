@@ -340,7 +340,7 @@ review:
     command: "codex-mr-review review --base {base} --head {head} --dry-run"
 ```
 
-The driver runs it once per push, fixes what it finds by the same rules as a review, and discloses what it found and did on the merge request. It is not a review: it posts nothing, writes no marker, never counts toward `stuck.max_review_rounds`, and the job above still has to review the head before gate 6 passes. **Keep `--dry-run`.** Without it the tool posts its review and marker from your machine, and a local run would pass the gate. A session without the command skips the pass and says so. It needs OpenAI's API, not the forge, so it runs through a VPN outage too.
+The driver runs it once per push, phase pushes and milestone fix pushes alike, fixes what it finds by the same rules as a review, and discloses what it found and did on the merge request. It is not a review: it posts nothing, writes no marker, never counts toward `stuck.max_review_rounds`, and the job above still has to review the head before gate 6 passes. **Keep `--dry-run`.** Without it the tool posts its review and marker from your machine, and a local run would pass the gate. On a milestone PR's fix push `{base}` is the PR's head before the fix, so the pass reviews the fix alone; the preparation and the opening push get no pass. A session without the command skips the pass and says so. It needs OpenAI's API, not the forge, so it runs through a VPN outage too.
 
 ### On GitHub
 
