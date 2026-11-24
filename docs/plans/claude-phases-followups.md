@@ -272,5 +272,5 @@ After merging:
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-24T17:54:49Z
-- Note: -
+- Heartbeat: 2026-11-24T17:57:20Z
+- Note: M1 ready to merge (#69)
