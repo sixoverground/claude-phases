@@ -64,6 +64,8 @@ Then say what you inferred, and ask whether it holds, through `AskUserQuestion` 
 
 **Where detection comes up empty**, such as a new repo with no PR history, say so plainly and ask, through the same tool. Guessing produces a config that fails on the first PR, which is worse than one question.
 
+**Ask whether a second driver can reach the plan**, in the same confirmation: *will a driver on any other machine ever run this plan?* That decides `offline` (see `references/configuration.md`, **Working offline**), and nothing in a repo says it. With a no, write nothing: the default, `max_minutes: null`, lets work under a landed claim run through a whole outage. With a yes, propose `offline: { max_minutes: 90 }` under `defaults`, which matches the takeover threshold.
+
 ## 3. Refuse configurations that can never pass
 
 Before writing, check the config you're about to produce against what you observed. Refuse and explain if:

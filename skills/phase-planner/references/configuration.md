@@ -332,6 +332,21 @@ Without a subagent, as in a claude.ai skill upload, the driver runs the same pas
 
 Counted per row, so one wedged platform never stalls the others.
 
+### Working offline
+
+When the forge stops answering, a phase whose claim already landed keeps going in the local clone: implemented, verified locally and committed, then pushed through a guarded reconnect sequence when the forge answers. Claims, plan writes and pushes always wait. The driver's `references/recovery.md`, **The forge is unreachable**, has the rules.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `offline.max_minutes` | `null` | No limit: offline work runs through the whole outage. A number stops new offline work once the claim's `Heartbeat`, as the plan last showed it, is that many minutes old; the driver commits what it has and waits |
+| `offline` | on | `offline: false` turns offline work off, so an outage is a total wait, as before 0.16.0 |
+
+Both go under `defaults` or a repo, like any other key, and the driver reads the row's resolved value. A plan with no `offline` key behaves as `max_minutes: null`. `offline: false` is to `offline` what `stuck.arbiter: null` is to the arbiter.
+
+**The reconnect sequence applies under every setting.** Before anything is pushed after an outage, the driver checks its `Driver-ID` and rewrites `Heartbeat` with the write token, because a push is not protected by the token. A claim lost during the outage means nothing is pushed and the local branch is renamed `<branch>-orphaned`, never deleted.
+
+**Why `null` is the default.** `Heartbeat` is a plan write, so it cannot be refreshed while the home forge is down, and after 90 minutes another driver on another host may take the plan over. With one driver, that never happens, and stopping early only loses time. **Set `90`** where a second driver on another machine can reach the plan: it matches the takeover threshold, so this driver stops adding work it may lose.
+
 ---
 
 ## YOLO

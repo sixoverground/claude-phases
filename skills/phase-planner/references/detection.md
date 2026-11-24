@@ -108,6 +108,10 @@ Compare the cap with what the plan allows. With an arbiter, the driver makes up 
 
 **The rule usually predates the arbiter.** A repo that wrote "escalate to the owner" before it had an arbiter meant the only escalation it had. Read literally at round 3, it stops a phase the plan set up to arbitrate. That is the observed failure behind this section: a plan configured a Fable arbiter at 3, the repo's `CLAUDE.md` said to escalate on follow-ups "whatever the round count", and the driver stopped for a person instead of arbitrating.
 
+## Who else drives the plan → `offline`
+
+Not detected. Whether a second driver on another machine can reach a plan is a fact about the people running it, not the repo, so the planner asks it with the other confirmations (SKILL.md §2). The answer only matters for `offline.max_minutes`: `null`, and nothing written, for one driver; `90` for more than one. See `configuration.md`, **Working offline**.
+
 ## Release conventions → `milestone.prepare`
 
 Only for a repo that will have a milestone row. A milestone PR is a merge to the release branch (`release_branch`, or the default branch), and in many repos that is a release, so it has to carry whatever a release of that repo needs. `milestone.prepare` says what that is, and the driver follows it on the feature branch before it opens the PR.
