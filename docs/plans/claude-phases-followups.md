@@ -80,7 +80,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | PR | Branch | Repo | Scope | Phase | Status | Link | Depends |
 |----|--------|------|-------|-------|--------|------|---------|
 | 1 | claude/arbitrate-word | sixoverground/claude-phases | `arbitrate`: a person asks for a fresh arbitration, at a review-round stop or early in the current budget, defined by the existing baseline and `Arbitrations` rules | 0 | Merged | #67 |  |
-| 2 | claude/local-pass-milestone | sixoverground/claude-phases | The local review pass runs before a milestone PR's fix pushes, with `{base}` at the PR's head before the fix; the preparation's commits get none | 1 | In Progress | - | 0 |
+| 2 | claude/local-pass-milestone | sixoverground/claude-phases | The local review pass runs before a milestone PR's fix pushes, with `{base}` at the PR's head before the fix; the preparation's commits get none | 1 | In Review | #68 | 0 |
 | 3  | feature/followups | sixoverground/claude-phases | Milestone: ship `arbitrate` and the local pass on milestone fix pushes to `main` as 0.16.1 | M1 | Pending | - | 0, 1 |
 
 Row `M1` is a milestone row: its branch is the repo's `target_branch`, its PR goes to `main`, and its `Depends` lists what it ships. The driver opens it and never merges it.
@@ -268,9 +268,9 @@ After merging:
 - YOLO: on
 - Driver-ID: 58e3df70
 - Driver-Host: Raphael.local 73385 Tue Nov 24 14:52:15 2026 UTC
-- Active: 1, claude/local-pass-milestone
+- Active: 1, claude/local-pass-milestone (#68)
 - UAT-pending: 0
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-24T17:51:36Z
+- Heartbeat: 2026-11-24T17:52:24Z
 - Note: -
