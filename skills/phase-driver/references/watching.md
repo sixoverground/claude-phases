@@ -58,14 +58,13 @@ while :; do
       lines="$lines github.com: the forge is answering again."
       echo $(( $(now) + CHECKIN_MIN * 60 )) > "$D/checkin"
     fi
-  elif [ ! -f "$D/host.down" ]; then
+  else
     if grep -q 'HTTP 40[134]' "$D/err" && ! grep -qi 'rate limit' "$D/err"; then
-      echo refused > "$D/host.down"
-      lines="$lines github.com: the forge refused access ($(grep -o 'HTTP 40[134]' "$D/err" | head -n 1))."
+      kind=refused; msg="github.com: the forge refused access ($(grep -o 'HTTP 40[134]' "$D/err" | head -n 1))."
     else
-      echo unreachable > "$D/host.down"
-      lines="$lines github.com: the forge is unreachable ($(tr '\n' ' ' < "$D/err" | cut -c 1-100)); still polling, backing off to at most five minutes."
+      kind=unreachable; msg="github.com: the forge is unreachable ($(tr '\n' ' ' < "$D/err" | cut -c 1-100)); still polling, backing off to at most five minutes."
     fi
+    if [ "$(cat "$D/host.down" 2>/dev/null)" != "$kind" ]; then echo "$kind" > "$D/host.down"; lines="$lines $msg"; fi
   fi
   [ "$up" = 1 ] && for pr in $PRS; do
     R=${pr%%#*}; N=${pr##*#}; K=$(key "$pr"); new="$D/$K.new"
@@ -127,7 +126,7 @@ Fill it in:
 
 It keeps its snapshots in a directory named for the plan under `$TMPDIR`, one file per change request, each named from the full identity plus a checksum so that `acme/web-api#1` and `acme/web_api#1` never share one. A re-armed watcher compares against the last one, so a change that lands while no watcher is running still prints on the first poll after re-arming. Arm a new watcher whenever the set of open change requests changes, and stop the old one.
 
-**It asks the forge itself first.** Each poll starts with one request for the account it acts as (`gh api user`, or `glab api --hostname <host> user`), and polls the change requests only when that answers. The answer is tracked in a `host.down` file beside the per-change-request ones, which holds `unreachable` or `refused`. So the watcher reports the forge's own state once in each direction, even with no change request in the list, and an outage prints one line for the host rather than one per change request.
+**It asks the forge itself first.** Each poll starts with one request for the account it acts as (`gh api user`, or `glab api --hostname <host> user`), and polls the change requests only when that answers. The answer is tracked in a `host.down` file beside the per-change-request ones, which holds `unreachable` or `refused`. Every failed probe is classified again, and a line prints only when the category changes: an outage that ends in a 401, because the credentials expired meanwhile, prints the refusal rather than staying silent as unreachable, and the check-in comes back with it. So the watcher reports the forge's own state once per change of state, even with no change request in the list, and an outage prints one line for the host rather than one per change request.
 
 **Skipping the driver's own comments.** The watcher skips a comment, review or review-thread comment only when it is the driver's by [Whose note it is](gates.md#whose-note-it-is): by the account `gh` is logged in as, **and** carrying `<!-- phases:driver v=1 -->` on a line of its own. The driver stamps everything it posts, so its own gate reports and replies never wake it. Everything else wakes it:
 
@@ -193,15 +192,14 @@ while :; do
       lines="$lines $HOST: the forge is answering again."
       echo $(( $(now) + CHECKIN_MIN * 60 )) > "$D/checkin"
     fi
-  elif [ ! -f "$D/host.down" ]; then
+  else
     if grep -q '(HTTP 40[134])' "$D/err"; then
-      echo refused > "$D/host.down"
-      lines="$lines $HOST: the forge refused access ($(grep -o 'HTTP 40[134]' "$D/err" | head -n 1))."
+      kind=refused; msg="$HOST: the forge refused access ($(grep -o 'HTTP 40[134]' "$D/err" | head -n 1))."
     else
-      echo unreachable > "$D/host.down"
       why=$(sed 's/^ *//; s/ *$//' "$D/err" | grep -v -e '^$' -e '^ERROR$' | head -n 1 | sed 's/^[A-Za-z]* "[^"]*": //' | cut -c 1-120)
-      lines="$lines $HOST: the forge is unreachable ($why); still polling, backing off to at most five minutes."
+      kind=unreachable; msg="$HOST: the forge is unreachable ($why); still polling, backing off to at most five minutes."
     fi
+    if [ "$(cat "$D/host.down" 2>/dev/null)" != "$kind" ]; then echo "$kind" > "$D/host.down"; lines="$lines $msg"; fi
   fi
   [ "$up" = 1 ] && for mr in $MRS; do
     R=${mr%%!*}; N=${mr##*!}; P=$(enc "$R"); K=$(key "$mr"); new="$D/$K.new"
