@@ -405,13 +405,13 @@ After merging:
 
 ## Driver State
 
-- Driver: running
+- Driver: idle
 - YOLO: on
 - Driver-ID: 9d0dac66
 - Driver-Host: Raphael.local 73385 Tue Nov 24 14:52:15 2026 UTC
-- Active: M1, feature/offline (#66)
+- Active: -
 - UAT-pending: -
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-24T17:39:18Z
+- Heartbeat: 2026-11-24T17:39:39Z
 - Note: -
