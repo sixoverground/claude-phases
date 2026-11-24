@@ -82,7 +82,7 @@ This plan is executed by the `phase-driver` skill, and nothing in this file stan
 | 2 | claude/quiet-outage | sixoverground/claude-phases | Both watcher templates: no check-in while the forge is down, a host-level reachability line with no open change request, an outage expiry re-arms silently | 1 | Merged | #60 | 0 |
 | 3 | claude/offline-claimed-work | sixoverground/claude-phases | An outage blocks claims, plan writes and pushes, not work under a landed claim: rule 10, §3, the reconnect sequence, the `offline` key | 2 | Merged | #61 | 1 |
 | 4 | claude/recover-local-branch | sixoverground/claude-phases | Recovery for a claimed row whose commits exist only in the local clone: new rows, the same-host successor, orphaned branches, the planner's copy of the table | 3 | Merged | #62 | 2 |
-| 5 | claude/offline-in-review | sixoverground/claude-phases | Offline fixes on an `In Review` phase, with the review budget re-derived from the forge before anything is pushed | 4 | In Review | #63 | 3 |
+| 5 | claude/offline-in-review | sixoverground/claude-phases | Offline fixes on an `In Review` phase, with the review budget re-derived from the forge before anything is pushed | 4 | Merged | #63 | 3 |
 | 6  | claude/local-review-pass | sixoverground/claude-phases | `review.local`: an optional, non-posting, single local review pass before every push; config, detection, profile, disclosure, the arbiter brief | 5 | Pending | - | 4 |
 | 7  | claude/offline-cleanup | sixoverground/claude-phases | Cleanup: design notes, the local guide, README, hygiene, and a consistency pass over everything this plan restated in two places | 6 | Pending | - | 5 |
 | 8  | feature/offline | sixoverground/claude-phases | Milestone: ship working through a forge outage, the quiet watcher, `review.local` and the two fixes to `main` as 0.16.0 | M1 | Pending | - | 0, 1, 2, 3, 4, 5, 6 |
@@ -409,9 +409,9 @@ After merging:
 - YOLO: on
 - Driver-ID: 9d0dac66
 - Driver-Host: Raphael.local 73385 Tue Nov 24 14:52:15 2026 UTC
-- Active: 4, claude/offline-in-review (#63)
-- UAT-pending: 0, 1, 2, 3
+- Active: -
+- UAT-pending: 0, 1, 2, 3, 4
 - Review-baselines: -
 - Arbitrations: -
-- Heartbeat: 2026-11-24T16:31:26Z
+- Heartbeat: 2026-11-24T16:34:11Z
 - Note: -
