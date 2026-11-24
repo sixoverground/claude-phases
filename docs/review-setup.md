@@ -330,6 +330,18 @@ By the same rules as a Codex review on GitHub, in [Answering a review](../skills
 
 **Asking it to look again.** Post a note on the MR whose whole text is `@codex review`, from your own account, and a driver that is running answers it by starting a new merge request pipeline, which runs the review job on the current head. Nothing answers it when no driver is running: the note is plain text to GitLab, and the tool runs only in a pipeline. Retry the job from the MR's pipeline page instead.
 
+### A local pass before each push
+
+With `codex-mr-review` installed on the Mac the driver runs on, the same review can run there before every push, so a round is not spent on what it would find:
+
+```yaml
+review:
+  local:
+    command: "codex-mr-review review --base {base} --head {head} --dry-run"
+```
+
+The driver runs it once per push, fixes what it finds by the same rules as a review, and discloses what it found and did on the merge request. It is not a review: it posts nothing, writes no marker, never counts toward `stuck.max_review_rounds`, and the job above still has to review the head before gate 6 passes. **Keep `--dry-run`.** Without it the tool posts its review and marker from your machine, and a local run would pass the gate. A session without the command skips the pass and says so. It needs OpenAI's API, not the forge, so it runs through a VPN outage too.
+
 ### On GitHub
 
 A reviewer that meets the contract can gate a GitHub repo through the same `marker` entry, since gate 6 reads markers on either forge. One that meets contract 1.1 can share your account there as well. `codex-mr-review` does not post to GitHub. On GitHub, use [OpenAI Codex](#openai-codex) above, or a reviewer of your own that emits the contract.

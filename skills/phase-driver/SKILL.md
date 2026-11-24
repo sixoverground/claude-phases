@@ -58,6 +58,8 @@ It is the reserved consumer stamp of the [review contract](https://github.com/si
 
 You already never write a review marker ([`gates.md`](references/gates.md#the-review-marker)). You also never write a reviewer stamp, `<!-- phases:reviewer ...`, and **never copy a hidden HTML comment line out of someone else's note into your own**, quoted or not: a reviewer's fingerprint, its stamp, its marker, or anything else between `<!--` and `-->`. When you quote a finding, quote the words a reader can see. On a shared account a fingerprint, stamp or marker inside a note of yours would be taken for the reviewer's, and could hide a finding or prove a review that never happened.
 
+**The same goes for [the local review pass](#the-local-review-pass).** It is yours, not a reviewer's: its disclosure carries your stamp and nothing of a reviewer's, and its command must post nothing at all.
+
 ## 1. Find the plan
 
 Look for `docs/plans/*.md` in the current repo. More than one, and no phase named: list them and ask.
@@ -141,11 +143,33 @@ For each, in order:
    - `ci`. Don't attempt a local build.
    - `auto`. Try local; if the toolchain isn't there, fall back to CI.
    - `none`. Skip verification.
-6. **Push and open the change request**, the way the forge reference's **Open** says, titled `Phase N: <scope>`. Body: the acceptance criteria as a checklist, **which verification path actually ran**, the UAT checklist per the rules below, anything out of scope you noticed, and `Driven by phase-driver, do not edit the plan file in this PR`.
+
+   Then, where the repo sets `review.local`, run [the local review pass](#the-local-review-pass) on the commit about to be pushed.
+6. **Push and open the change request**, the way the forge reference's **Open** says, titled `Phase N: <scope>`. Body: the acceptance criteria as a checklist, **which verification path actually ran**, the UAT checklist per the rules below, anything out of scope you noticed, the local review pass's disclosure where one ran or was skipped, and `Driven by phase-driver, do not edit the plan file in this PR`.
 7. **Commit `In Review`** and the `Link`, immediately, before subscribing, before any wait. A change request that exists but isn't recorded is the most expensive state to recover from.
 8. **After opening, do what the forge reference's **Opener identity** says.** On some forges the account that opens a change request decides whether a reviewer ever looks at it.
 
 **Which steps need the forge.** Steps 1 to 3 do: the reachability check, the claim and the branch from a fetched `target_branch`. So do steps 6 to 8: the push and the change request, the `In Review` write, and the opener check. Steps 4 and 5, implement and verify, do not. When the forge stops answering after step 3 finished, implement and verify as usual and commit on the phase branch. `verify: ci`, and the CI half of `auto`, cannot run without it, so commit and let the push wait; the change request's body says which path ran, as always. When it stops answering before step 3 finished, the phase waits. After an outage, steps 6 to 8 run only at the end of the reconnect sequence in [The forge is unreachable](references/recovery.md#the-forge-is-unreachable), never straight away. The row's resolved `offline` key decides how far any of this goes.
+
+### The local review pass
+
+`review.local.command` is an optional, per-repo shell line that reviews a diff on this machine before it is pushed. The driver runs it in the repo's clone with `{base}` replaced by the fetched `origin/<target_branch>` and `{head}` by the commit about to be pushed, as in `codex-mr-review review --base {base} --head {head} --dry-run`. Unset, no local pass runs.
+
+**One pass per push.** It runs once before every push of a phase branch: the opening push in §3, and every fix push in §5, for a check or a review. The fixes it leads to are verified and pushed without a second local pass. That is the cap: a local pass is invisible to `stuck.max_review_rounds`, and a reviewer run until it is satisfied would loop with nothing counting the rounds.
+
+**When it cannot run, push anyway and say so.** If the command is not on the `PATH`, or it exits non-zero or times out, skip the pass and disclose the skip and its reason, as `verify: auto` discloses which path ran. A failed local pass never holds a push and never marks a row `Blocked`.
+
+**Judge what it finds by [Answering a review](#answering-a-review)'s rules**, exactly as a reviewer's findings: in scope and right is fixed in this push, minor is carried in it or left, wrong is declined with a reason, and out of scope goes to Carried findings or an issue. Where an arbitration is in this budget, judge against the verdict's bar, read from the change request. Where that comment cannot be read because the forge is unreachable, fix only in-scope defects in correctness, security or data, and hold the rest until it can, as **Answering a review while the forge is unreachable** says.
+
+**It is never a review.** It writes no review marker and no reviewer stamp, opens no thread, satisfies no gate, and never counts as a reviewed head by [Count reviewed heads, not reviews](#stop-when-the-rounds-stop-converging). Gate 6 still waits for the real reviewer at the pushed head. **The command must print and post nothing.** `codex-mr-review` without `--dry-run` posts its review, marker included, so it would satisfy gate 6 with no review in CI; never run a local command without its non-posting flag.
+
+**Disclose every pass.** On the opening push, a section of the change request's body; on a fix push, one comment right after it, stamped like everything you post. Either way it gives:
+
+- the command as run and the commit it reviewed
+- each finding that was fixed, in a line
+- each finding that was declined or held, with the reason
+
+That is the record a reviewer's thread would otherwise be, and the arbiter reads it.
 
 ### UAT checklists
 
@@ -201,6 +225,8 @@ Reconcile first. Then handle what woke you, against the row it belongs to:
 - **The change request was merged by anyone.** Go to step 7. This is expected, not an anomaly.
 - **A message from the user**, see `references/vocabulary.md`.
 - **Nothing actionable**, re-arm the check-in and end the turn.
+
+Every push this section leads to, for a check or a review, has [the local review pass](#the-local-review-pass) before it where the repo sets one: once per push, never again over its own fixes.
 
 ### Answering a review
 
@@ -309,6 +335,7 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
    - the repo, change request number, base branch, head sha, and the path of the local checkout, so it can read the whole diff against base rather than the latest commit
    - every review finding on the change request from every round, resolved or not, with links
    - what you changed in each round, one line per commit
+   - the local review pass's disclosures, where the repo sets `review.local`: what each pass found, and what was fixed, declined or held, as local findings rather than a reviewer's
    - the repo's own review rules, if it has any, by path and quoted: a severity bar, a threat model or a budget the repo set binds the verdict as much as the limits below
 
    **Do not tell it which findings you think are wrong or minor.** It is there to disagree with you, and an arbiter handed your opinion tends to give it back.
