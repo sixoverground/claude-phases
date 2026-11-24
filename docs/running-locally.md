@@ -89,7 +89,7 @@ To change the sleep settings themselves, use System Settings (Battery, or Energy
 
 ### A local review before each push
 
-With `codex-mr-review` installed on this Mac, `review.local` runs the same review the merge request pipeline runs, before every push, so a round is not spent on what it would find. It needs OpenAI's API but not the forge, so it runs during a VPN outage too. It posts nothing and the pipeline's review is still the gate; the driver says on the change request what the local pass found and fixed. See [A local pass before each push](review-setup.md#a-local-pass-before-each-push).
+With `codex-mr-review` installed on this Mac, `review.local` runs the same review the merge request pipeline runs, before every push of a phase and every fix to a milestone change request, so a round is not spent on what it would find. On a milestone fix it reviews the fix alone. It needs OpenAI's API but not the forge, so it runs during a VPN outage too. It posts nothing and the pipeline's review is still the gate; the driver says on the change request what the local pass found and fixed. See [A local pass before each push](review-setup.md#a-local-pass-before-each-push).
 
 ## Steering it from your phone
 
