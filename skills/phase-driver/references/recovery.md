@@ -18,6 +18,7 @@ Apply this **per non-terminal row**, not once per plan, plus every `Merged` mile
 | `In Progress`, stale | no branch | Claimed, died before doing anything, and no local branch of the row's name holds commits | Reset to `Pending`, then start it normally |
 | `In Progress`, stale | branch exists, no PR | Died mid-implementation | See below |
 | `In Progress` | open PR on that branch | Died after opening the PR, before recording it | Write `In Review` + `Link`, adopt |
+| `In Review`, this session or a same-host successor | PR open | **The local clone's phase branch is ahead of the head the forge reports.** Fixes committed while the forge was unreachable | Follow [Offline work on a phase in review](#offline-work-on-a-phase-in-review). Never push on the strength of the local commits alone |
 | `In Review` | PR open | Normal operation | Re-arm the watch, re-evaluate the gate against the current head |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, then start whatever it unblocks |
 | `In Review` | PR closed, not merged | A human killed it | Ask why. Default to `Blocked` if there's no answer |
@@ -85,6 +86,17 @@ Work under a claim that is already on the forge. **Two things must both be true*
 | Only the row's forge | Plan writes still land, so `Heartbeat` stays fresh and the claim is safe. The phase is implemented, verified and committed, and the push waits for that forge |
 | Only the home forge | The row's repo can be fetched from, but nothing is pushed for it: `In Review` could not be recorded, and the claim could not be re-asserted |
 | Both | As above for each |
+
+### Offline work on a phase in review
+
+SKILL.md §5, **Answering a review while the forge is unreachable**, says what may be fixed offline on an `In Review` row and what waits. When the forge answers, run steps 1 and 2 of [the reconnect sequence](#the-reconnect-sequence) below, the Driver-ID check and the token-checked `Heartbeat` write, and then, before any push:
+
+1. **Read the change request**: its state, its head sha, and every thread.
+2. **If it was merged or closed, or its head moved on the forge**, the offline commits are not pushed as they are. Where the change request is still open and they rebase cleanly onto the new head and are still wanted, rebase them and verify again. Otherwise rename the branch to `<branch>-orphaned`, as the lost-claim branch below says, and report. Nothing is ever forced over a head this driver did not push.
+3. **Derive the reviewed-head count again and apply SKILL.md's budget table.** The count from before the outage counts for nothing. Where the table says arbitrate, hold the push and arbitrate: the arbiter judges the head the forge has, and its brief lists the unpushed commits as changes not yet reviewed. After the verdict, bring the offline commits in line with it, so that they and the verdict's own fixes go in one push. Where the table says stop for a person, push nothing: the offline commits stay on the local branch, the stop report names them, and a person's `continue` decides whether they are pushed.
+4. **Fold in findings that arrived during the outage**, so the one push answers every open thread, then reply and resolve as SKILL.md §5 says.
+
+`offline: false` turns this off, and `offline.max_minutes` stops new offline fixes as it stops new offline work on an `In Progress` row.
 
 ### The reconnect sequence
 

@@ -241,6 +241,15 @@ Every outcome above resolves a review bot's thread, and that is deliberate. Whic
 
 **Widening a phase because a reviewer suggested it is still widening it.** The scope came from a plan someone agreed to; a comment is a suggestion from a tool that has read this diff and nothing else.
 
+#### Answering a review while the forge is unreachable
+
+**Fixes may be made offline; nothing is pushed, replied to or resolved.** When the forge stops answering on an `In Review` row, fix the review findings and CI failure text this session already read from the forge, and commit them on the phase branch, provided the local tip is the change request's head as the forge last reported it. Two things wait instead:
+
+- **A session that compacted during the outage waits.** It has lost the findings, and it does not rebuild them from memory or from its own commits.
+- **A finding whose answer needs an arbiter's verdict waits.** Where the plan as last read shows an arbitration in this phase's budget, the verdict comment cannot be read offline, so offline work is limited to in-scope defects in correctness, security or data, which no bar covers. Everything else waits for the verdict.
+
+**The count is never carried across the outage.** On reconnect it is derived again from the change request, by **Derive the count; never remember it** above, and the budget table below is applied to it before anything is pushed. The table itself is unchanged: an arbitration or a stop it calls for holds the push exactly as it would have without the outage. The reconnect steps are in `references/recovery.md`, **Offline work on a phase in review**. The row's `offline` key governs this as it governs §3.
+
 #### Stop when the rounds stop converging
 
 **Count the review rounds on this change request.** At `stuck.max_review_rounds` (default `3`, `null` to disable), or sooner where the [repo's own rules](#the-repos-own-stop-rules) call for a stop, step back and arbitrate. When the arbiter's extra rounds run out, stop for a person.

@@ -376,6 +376,7 @@ What a driver does when the plan and GitHub disagree, which is the situation aft
 | `In Progress`, stale | no branch | Claimed, died before any work, and no local branch holds commits | Reset to `Pending`, restart |
 | `In Progress`, stale | branch, no PR | Died mid-implementation | Inspect the diff against the scope; finish and open the PR, or reset. A branch only in the local clone is renamed `<branch>-orphaned` on reset, never deleted |
 | `In Progress` | open PR | Died before recording the PR | Write `In Review`, adopt |
+| `In Review`, this session or a same-host successor | PR open | The local branch is ahead of the PR's head: fixes made while the forge was unreachable | Re-read the PR, re-derive the review count and apply the budget table, then push once. A merged, closed or moved PR never gets the commits unexamined |
 | `In Review` | PR open | Normal | Re-subscribe, re-evaluate gates |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, advance |
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
