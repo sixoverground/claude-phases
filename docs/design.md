@@ -200,6 +200,8 @@ So at the threshold the judgement moves to an **arbiter**, a subagent with a fre
 
 The limits run one way. The arbiter can tell the driver to do more about a defect, never less. It cannot accept an in-scope correctness, security, or data defect, it rejects a finding only with reasoning someone can check, and it never widens a phase. Its verdict is posted on the PR before anything is acted on, because under YOLO the phase may merge before anyone reads it, and resolved threads with no fix need a reason someone can find.
 
+**A person can ask for a fresh arbiter.** `arbitrate` at a stop is `continue` plus an arbitration at once, defined entirely by rules the driver already has rather than a new kind of verdict. The one subtlety is the baseline. An arbitration belongs to a budget only when its entry is above the baseline, and `continue` writes the baseline at the current count, so an arbitration recorded at that count would fall outside the budget and the next wake would arbitrate again. Writing the baseline one below makes the effective count 1, which is exactly the rule a repo's own stop rule already follows, reached by choosing the number rather than by an exception. One below is exact: two below would hand the phase a free round. The baseline, the entry and the row's return to `In Review` go in one plan write, so a crash cannot clear the stop without recording the arbitration.
+
 **The stop for a person is still there**, after the arbiter's extra rounds. A loop that survives an arbiter calling for rework is a phase that needs replanning, and that is the person's call.
 
 ### Why the driver resolves a disagreement
