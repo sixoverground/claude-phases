@@ -285,7 +285,7 @@ What separates them is the reviewer's own contract. Smart detect reviews every P
 
 | Key | Default | Meaning |
 |---|---|---|
-| `review.local.command` | unset | A shell line the driver runs in the repo's clone once before every push of a phase branch. `{base}` becomes the fetched `origin/<target_branch>`, `{head}` the commit about to be pushed. Unset, no local pass runs |
+| `review.local.command` | unset | A shell line the driver runs in the repo's clone once before every push of a phase branch and every fix push to a milestone PR. `{head}` becomes the commit about to be pushed. `{base}` becomes the fetched `origin/<target_branch>` on a phase branch, and on a milestone fix the milestone PR's head as the forge has it before the fix, so only the fix is reviewed. Unset, no local pass runs |
 
 ```yaml
 review:
@@ -295,7 +295,7 @@ review:
 
 **It must be a command that prints findings and posts nothing.** A command that posts would put a review, or a review marker, on the change request from a local run, and could satisfy gate 6 with no review in CI. `codex-mr-review` posts unless it is given `--dry-run`, so the documented line always carries it. Add `--format json` for machine-readable output.
 
-What it is for: fixing what the real reviewer would find before the push, so a round is not spent on it. What it is not: a review. It never counts as a reviewed head, never satisfies gate 6, and posts nothing but the driver's own stamped disclosure of what it found and what was done. It runs **once per push**, never again over its own fixes, which is the cap that keeps it from looping where `stuck.max_review_rounds` cannot see it. There is no `required` setting: a session where the command is missing or fails skips the pass, says so, and pushes.
+What it is for: fixing what the real reviewer would find before the push, so a round is not spent on it. What it is not: a review. It never counts as a reviewed head, never satisfies gate 6, and posts nothing but the driver's own stamped disclosure of what it found and what was done. It runs **once per push**, before every push of a phase branch and every fix push to a milestone PR, never before the preparation or the push that opens a milestone PR, and never again over its own fixes, which is the cap that keeps it from looping where `stuck.max_review_rounds` cannot see it. There is no `required` setting: a session where the command is missing or fails skips the pass, says so, and pushes.
 
 It is a property of the machine as much as the repo, since the command has to be installed where the driver runs, and it costs one more review run per push against the same allowance and, on a shared Mac, the same runner as the real reviewer.
 
