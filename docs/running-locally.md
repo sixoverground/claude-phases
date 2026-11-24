@@ -75,7 +75,21 @@ pmset -g assertions       # the assertions currently held
 
 To change the sleep settings themselves, use System Settings (Battery, or Energy on a desktop Mac), not this guide.
 
-**A VPN or Wi-Fi drop is a wait, not a failure.** When the forge stops answering, the watcher prints one line saying it is unreachable, keeps polling with a back-off of up to five minutes, and prints one line when it answers again. Seen on this project's run during a Wi-Fi drop: one unreachable line, then one recovered line, and nothing in between. The driver marks nothing `Blocked` for an outage and counts nothing toward its stuck limits. A self-managed host behind a VPN usually fails as a DNS error or a timeout, which the driver reads as unreachable. When the VPN comes back the next poll picks up where it was.
+### When the VPN or Wi-Fi drops
+
+**It is not a failure, and work goes on.** When the forge stops answering, the watcher prints one line saying it is unreachable, keeps polling with a back-off of up to five minutes, and prints one line when it answers again. In between it prints no fallback check-ins, and a Monitor expiry re-arms silently, so a long outage costs one message each way. The driver marks nothing `Blocked` for an outage and counts nothing toward its stuck limits. A self-managed host behind a VPN usually fails as a DNS error or a timeout, which the driver reads as unreachable.
+
+**What the driver does meanwhile.** A phase whose claim is already on the forge keeps going: the driver implements it, verifies it locally and commits it on the phase branch, and tells you once which phase has commits waiting. On a phase already in review it fixes findings it had already read. Nothing is pushed, nothing is posted, the plan is not written, and no new phase is started, because all of that needs the forge.
+
+**What it does when the forge answers.** It checks it still holds the plan and rewrites its heartbeat before anything else, then finishes and verifies the phase if it stopped short, and only then pushes and opens the change request. On a phase in review it re-reads the change request and applies the review budget first. You should see the change request appear a minute or two after the VPN returns.
+
+**A `-orphaned` branch** is work the driver set aside: another driver took the plan over during the outage, or a phase was reset with commits the forge never saw. The driver never deletes one and names any it finds in its status reports. Look at it with `git log <target_branch>..<branch>-orphaned`, then cherry-pick what you want or delete it yourself with `git branch -D`.
+
+**Changing how long it works offline.** By default it works through the whole outage. Set `offline: { max_minutes: 90 }` under `defaults` if a driver on another machine could take the plan over, so this one stops adding work it might lose; set `offline: false` to go back to waiting.
+
+### A local review before each push
+
+With `codex-mr-review` installed on this Mac, `review.local` runs the same review the merge request pipeline runs, before every push, so a round is not spent on what it would find. It needs OpenAI's API but not the forge, so it runs during a VPN outage too. It posts nothing and the pipeline's review is still the gate; the driver says on the change request what the local pass found and fixed. See [A local pass before each push](review-setup.md#a-local-pass-before-each-push).
 
 ## Steering it from your phone
 

@@ -313,7 +313,23 @@ A cloud session is woken by webhooks. A session on your own machine has none, an
 
 So the driver arms a small shell loop, the watcher, under Claude Code's Monitor. It polls the forge once a minute, keeps a snapshot per change request, and stays silent until something changes. Then it prints one line, which is a complete wake message: invoke the skill, reconcile this plan, and here is what changed. Waiting costs nothing, and each wake is a turn spent on a real event.
 
-It holds no state that matters. Its snapshots only decide what to print, so a session that dies loses nothing with its watcher, and the next session's Reconcile arms a new one. It reports a forge that stops answering once, backs off, and reports it answering again, so a night on a laptop that changes networks is two lines, not a stalled plan. And it prints its own fallback check-in by the wall clock, so a Mac that slept through the deadline checks in on the first poll after waking.
+It holds no state that matters. Its snapshots only decide what to print, so a session that dies loses nothing with its watcher, and the next session's Reconcile arms a new one. It asks the forge itself first on every poll, so it reports a forge that stops answering once, backs off, and reports it answering again, even with no change request open. A night on a laptop that changes networks is two lines and no check-ins in between, not a stalled plan and not a message every half hour. And it prints its own fallback check-in by the wall clock, so a Mac that slept through the deadline checks in on the first poll after waking.
+
+## Working through an outage
+
+Before 0.16.0 an unreachable forge was a total wait: correct, and wasteful. The first real outage, hours of a dropped VPN against a self-managed GitLab, cost nothing only because the one open phase was already waiting on a person. Any phase mid-implementation would have sat idle for the length of the outage with all of its information already on the machine.
+
+**What stays bound to the forge.** Claims and every other plan write, because the plan file is the lock that stops two drivers starting the same phase, and "a status write that could not be made means the action it describes has not started" is what makes crash recovery trustworthy. The merge gates, because their value is being the shared record a person can see. Pushes, and everything posted to a change request.
+
+**What carries on.** Work under a claim that already landed: implementing, verifying locally and committing, and on a phase in review, fixing findings already read. The work exists only in the local clone until the forge answers, and that is the point: it is the same work a session that died mid-implementation leaves behind today, so recovery already has to cope with it, and Reconcile now reads the local clone before it would reset such a row.
+
+**The claim is only as durable as its heartbeat.** `Heartbeat` is a plan write, so it cannot be refreshed while the home forge is down, and after 90 minutes a driver on another host may take the plan over and restart the phase. That risk is accepted rather than avoided. The guard sits at reconnect, not at a timer: before anything is pushed, the driver checks its `Driver-ID` and rewrites `Heartbeat` with the write token. A push is not a compare-and-swap, and the token-checked write in front of it is what makes it safe. A claim lost meanwhile means nothing is pushed and the work is kept, never deleted, on a `-orphaned` branch.
+
+**Why no cap by default.** Losing the time is a bigger loss than spending it on work that might be orphaned, and with one driver the takeover never happens. The cap exists for the case where it can: `offline.max_minutes` stops new offline work once the heartbeat is that old, and a team with drivers on more than one machine sets it to the takeover threshold, 90. `offline: false` restores the total wait.
+
+**A phase in review does not get to skip its budget.** Fixes made offline are the first path that prepares a push without the forge having evaluated anything. So the review count is derived again on reconnect, never carried across the outage, and the budget table is applied before the push: an outage cannot carry a phase past an arbitration or a stop.
+
+**The local review pass counts for nothing on the forge.** `review.local` runs a reviewer on this machine before each push, so a round is not spent on what it would find. It writes no marker and is never a reviewed head, because a local run is invisible to everyone but the driver: if it counted, the review budget and gate 6 would rest on something nobody else can see. It runs once per push for the same reason, since nothing outside the driver would notice it looping.
 
 ## Authorship stamps
 
@@ -353,6 +369,10 @@ What it did not reach: a self-managed instance, a Developer-role token, a protec
 **Shipping the watcher as a script.** It is a template in `watching.md` that the driver fills in and runs, not a file installed with the plugin. A script would need installing, versioning and a path on every machine, and a skill uploaded to claude.ai cannot carry one. The template travels with the reference that explains it.
 
 **Posting to GitHub from `codex-mr-review`.** GitHub has its own Codex reviewer, which the driver already reads. A second way to get the same review there would be a second setup to keep working for no new capability.
+
+**Queueing plan writes to replay when the forge answers.** The file update's token check would still catch a conflict on replay, but by then the work it describes was done without a claim, which is exactly what the claim exists to prevent. Offline work happens only under a claim that already landed.
+
+**A `required` local review.** A local pass that had to succeed would make a push depend on a tool installed on one machine and an API outside the forge, and it would invite treating the local run as proof of review. It is optional, skipped and disclosed where it cannot run, and the CI review stays the gate.
 
 **New rules for reading a self-hosted Codex review.** On GitLab, Codex's review is read through the marker, exactly as any other reviewer meeting the contract would be. Gate 6 has no Codex-specific case there, so a different reviewer, a Claude review job for example, needs no change to the driver.
 

@@ -1,6 +1,6 @@
 ---
 name: phase-planner
-description: Write a phased implementation plan to a docs/plans markdown file named for the project. Break work into one-PR phases, detect each repo's CI and review setup, and propose matching configuration. Use when asked to plan a project, break work into phases, set up a phased plan, or create a plan for phase-driver to execute. Also use when revising an existing plan's phases or configuration. This copy is claude-phases 0.15.0.
+description: Write a phased implementation plan to a docs/plans markdown file named for the project. Break work into one-PR phases, detect each repo's CI and review setup, and propose matching configuration. Use when asked to plan a project, break work into phases, set up a phased plan, or create a plan for phase-driver to execute. Also use when revising an existing plan's phases or configuration. This copy is claude-phases 0.16.0.
 model: fable
 ---
 
@@ -63,6 +63,8 @@ acme/platform/web   (gitlab.example.com)
 Then say what you inferred, and ask whether it holds, through `AskUserQuestion` again: one confirmation for the lot, with *correct something* as an option, or one question per repo where a finding is genuinely uncertain. People will tell you "we're moving off Copilot" or "that repo's CI is broken, ignore it", facts you cannot read from the API.
 
 **Where detection comes up empty**, such as a new repo with no PR history, say so plainly and ask, through the same tool. Guessing produces a config that fails on the first PR, which is worse than one question.
+
+**Ask whether a second driver can reach the plan**, in the same confirmation: *will a driver on any other machine ever run this plan?* That decides `offline` (see `references/configuration.md`, **Working offline**), and nothing in a repo says it. With a no, write nothing: the default, `max_minutes: null`, lets work under a landed claim run through a whole outage. With a yes, propose `offline: { max_minutes: 90 }` under `defaults`, which matches the takeover threshold.
 
 ## 3. Refuse configurations that can never pass
 

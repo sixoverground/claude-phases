@@ -181,7 +181,7 @@ Web and backend code runs locally. Android runs its JVM unit tests locally and l
 
 ## Running locally
 
-The driver can run in a Claude Code session in a terminal on your own Mac instead of in the cloud: for a forge only your machine can reach, such as a self-managed GitLab behind a VPN, or a toolchain only your machine has, such as Xcode. It arms a watcher where a cloud session would get webhooks, and you can still steer it from your phone with Remote Control. Keeping the session alive is then your job. [docs/running-locally.md](docs/running-locally.md) covers all of it.
+The driver can run in a Claude Code session in a terminal on your own Mac instead of in the cloud: for a forge only your machine can reach, such as a self-managed GitLab behind a VPN, or a toolchain only your machine has, such as Xcode. It arms a watcher where a cloud session would get webhooks, keeps working on a claimed phase while the VPN is down, can run the reviewer locally before each push, and you can still steer it from your phone with Remote Control. Keeping the session alive is then your job. [docs/running-locally.md](docs/running-locally.md) covers all of it.
 
 ## Installing
 

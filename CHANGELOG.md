@@ -4,6 +4,28 @@ Notable changes to claude-phases. Format follows [Keep a Changelog](https://keep
 
 Because the skills are prose read by a model, a "patch" here can still change behaviour. Read the entry, not the number.
 
+## [0.16.0]
+
+### Working through a forge outage
+
+An unreachable forge used to be a total wait. Now an outage blocks what needs the forge (claims, every plan write, pushes, and everything posted to a change request) and nothing else. A plan with neither new key behaves as before, except that it works through an outage.
+
+* **Work under a claim that already landed carries on.** When the forge stops answering, a phase whose claim is on the forge is implemented, verified locally and committed in the clone, and pushed when the forge answers. A phase already in review can have findings it already read fixed and committed offline. Nothing is pushed, replied to or resolved while the forge is down.
+* **A guarded reconnect.** Before anything is pushed, the driver checks it still holds the plan and rewrites its heartbeat with the write token, because a push is not protected by the token. It then confirms the branch is absent or its own, finishes any work an outage cut short, and rebases and verifies again if the target moved. If the claim was lost meanwhile, it pushes nothing, never forces, and keeps the work on a `-orphaned` branch that nothing deletes. On a phase in review, the review count is derived again and the budget table applied first, so an outage cannot carry a phase past an arbitration or a stop.
+* **The `offline` key.** `offline.max_minutes` (default `null`, no limit) stops new offline work once the claim's heartbeat is that old; set `90` where a driver on another machine can reach the plan. `offline: false` restores the total wait. The planner asks whether a second driver can reach the plan and proposes the key only then.
+* **Recovery reads the local clone.** Reconcile no longer resets an `In Progress` row whose only commits are in this clone. A session's own unpushed work is resumed, and a predecessor's on the same host is inspected like any interrupted branch. `-orphaned` branches are never tidied and are named in status reports.
+* **A quiet outage.** The watcher asks the forge itself on every poll, so it reports an outage once for the host and wakes the driver when the forge comes back, even with no change request open. While the forge is unreachable it prints no fallback check-ins, and a Monitor expiry re-arms silently. An outage that ends in a refusal, such as expired credentials, is reported as one.
+
+### `review.local`: a local review pass before every push
+
+* **An optional, per-repo command** runs once before every push of a phase branch, on this machine, so a review round is not spent on what it would find. The documented one is `codex-mr-review review --base {base} --head {head} --dry-run`, and the planner proposes it where `codex-mr-review` is installed.
+* **It is never a review.** It posts nothing, writes no marker, never counts as a reviewed head and never satisfies a gate; the real reviewer still has to review the pushed head. It runs once per push and never again over its own fixes. A missing or failing command is skipped and the skip disclosed, and what each pass found, fixed and declined is disclosed on the change request and given to the arbiter.
+
+### Fixes
+
+* **The arbiter is briefed with a fresh export of the plan** from the plan branch instead of a path, so it can no longer read a stale copy in the checkout.
+* **Comment and reply bodies go through files**, written with the Write tool and passed by file, never through a heredoc, which a shell safety check could refuse over a stray `$$`.
+
 ## [0.15.0]
 
 ### `release_branch`: milestones that ship somewhere other than the default branch

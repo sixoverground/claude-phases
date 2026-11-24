@@ -281,6 +281,24 @@ What separates them is the reviewer's own contract. Smart detect reviews every P
 
 **Considered and rejected: making the decline conditional on diff size**, so a large push could not be waved through. It sounds prudent and is not. The reviewer saw that push and declined; a line count is a strictly worse signal than the judgment it would be overriding, and encoding it would mean the gate second-guessing the reviewer it is configured to trust.
 
+#### `review.local`
+
+| Key | Default | Meaning |
+|---|---|---|
+| `review.local.command` | unset | A shell line the driver runs in the repo's clone once before every push of a phase branch. `{base}` becomes the fetched `origin/<target_branch>`, `{head}` the commit about to be pushed. Unset, no local pass runs |
+
+```yaml
+review:
+  local:
+    command: "codex-mr-review review --base {base} --head {head} --dry-run"
+```
+
+**It must be a command that prints findings and posts nothing.** A command that posts would put a review, or a review marker, on the change request from a local run, and could satisfy gate 6 with no review in CI. `codex-mr-review` posts unless it is given `--dry-run`, so the documented line always carries it. Add `--format json` for machine-readable output.
+
+What it is for: fixing what the real reviewer would find before the push, so a round is not spent on it. What it is not: a review. It never counts as a reviewed head, never satisfies gate 6, and posts nothing but the driver's own stamped disclosure of what it found and what was done. It runs **once per push**, never again over its own fixes, which is the cap that keeps it from looping where `stuck.max_review_rounds` cannot see it. There is no `required` setting: a session where the command is missing or fails skips the pass, says so, and pushes.
+
+It is a property of the machine as much as the repo, since the command has to be installed where the driver runs, and it costs one more review run per push against the same allowance and, on a shared Mac, the same runner as the real reviewer.
+
 ### Reviewer setups
 
 All seven are first-class, and they compose. Require Copilot *and* a Claude check if you want both.
@@ -331,6 +349,21 @@ At `max_review_rounds` the driver stops answering and starts a subagent with a f
 Without a subagent, as in a claude.ai skill upload, the driver runs the same pass itself and says so on the PR. A model your organization or auto mode excludes falls back to the session's model.
 
 Counted per row, so one wedged platform never stalls the others.
+
+### Working offline
+
+When the forge stops answering, a phase whose claim already landed keeps going in the local clone: implemented, verified locally and committed, then pushed through a guarded reconnect sequence when the forge answers. Claims, plan writes and pushes always wait. The driver's `references/recovery.md`, **The forge is unreachable**, has the rules.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `offline.max_minutes` | `null` | No limit: offline work runs through the whole outage. A number stops new offline work once the claim's `Heartbeat`, as the plan last showed it, is that many minutes old; the driver commits what it has and waits, and finishes the phase after reconnect, before publishing it |
+| `offline` | on | `offline: false` turns offline work off, so an outage is a total wait, as before 0.16.0 |
+
+Both go under `defaults` or a repo, like any other key, and the driver reads the row's resolved value. A plan with no `offline` key behaves as `max_minutes: null`. `offline: false` is to `offline` what `stuck.arbiter: null` is to the arbiter.
+
+**The reconnect sequence applies under every setting.** Before anything is pushed after an outage, the driver checks its `Driver-ID` and rewrites `Heartbeat` with the write token, because a push is not protected by the token. A claim lost during the outage means nothing is pushed and the local branch is renamed `<branch>-orphaned`, never deleted.
+
+**Why `null` is the default.** `Heartbeat` is a plan write, so it cannot be refreshed while the home forge is down, and after 90 minutes another driver on another host may take the plan over. With one driver, that never happens, and stopping early only loses time. **Set `90`** where a second driver on another machine can reach the plan: it matches the takeover threshold, so this driver stops adding work it may lose.
 
 ---
 

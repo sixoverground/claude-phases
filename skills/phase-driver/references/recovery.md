@@ -6,14 +6,19 @@ Apply this **per non-terminal row**, not once per plan, plus every `Merged` mile
 
 **The forge is the truth.** The plan records what a driver intended; the forge records what happened. Where they differ, fix the plan.
 
+**Two rows also read the local clone**, because work done while the forge was unreachable exists nowhere else until it is pushed. The forge column still says only what the forge says; what the clone holds is named in the row's *What happened*. The first matching row wins, so these two sit above the reset they override.
+
 | Plan says | The forge says | What happened | Do this |
 |---|---|---|---|
 | `Pending`, stale heartbeat | no branch, no PR | Never started | Start it normally |
 | `Pending` | open PR on that branch | Died after opening the PR, before recording it | Adopt the PR: write `In Review` + `Link`, watch, evaluate the gate |
 | `In Progress`, foreign ID, heartbeat < 90 min | anything | Another driver is live, or one died recently | Stop. Report. Touch nothing. Two ways out, both in SKILL.md's **Driver-ID**: its `Driver-Host` shows a dead process on this host, or a person says `take over` |
-| `In Progress`, stale | no branch | Claimed, died before doing anything | Reset to `Pending`, then start it normally |
+| `In Progress`, and this session holds the ID by SKILL.md's **Driver-ID** rules, a matching `Driver-Host` included, whatever the heartbeat's age | no branch | **The local clone has a branch of the row's name with commits ahead of `origin/<target_branch>`.** This session's own work, done while the forge was unreachable and not yet pushed | Carry on from it, through [the reconnect sequence](#the-reconnect-sequence). **Never reset it.** A driver on another host cannot see this clone and applies the reset row below; the reconnect sequence's lost-claim branch is what answers that |
+| `In Progress`, and this session took the plan over on this host, from a dead process or a stale heartbeat | no branch | **The local clone has a branch of the row's name with commits ahead of `origin/<target_branch>`.** The previous session's unpushed work, which nobody can be asked about | Treat it as [a branch with no PR](#the-awkward-one-a-branch-with-no-pr): inspect the diff against the phase's scope, then finish it, reset it, or ask |
+| `In Progress`, stale | no branch | Claimed, died before doing anything, and no local branch of the row's name holds commits | Reset to `Pending`, then start it normally |
 | `In Progress`, stale | branch exists, no PR | Died mid-implementation | See below |
 | `In Progress` | open PR on that branch | Died after opening the PR, before recording it | Write `In Review` + `Link`, adopt |
+| `In Review`, this session or a same-host successor | PR open | **The local clone's phase branch is ahead of the head the forge reports.** Fixes committed while the forge was unreachable | Follow [Offline work on a phase in review](#offline-work-on-a-phase-in-review). Never push on the strength of the local commits alone |
 | `In Review` | PR open | Normal operation | Re-arm the watch, re-evaluate the gate against the current head |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, then start whatever it unblocks |
 | `In Review` | PR closed, not merged | A human killed it | Ask why. Default to `Blocked` if there's no answer |
@@ -49,9 +54,70 @@ The forge did not answer at all: a DNS failure, a timeout, a refused connection,
 - **Mark nothing `Blocked`.** Nothing is wrong with any phase. A row blocked for an outage stays blocked after the outage, until a person clears it.
 - **Do not count the wake toward `stuck.max_cycles`.** No gate was evaluated, so no gate failed.
 - **Tell the user once**, not once per poll.
-- **Keep watching.** The watcher backs off to at most five minutes between polls, prints one line when the forge stops answering and one when it answers again. Reconcile then, as on any wake.
+- **Keep watching, and quietly.** The watcher backs off to at most five minutes between polls, prints one line when the forge stops answering and one when it answers again, and prints no check-in in between. With no change request open, arm it with an empty list so the host's own line still wakes you. A Monitor expiry in the meantime is re-armed without a word to the user. See [When the forge stops answering](watching.md#when-the-forge-stops-answering).
 
 **A status write that could not be made means the action it describes has not started.** Golden rule 2 puts the write first, so a claim that failed to land is no claim: do not branch, push or open anything for it. Retry the write when the forge answers, after reconciling.
+
+### What waits
+
+Everything that needs the forge, and nothing can be queued to replay later:
+
+- **Claims, and every other plan write**, `Heartbeat` included. A phase whose claim did not land is not started.
+- **Pushes**, and opening a change request.
+- **Everything posted to a change request**: replies, resolves, comments, merges.
+- **A phase whose branch was not yet made** from a `target_branch` fetched after its claim landed. The outage came between step 2 and step 3 of SKILL.md §3, so the phase has no base to work on.
+
+### What carries on
+
+Work under a claim that is already on the forge. **Two things must both be true** for a phase: its `In Progress` write succeeded, as the write's own answer said, and its branch was made from `origin/<target_branch>` after a fetch that succeeded. Then, with the forge unreachable:
+
+- **Implement**, against the Phase Details as always.
+- **Verify locally**, by `verify: local` or the local half of `auto`. `verify: ci` cannot run, nor can the CI half of `auto`: commit, and let the change request's body say which path ran.
+- **Commit on the phase branch.** Never push.
+
+**Say so once.** Tell the user which phase has commits waiting and on which branch, and that they will be pushed when the forge answers. Arm the watcher, with an empty change-request list if nothing is open, so the host's "answering again" line wakes you.
+
+**The `offline` key decides how far this goes**, read from the row's resolved repo config. `offline: false` turns it off: an outage is a total wait, as before this rule existed. `offline.max_minutes`, `null` by default, is no limit. A number stops new offline work once the claim's `Heartbeat`, as the plan last showed it, is that many minutes old: commit what is there and wait. That commit is not a finished phase, and step 4 of the reconnect sequence finishes it before anything is published. Reaching the limit deletes nothing and marks nothing `Blocked`. A plan with no `offline` key behaves as `max_minutes: null`. A team sets a number where a second driver on another machine can reach the plan, as the last paragraph of this section explains.
+
+**Unreachability is per forge.** A plan's repos can live on different forges and hosts, and the plan lives on the home repo's.
+
+| Down | What it means |
+|---|---|
+| Only the row's forge | Plan writes still land, so `Heartbeat` stays fresh and the claim is safe. The phase is implemented, verified and committed, and the push waits for that forge |
+| Only the home forge | The row's repo can be fetched from, but nothing is pushed for it: `In Review` could not be recorded, and the claim could not be re-asserted |
+| Both | As above for each |
+
+### Offline work on a phase in review
+
+SKILL.md §5, **Answering a review while the forge is unreachable**, says what may be fixed offline on an `In Review` row and what waits. When the forge answers, run steps 1 and 2 of [the reconnect sequence](#the-reconnect-sequence) below, the Driver-ID check and the token-checked `Heartbeat` write, and then, before any push:
+
+1. **Read the change request**: its state, its head sha, and every thread.
+2. **If it was merged or closed, or its head moved on the forge**, the offline commits are not pushed as they are. Where the change request is still open and they rebase cleanly onto the new head and are still wanted, rebase them and verify again. Otherwise rename the branch to `<branch>-orphaned`, as the lost-claim branch below says, and report. Nothing is ever forced over a head this driver did not push.
+3. **Derive the reviewed-head count again and apply SKILL.md's budget table.** The count from before the outage counts for nothing. Where the table says arbitrate, hold the push and arbitrate: the arbiter judges the head the forge has, and its brief lists the unpushed commits as changes not yet reviewed. After the verdict, bring the offline commits in line with it, so that they and the verdict's own fixes go in one push. Where the table says stop for a person, push nothing: the offline commits stay on the local branch, the stop report names them, and a person's `continue` decides whether they are pushed.
+4. **Fold in findings that arrived during the outage**, so the one push answers every open thread, then reply and resolve as SKILL.md §5 says.
+
+`offline: false` turns this off, and `offline.max_minutes` stops new offline fixes as it stops new offline work on an `In Progress` row.
+
+### The reconnect sequence
+
+When the forge answers again, and before anything is pushed for a phase worked on offline, in this order and no other:
+
+1. **Read the plan and run the Driver-ID check**, as SKILL.md's **Driver-ID** says.
+2. **Rewrite `Heartbeat`**, passing the write token you just read. This write is what re-asserts the claim. A stale token means another driver moved: re-read, and re-check whose claim it is now.
+3. **`git ls-remote` the phase branch.** For an `In Progress` row it is normally absent on the forge. **Present, with a head this clone pushed**, is this driver's own earlier push: a reconnect whose push landed and whose change request was never opened or recorded, because the forge went away again. "This clone pushed" is read from a record, never inferred from history: the head equals the sha in `refs/phase-driver/pushed/<branch>`, which step 6 writes after every push, or is an ancestor of the local head. Ancestry alone is not enough, because step 5 can rebase the local branch and leave the pushed head off its history. Carry on, and at step 6 find the change request by its head branch as the forge reference's **Find** says before opening one. Present with any other head is not this driver's, and the claim is lost.
+4. **Finish the phase.** Offline work can stop short of done: the outage, a session that died, or `offline.max_minutes` can each end it mid-way. Before publishing, compare the branch with the phase's scope and acceptance criteria, and finish any implementation that is missing, by SKILL.md §3 step 4. A phase is never published because it was committed, only because it is done.
+5. **Fetch `target_branch`, rebase if it moved, and verify**, by SKILL.md §3 step 5. Verify again whenever anything changed since the last verification: a rebase, work finished in step 4, or a path, such as `verify: ci`, that could not run offline.
+6. **Push, open the change request, and write `In Review` and the `Link`**, by SKILL.md §3 steps 6 to 8. Where step 3 found this driver's own earlier push and the local branch has been rebased since, push with `--force-with-lease=refs/heads/<branch>:<that head>`, so the push replaces only the commit this driver put there; otherwise a plain push. After every push that lands, record its sha with `git update-ref refs/phase-driver/pushed/<branch> <sha>`, before anything else, so an outage between the push and the change request leaves the record behind.
+
+**A push is not protected by the write token.** Only the plan write is a compare-and-swap; a push to a branch the forge has never seen succeeds whoever makes it. So the Driver-ID check and the token-checked `Heartbeat` write come first, every time: a driver that pushed before re-asserting its claim could land work on a phase that another driver took over during the outage, and that driver pushes only at its own SKILL.md §3 step 6, so the stale push can win.
+
+**If the claim was lost**, push nothing and never force anything. The claim is lost when the Driver-ID is no longer this session's by the Driver-ID rules, when the row is no longer the `In Progress` this session left it as, or when step 3 finds the branch on the forge with a head that is not this driver's. Then:
+
+- **Rename the local branch** to `<branch>-orphaned` (`git branch -m <branch> <branch>-orphaned`, with a numeric suffix if that name is taken). The new holder will push a branch of the same name; the rename keeps it, later fetches and [tidying the local clone](../SKILL.md#tidy-the-local-clone) from ever confusing the two.
+- **Report** the phase, the orphaned branch, its commit count (`git rev-list --count origin/<target_branch>..<branch>-orphaned`), and who holds the plan now: its `Driver-ID`, `Driver-Host` and `Heartbeat` age.
+- **Nothing ever deletes an orphaned branch.** It may be the only copy of hours of work, and a person decides what happens to it.
+
+**Why there is no cap by default.** `Heartbeat` cannot be refreshed while the home forge is down, so after 90 minutes a driver on another host may take the plan over and start the phase again. Losing the time is a bigger loss than spending it on work that might be orphaned, so offline work runs through the whole outage and the risk is answered here, at reconnect.
 
 ## The plan branch is gone
 
@@ -65,8 +131,10 @@ Tell the user which branch is missing and where the plan was last seen. Restorin
 
 You can't tell from the plan whether the previous driver got most of the way through the phase or died on its first commit. Look at the actual diff against the phase's scope and acceptance criteria.
 
+The branch may be on the forge, or only in this clone, left by a session on this host that worked through an outage and died before pushing. Both are handled the same way, with one difference in the reset below. A local branch can also be stale work from an earlier attempt at the same phase, which is why its existence alone never means adopting it: the diff decides.
+
 - **Substantially complete.** Finish it, verify, and open the PR. Say in the PR body that it was resumed from an interrupted session, so a reviewer knows to look a little harder.
-- **Partial or incoherent.** Don't try to salvage it. Reset the row to `Pending`, delete the branch, and start clean. Half-finished work from a session you can't ask questions of is worth less than starting over.
+- **Partial or incoherent.** Don't try to salvage it. Reset the row to `Pending`, delete the branch, and start clean. Half-finished work from a session you can't ask questions of is worth less than starting over. **A branch that exists only in this clone is renamed, never deleted**: `git branch -m <branch> <branch>-orphaned`, with a numeric suffix if that name is taken. It holds commits the forge never saw, so it may be the only copy of them, and starting clean needs the name, not the deletion.
 - **Can't tell.** Ask. This is one of the few decisions worth a round trip.
 
 ## Adopting a PR you didn't open

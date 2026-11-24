@@ -371,15 +371,18 @@ What a driver does when the plan and GitHub disagree, which is the situation aft
 | `Pending`, stale heartbeat | no branch, no PR | Never started | Start it |
 | `Pending` | open PR on the branch | Died before recording the PR | Adopt the PR, write `In Review` |
 | `In Progress`, foreign ID, heartbeat < 90 min | - | Another driver is live | Refuse, report |
-| `In Progress`, stale | no branch | Claimed, died before any work | Reset to `Pending`, restart |
-| `In Progress`, stale | branch, no PR | Died mid-implementation | Inspect the diff against the scope; finish and open the PR, or reset |
+| `In Progress`, this session's own ID | no branch | The local clone has the branch, with commits: worked offline, not yet pushed | Carry on through the reconnect sequence. Never reset |
+| `In Progress`, taken over on this host | no branch | The local clone has the branch, with commits: the previous session's unpushed work | As a branch with no PR: inspect, finish, reset or ask |
+| `In Progress`, stale | no branch | Claimed, died before any work, and no local branch holds commits | Reset to `Pending`, restart |
+| `In Progress`, stale | branch, no PR | Died mid-implementation | Inspect the diff against the scope; finish and open the PR, or reset. A branch only in the local clone is renamed `<branch>-orphaned` on reset, never deleted |
 | `In Progress` | open PR | Died before recording the PR | Write `In Review`, adopt |
+| `In Review`, this session or a same-host successor | PR open | The local branch is ahead of the PR's head: fixes made while the forge was unreachable | Re-read the PR, re-derive the review count and apply the budget table, then push once. A merged, closed or moved PR never gets the commits unexamined |
 | `In Review` | PR open | Normal | Re-subscribe, re-evaluate gates |
 | `In Review` | PR merged | Died between merging and recording it | Write `Merged`, advance |
 | `In Review` | PR closed unmerged | Someone killed it | Ask; default `Blocked` |
 | all rows terminal | - | Complete | With no milestone rows and YOLO on, open the integration PR if `target_branch` is not the release branch and `integration_pr` is not `false`. Then set `Driver: idle` and report |
 
-Applied **per row**, not once per plan. With several repos in flight, each recovers independently.
+Applied **per row**, not once per plan. With several repos in flight, each recovers independently. The first matching row wins. Two rows also read the driver's local clone, which the forge cannot see; what the clone holds is in their *What happened*.
 
 Every milestone in a repo shares one head and base, so a milestone row is matched to its PR by its `Link` where it has one, and otherwise by head equal to the row's branch, base equal to the repo's release branch, **and a title starting `Milestone <id>:`** with the row's id. Recovery also looks at `Merged` milestone rows until they are **settled**: the branch re-synced, and `milestone.after_merge` recorded as done by a marker comment on the PR.
 

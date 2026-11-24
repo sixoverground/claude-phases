@@ -51,10 +51,22 @@ ME=''
 WAIT=60
 while :; do
   lines=''; up=0
-  if [ -z "$ME" ]; then
-    ME=$(gh api user --jq '.login | ascii_downcase' 2>"$D/err") || ME=''
+  if me=$(gh api user --jq '.login | ascii_downcase' 2>"$D/err") && [ -n "$me" ]; then
+    up=1; ME=$me
+    if [ -f "$D/host.down" ]; then
+      rm -f "${D:?}/host.down"
+      lines="$lines github.com: the forge is answering again."
+      echo $(( $(now) + CHECKIN_MIN * 60 )) > "$D/checkin"
+    fi
+  else
+    if grep -q 'HTTP 40[134]' "$D/err" && ! grep -qi 'rate limit' "$D/err"; then
+      kind=refused; msg="github.com: the forge refused access ($(grep -o 'HTTP 40[134]' "$D/err" | head -n 1))."
+    else
+      kind=unreachable; msg="github.com: the forge is unreachable ($(tr '\n' ' ' < "$D/err" | cut -c 1-100)); still polling, backing off to at most five minutes."
+    fi
+    if [ "$(cat "$D/host.down" 2>/dev/null)" != "$kind" ]; then echo "$kind" > "$D/host.down"; lines="$lines $msg"; fi
   fi
-  for pr in $PRS; do
+  [ "$up" = 1 ] && for pr in $PRS; do
     R=${pr%%#*}; N=${pr##*#}; K=$(key "$pr"); new="$D/$K.new"
     if [ -n "$ME" ] && {
       gh api "repos/$R/pulls/$N" --jq '"state \(.state) merged=\(.merged)", "head \(.head.sha)"' > "$new" &&
@@ -93,7 +105,7 @@ while :; do
   done
   [ -n "$lines" ] && say "Changed:$lines"
   if [ "$up" = 1 ]; then WAIT=60; else WAIT=$(( WAIT * 2 )); [ "$WAIT" -gt 300 ] && WAIT=300; fi
-  if [ "$(now)" -ge "$(cat "$D/checkin")" ]; then
+  if [ "$(now)" -ge "$(cat "$D/checkin")" ] && [ "$(cat "$D/host.down" 2>/dev/null)" != unreachable ]; then
     echo $(( $(now) + CHECKIN_MIN * 60 )) > "$D/checkin"
     say "Fallback check-in, every $CHECKIN_MIN minutes."
   fi
@@ -108,11 +120,13 @@ Fill it in:
 | Value | What goes there |
 |---|---|
 | `PLAN` | The plan file's path, as it appears in the repo |
-| `PRS` | Every open phase change request in the plan, as `owner/repo#number`, separated by spaces. One watcher covers them all |
+| `PRS` | Every open phase change request in the plan, as `owner/repo#number`, separated by spaces. One watcher covers them all. Empty when the driver is waiting on the forge with nothing open, as [When the forge stops answering](#when-the-forge-stops-answering) says |
 | `CHECKIN_MIN` | Minutes to the fallback check-in, below |
 | `ONCE` | `0` under Monitor. `1` only for the fallback without Monitor, below |
 
 It keeps its snapshots in a directory named for the plan under `$TMPDIR`, one file per change request, each named from the full identity plus a checksum so that `acme/web-api#1` and `acme/web_api#1` never share one. A re-armed watcher compares against the last one, so a change that lands while no watcher is running still prints on the first poll after re-arming. Arm a new watcher whenever the set of open change requests changes, and stop the old one.
+
+**It asks the forge itself first.** Each poll starts with one request for the account it acts as (`gh api user`, or `glab api --hostname <host> user`), and polls the change requests only when that answers. The answer is tracked in a `host.down` file beside the per-change-request ones, which holds `unreachable` or `refused`. Every failed probe is classified again, and a line prints only when the category changes: an outage that ends in a 401, because the credentials expired meanwhile, prints the refusal rather than staying silent as unreachable, and the check-in comes back with it. So the watcher reports the forge's own state once per change of state, even with no change request in the list, and an outage prints one line for the host rather than one per change request.
 
 **Skipping the driver's own comments.** The watcher skips a comment, review or review-thread comment only when it is the driver's by [Whose note it is](gates.md#whose-note-it-is): by the account `gh` is logged in as, **and** carrying `<!-- phases:driver v=1 -->` on a line of its own. The driver stamps everything it posts, so its own gate reports and replies never wake it. Everything else wakes it:
 
@@ -170,10 +184,24 @@ ME=''
 WAIT=60
 while :; do
   lines=''; up=0
-  if [ -z "$ME" ] && glab api --hostname "$HOST" user > "$D/me" 2>"$D/err"; then
-    ME=$(jq -r '.username // empty | ascii_downcase' "$D/me" 2>>"$D/err")
+  if glab api --hostname "$HOST" user > "$D/me" 2>"$D/err" &&
+     me=$(jq -r '.username // empty | ascii_downcase' "$D/me" 2>>"$D/err") && [ -n "$me" ]; then
+    up=1; ME=$me
+    if [ -f "$D/host.down" ]; then
+      rm -f "${D:?}/host.down"
+      lines="$lines $HOST: the forge is answering again."
+      echo $(( $(now) + CHECKIN_MIN * 60 )) > "$D/checkin"
+    fi
+  else
+    if grep -q '(HTTP 40[134])' "$D/err"; then
+      kind=refused; msg="$HOST: the forge refused access ($(grep -o 'HTTP 40[134]' "$D/err" | head -n 1))."
+    else
+      why=$(sed 's/^ *//; s/ *$//' "$D/err" | grep -v -e '^$' -e '^ERROR$' | head -n 1 | sed 's/^[A-Za-z]* "[^"]*": //' | cut -c 1-120)
+      kind=unreachable; msg="$HOST: the forge is unreachable ($why); still polling, backing off to at most five minutes."
+    fi
+    if [ "$(cat "$D/host.down" 2>/dev/null)" != "$kind" ]; then echo "$kind" > "$D/host.down"; lines="$lines $msg"; fi
   fi
-  for mr in $MRS; do
+  [ "$up" = 1 ] && for mr in $MRS; do
     R=${mr%%!*}; N=${mr##*!}; P=$(enc "$R"); K=$(key "$mr"); new="$D/$K.new"
     if [ -n "$ME" ] && {
       api "projects/$P/merge_requests/$N" &&
@@ -220,7 +248,7 @@ while :; do
   done
   [ -n "$lines" ] && say "Changed:$lines"
   if [ "$up" = 1 ]; then WAIT=60; else WAIT=$(( WAIT * 2 )); [ "$WAIT" -gt 300 ] && WAIT=300; fi
-  if [ "$(now)" -ge "$(cat "$D/checkin")" ]; then
+  if [ "$(now)" -ge "$(cat "$D/checkin")" ] && [ "$(cat "$D/host.down" 2>/dev/null)" != unreachable ]; then
     echo $(( $(now) + CHECKIN_MIN * 60 )) > "$D/checkin"
     say "Fallback check-in, every $CHECKIN_MIN minutes."
   fi
@@ -236,7 +264,7 @@ Fill it in:
 |---|---|
 | `HOST` | The repo's resolved `host`, such as `gitlab.com` or `gitlab.example.com` |
 | `PLAN` | The plan file's path, as it appears in the repo |
-| `MRS` | Every open phase MR in the plan on that host, as `group/project!iid`, subgroups included, separated by spaces |
+| `MRS` | Every open phase MR in the plan on that host, as `group/project!iid`, subgroups included, separated by spaces. Empty when the driver is waiting on that host with nothing open |
 | `CHECKIN_MIN` | Minutes to the fallback check-in, below |
 | `ONCE` | `0` under Monitor. `1` only for the fallback without Monitor, below |
 
@@ -258,7 +286,10 @@ Act on it as on any wake: invoke the skill, reconcile, then handle what changed.
 
 ## The fallback check-in
 
-The watcher prints the check-in itself, as a line with no change in it. It measures by wall clock, so a Mac that slept through the deadline gets its check-in on the first poll after waking, rather than a full interval later.
+The watcher prints the check-in itself, as a line with no change in it.
+
+**Not while the forge is down.** While `host.down` says `unreachable`, the watcher prints no check-in: a wake then has nothing to reconcile against, and each one used to become another "still unreachable" message to the user. The deadline is kept, not pushed back. When the host answers again, the "answering again" line is the wake, and the next check-in is a full interval from then. Suppression keys on the host's own state and nothing else: a change request that fails while the host answers, refused or missing, does not suppress it, and neither does a list with nothing in it.
+ It measures by wall clock, so a Mac that slept through the deadline gets its check-in on the first poll after waking, rather than a full interval later.
 
 - **45 to 60 minutes** out, ordinarily.
 - **10 to 15 minutes** out when the answer you are waiting on has no event of its own, typically a reviewer that has reacted 👀 and is still working.
@@ -269,7 +300,7 @@ A re-armed watcher keeps the earlier deadline when it is sooner than its own, so
 
 Monitor stops a watch after its timeout, 30 minutes at most, and tells you once.
 
-**An expiry with no events is not a wake.** Re-arm the watcher with the same values and end the turn. Do not reconcile, do not write a heartbeat, and do not post anything. Nothing happened. Treating it as a wake writes a plan commit and a comment every half hour all night, and wakes nobody for anything.
+**An expiry with no events is not a wake.** Re-arm the watcher with the same values and end the turn. Do not reconcile, do not write a heartbeat, and do not post anything. **That holds during an outage too**: the user was told once that the forge is unreachable, and an expiry tells them nothing new, so re-arm silently and say nothing to them. Nothing happened. Treating it as a wake writes a plan commit and a comment every half hour all night, and wakes nobody for anything.
 
 ## Without Monitor
 
@@ -281,4 +312,6 @@ A session that dies loses its watcher, and nothing is lost with it: the snapshot
 
 ## When the forge stops answering
 
-The watcher says so once per change request when the forge stops answering it, and once when it answers again, never once per failed poll. A change request that fails does not hold up the others: each is polled on its own, and a healthy one still reports its changes while another is refused or unreachable. While nothing answers at all, it backs off, doubling the interval up to five minutes. A request the forge answered with 401, 403 or 404 prints as refused access rather than unreachable, because the driver treats the two differently: see [The forge is unreachable](recovery.md#the-forge-is-unreachable).
+The watcher says so once when the forge itself stops answering it, and once when it answers again, never once per failed poll. While the host is down it does not poll the change requests, since they cannot answer either, and it backs off, doubling the interval up to five minutes. A change request that fails while the host answers is reported on its own, once, and does not hold up the others: a healthy one still reports its changes. A request the forge answered with 401, 403 or 404 prints as refused access rather than unreachable, because the driver treats the two differently: see [The forge is unreachable](recovery.md#the-forge-is-unreachable).
+
+**Arm it with nothing open, too.** When the driver is waiting on the forge and has no change request to watch, as when a status write could not be made, it arms the watcher with an empty `PRS` or `MRS` for that host. The host's "answering again" line is then what wakes it. Without this a driver whose only waiting work has no change request yet has nothing that tells it the forge came back.

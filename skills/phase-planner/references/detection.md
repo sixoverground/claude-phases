@@ -108,6 +108,10 @@ Compare the cap with what the plan allows. With an arbiter, the driver makes up 
 
 **The rule usually predates the arbiter.** A repo that wrote "escalate to the owner" before it had an arbiter meant the only escalation it had. Read literally at round 3, it stops a phase the plan set up to arbitrate. That is the observed failure behind this section: a plan configured a Fable arbiter at 3, the repo's `CLAUDE.md` said to escalate on follow-ups "whatever the round count", and the driver stopped for a person instead of arbitrating.
 
+## Who else drives the plan → `offline`
+
+Not detected. Whether a second driver on another machine can reach a plan is a fact about the people running it, not the repo, so the planner asks it with the other confirmations (SKILL.md §2). The answer only matters for `offline.max_minutes`: `null`, and nothing written, for one driver; `90` for more than one. See `configuration.md`, **Working offline**.
+
 ## Release conventions → `milestone.prepare`
 
 Only for a repo that will have a milestone row. A milestone PR is a merge to the release branch (`release_branch`, or the default branch), and in many repos that is a release, so it has to carry whatever a release of that repo needs. `milestone.prepare` says what that is, and the driver follows it on the feature branch before it opens the PR.
@@ -133,6 +137,18 @@ Read, in this order:
 **Check whether the version check also fires on PRs into the feature branch.** A check that runs on every PR whatever its base demands a bump per phase, which is a release per phase and the opposite of what a feature branch is for. Scope it to PRs whose base is the release branch first, as its own phase before any other, with a job-level condition so the check shows as skipped rather than vanishing. Until then every phase PR fails it.
 
 `milestone.after_merge` is rarer. Set it only when something has to happen after a person merges and before later phases can use the release: updating an installed copy, or confirming a deploy. Ask rather than infer; nothing in the repo says what the person does after merging.
+
+## A local pass before each push → `review.local`
+
+Propose `review.local` when the repo's required reviewer is Codex (`chatgpt-codex-connector`), so the local pass runs the same kind of review the PR will get, **and** `codex-mr-review --version` succeeds on the planning machine, as the Xcode row below probes `xcodebuild`. Propose exactly:
+
+```yaml
+review:
+  local:
+    command: "codex-mr-review review --base {base} --head {head} --dry-run"
+```
+
+Never a line without `--dry-run`: without it the tool posts its review and marker, and a local run would pass gate 6. Say three things in the findings: it is a property of this machine, so a session where the command is missing skips the pass and says so; it adds one Codex run per push; and it never stands in for the real reviewer. Where the command is absent, propose nothing and mention the option in a sentence.
 
 ## Toolchain → `verify`
 

@@ -23,3 +23,9 @@ review:
       logins: ["<the account the review token posts as>"]
   changes_requested_blocks: true
   threads_must_resolve: true
+  # Optional: the same review on this machine before every push, so a round is
+  # not spent on what it would find. Prints only; --dry-run is what keeps it
+  # from posting a review and marker that would pass gate 6. Skipped, and said
+  # so, wherever the command is not installed.
+  local:
+    command: "codex-mr-review review --base {base} --head {head} --dry-run"

@@ -1,6 +1,6 @@
 ---
 name: phase-driver
-description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.15.0.
+description: Execute a phased implementation plan from docs/plans/*.md. Pick the next phase, implement it, open a PR, watch CI and review, and merge when the gates pass. Use when asked to run, continue, resume, or drive the next phase of a plan, to check the status of a plan or its open phase PRs, or to merge, pause, skip, or re-plan a phase. Also use when a PR webhook, a watcher event or a check-in wakes the session and a plan file is present. This copy is claude-phases 0.16.0.
 model: opus
 ---
 
@@ -21,7 +21,7 @@ Read `references/recovery.md`, `references/gates.md`, `references/watching.md`, 
 7. **If your context was compacted or you don't remember starting this: re-read this file and the plan, run Reconcile, and continue.** That is the normal path, not an error. This rule can only reach a session that still has this file, so two things outside it point back here: the plan's **For the driver** section, and the check-in message you schedule for yourself. If one of those sent you here, that is the path working.
 8. **Never claim work you didn't do.** If tests didn't run, say so in the change request's description. If you can't tell why CI failed, say that and link the run.
 9. **Invoke this skill at the start of every wake, even when you remember it.** Its front matter names the model for the turn it is invoked in and for nothing after. A wake that acts without invoking it runs that turn on whatever model the session was started with. Remembering the rules is not the same as having them applied.
-10. **An unreachable forge is a wait, not a block.** When the forge does not answer at all, mark nothing `Blocked` and count nothing toward `stuck.max_cycles`. Tell the user once and carry on when it answers, as [The forge is unreachable](references/recovery.md#the-forge-is-unreachable) says. A status write that could not be made means the action it describes has not started.
+10. **An unreachable forge blocks what needs the forge, not work under a claim that already landed.** When the forge does not answer at all, mark nothing `Blocked` and count nothing toward `stuck.max_cycles`. Claims, every plan write, pushes and everything posted to a change request wait for it. Implementing, verifying and committing a phase whose claim is already on the forge carry on, unless the repo sets `offline: false`. Tell the user once, and when the forge answers, push nothing until the reconnect sequence in [The forge is unreachable](references/recovery.md#the-forge-is-unreachable) says so. A status write that could not be made means the action it describes has not started.
 11. **Stamp everything you post on a change request, and never write another actor's line.** Every comment, reply and note you write ends with `<!-- phases:driver v=1 -->`, and you never write a review marker, a reviewer stamp, or any hidden line copied from someone else's note. See [Stamp what you write](#stamp-what-you-write).
 
 ## The forge
@@ -50,9 +50,15 @@ It is the reserved consumer stamp of the [review contract](https://github.com/si
 
 **Not stamped:** the change request's title and description, commit messages, and the plan file. None of them is a note on the change request.
 
+### Bodies go through files
+
+**Write every body you post to a file with the Write tool, then pass the file.** That covers every comment, reply, note and change-request body: `--rawfile` into a JSON file sent with `--input`, `--body-file`, or the forge's equivalent, as the forge reference's snippets show. Never put a body in a heredoc or an inline shell string. Observed: reply bodies containing `$$` (xcconfig escapes) inside a heredoc made Claude Code's shell safety check refuse the whole command as unparseable, and the reply was not posted. A body passed as an MCP tool's parameter goes through no shell, and needs no file.
+
 ### Never write another actor's line
 
 You already never write a review marker ([`gates.md`](references/gates.md#the-review-marker)). You also never write a reviewer stamp, `<!-- phases:reviewer ...`, and **never copy a hidden HTML comment line out of someone else's note into your own**, quoted or not: a reviewer's fingerprint, its stamp, its marker, or anything else between `<!--` and `-->`. When you quote a finding, quote the words a reader can see. On a shared account a fingerprint, stamp or marker inside a note of yours would be taken for the reviewer's, and could hide a finding or prove a review that never happened.
+
+**The same goes for [the local review pass](#the-local-review-pass).** It is yours, not a reviewer's: its disclosure carries your stamp and nothing of a reviewer's, and its command must post nothing at all.
 
 ## 1. Find the plan
 
@@ -74,7 +80,7 @@ Run this on every invocation and every wake, including when you think you know t
 4. Apply `references/recovery.md` per row. Where the plan and the forge disagree, **the forge is the truth**, fix the plan, never assume.
 5. Rewrite `Heartbeat` and, if you took over, `Driver-ID` and `Driver-Host`.
 6. If the plan has no `## For the driver` section, add it in that same write, between the title paragraph and `## PR Sequence`. Plans written before the section existed lack it, and without it a session that loses this file has nothing to send it back.
-7. **Tidy what a crash left behind.** For each `Merged` phase row whose branch still exists in that repo's local clone, [tidy the local clone](#tidy-the-local-clone). A session that died between the merge and the tidy, or a merge this session never saw, leaves exactly that. Never a `Skipped` row's branch: a skipped phase merged nothing, so its branch may hold the only copy of work someone wants back.
+7. **Tidy what a crash left behind.** For each `Merged` phase row whose branch still exists in that repo's local clone, [tidy the local clone](#tidy-the-local-clone), which never touches a `-orphaned` branch. A session that died between the merge and the tidy, or a merge this session never saw, leaves exactly that. Never a `Skipped` row's branch: a skipped phase merged nothing, so its branch may hold the only copy of work someone wants back.
 
 ### For the driver
 
@@ -137,9 +143,33 @@ For each, in order:
    - `ci`. Don't attempt a local build.
    - `auto`. Try local; if the toolchain isn't there, fall back to CI.
    - `none`. Skip verification.
-6. **Push and open the change request**, the way the forge reference's **Open** says, titled `Phase N: <scope>`. Body: the acceptance criteria as a checklist, **which verification path actually ran**, the UAT checklist per the rules below, anything out of scope you noticed, and `Driven by phase-driver, do not edit the plan file in this PR`.
+
+   Then, where the repo sets `review.local`, run [the local review pass](#the-local-review-pass) on the commit about to be pushed.
+6. **Push and open the change request**, the way the forge reference's **Open** says, titled `Phase N: <scope>`. Body: the acceptance criteria as a checklist, **which verification path actually ran**, the UAT checklist per the rules below, anything out of scope you noticed, the local review pass's disclosure where one ran or was skipped, and `Driven by phase-driver, do not edit the plan file in this PR`.
 7. **Commit `In Review`** and the `Link`, immediately, before subscribing, before any wait. A change request that exists but isn't recorded is the most expensive state to recover from.
 8. **After opening, do what the forge reference's **Opener identity** says.** On some forges the account that opens a change request decides whether a reviewer ever looks at it.
+
+**Which steps need the forge.** Steps 1 to 3 do: the reachability check, the claim and the branch from a fetched `target_branch`. So do steps 6 to 8: the push and the change request, the `In Review` write, and the opener check. Steps 4 and 5, implement and verify, do not. When the forge stops answering after step 3 finished, implement and verify as usual and commit on the phase branch. `verify: ci`, and the CI half of `auto`, cannot run without it, so commit and let the push wait; the change request's body says which path ran, as always. When it stops answering before step 3 finished, the phase waits. After an outage, steps 6 to 8 run only at the end of the reconnect sequence in [The forge is unreachable](references/recovery.md#the-forge-is-unreachable), never straight away. The row's resolved `offline` key decides how far any of this goes.
+
+### The local review pass
+
+`review.local.command` is an optional, per-repo shell line that reviews a diff on this machine before it is pushed. The driver runs it in the repo's clone with `{base}` replaced by the fetched `origin/<target_branch>` and `{head}` by the commit about to be pushed, as in `codex-mr-review review --base {base} --head {head} --dry-run`. Unset, no local pass runs.
+
+**One pass per push.** It runs once before every push of a phase branch: the opening push in §3, and every fix push in §5, for a check or a review. The fixes it leads to are verified and pushed without a second local pass. That is the cap: a local pass is invisible to `stuck.max_review_rounds`, and a reviewer run until it is satisfied would loop with nothing counting the rounds.
+
+**When it cannot run, push anyway and say so.** If the command is not on the `PATH`, or it exits non-zero or times out, skip the pass and disclose the skip and its reason, as `verify: auto` discloses which path ran. A failed local pass never holds a push and never marks a row `Blocked`.
+
+**Judge what it finds by [Answering a review](#answering-a-review)'s rules**, exactly as a reviewer's findings: in scope and right is fixed in this push, minor is carried in it or left, wrong is declined with a reason, and out of scope goes to Carried findings or an issue. Where an arbitration is in this budget, judge against the verdict's bar, read from the change request. Where that comment cannot be read because the forge is unreachable, fix only in-scope defects in correctness, security or data, and hold the rest until it can, as **Answering a review while the forge is unreachable** says.
+
+**It is never a review.** It writes no review marker and no reviewer stamp, opens no thread, satisfies no gate, and never counts as a reviewed head by [Count reviewed heads, not reviews](#stop-when-the-rounds-stop-converging). Gate 6 still waits for the real reviewer at the pushed head. **The command must print and post nothing.** `codex-mr-review` without `--dry-run` posts its review, marker included, so it would satisfy gate 6 with no review in CI; never run a local command without its non-posting flag.
+
+**Disclose every pass.** On the opening push, a section of the change request's body; on a fix push, one comment right after it, stamped like everything you post. Either way it gives:
+
+- the command as run and the commit it reviewed
+- each finding that was fixed, in a line
+- each finding that was declined or held, with the reason
+
+That is the record a reviewer's thread would otherwise be, and the arbiter reads it.
 
 ### UAT checklists
 
@@ -196,6 +226,8 @@ Reconcile first. Then handle what woke you, against the row it belongs to:
 - **A message from the user**, see `references/vocabulary.md`.
 - **Nothing actionable**, re-arm the check-in and end the turn.
 
+Every push this section leads to, for a check or a review, has [the local review pass](#the-local-review-pass) before it where the repo sets one: once per push, never again over its own fixes.
+
 ### Answering a review
 
 A review round costs a push, a CI run, and another review. Observed on a real phase: four rounds, then twenty-eight more after the user approved continuing, on a change request that was never going to converge because each round was answering comments one at a time and taking every one of them as an order.
@@ -234,6 +266,15 @@ Every outcome above resolves a review bot's thread, and that is deliberate. Whic
 **Resolving a thread does not clear gate 4.** If a bot's latest review is `CHANGES_REQUESTED` and you answer it without pushing, the review still blocks until that bot submits a newer one. Ask it for one where the integration has a way (the forge reference lists them). Where it has none, mark the row `Blocked` with that reason now rather than waiting for `stuck.max_cycles` to find it.
 
 **Widening a phase because a reviewer suggested it is still widening it.** The scope came from a plan someone agreed to; a comment is a suggestion from a tool that has read this diff and nothing else.
+
+#### Answering a review while the forge is unreachable
+
+**Fixes may be made offline; nothing is pushed, replied to or resolved.** When the forge stops answering on an `In Review` row, fix the review findings and CI failure text this session already read from the forge, and commit them on the phase branch, provided the local tip is the change request's head as the forge last reported it. Two things wait instead:
+
+- **A session that compacted during the outage waits.** It has lost the findings, and it does not rebuild them from memory or from its own commits.
+- **A finding whose answer needs an arbiter's verdict waits.** Where the plan as last read shows an arbitration in this phase's budget, the verdict comment cannot be read offline, so offline work is limited to in-scope defects in correctness, security or data, which no bar covers. Everything else waits for the verdict.
+
+**The count is never carried across the outage.** On reconnect it is derived again from the change request, by **Derive the count; never remember it** above, and the budget table below is applied to it before anything is pushed. The table itself is unchanged: an arbitration or a stop it calls for holds the push exactly as it would have without the outage. The reconnect steps are in `references/recovery.md`, **Offline work on a phase in review**. The row's `offline` key governs this as it governs §3.
 
 #### Stop when the rounds stop converging
 
@@ -290,10 +331,11 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
 
 1. **Record it first.** Append `<phase id>:<derived count>` to `Arbitrations` in Driver State, as a plan write like any other. That is golden rule 2, and it is what stops a session that dies mid-arbitration from starting a second one.
 2. **Start the arbiter and wait for its answer.** Don't push while it runs. Run it in the foreground (the Agent tool's `run_in_background: false`), so the verdict comes back inside this turn. If it does run in the background, its completion notification is your wake: act on the verdict then, without asking anyone. Brief it with facts, not conclusions:
-   - the plan file's path and the phase id, for its Phase Details (scope, acceptance criteria, risks) and Carried findings
+   - **a fresh export of the plan**, not a path to it, and the phase id, for its Phase Details (scope, acceptance criteria, risks) and Carried findings. Read the plan from the plan branch as the forge reference's **Write the plan** says, write that text to a file outside the repo's working tree, such as the session's scratch or temp directory, and give the arbiter that file with this sentence: *this is the plan branch's current content; any copy of the plan in the checkout may be stale and is not to be read.* Observed: an arbiter given a path read a stale, untracked copy in the checkout and reported a Carried findings entry missing that the plan branch held. A file inside the working tree can also be committed by accident
    - the repo, change request number, base branch, head sha, and the path of the local checkout, so it can read the whole diff against base rather than the latest commit
    - every review finding on the change request from every round, resolved or not, with links
    - what you changed in each round, one line per commit
+   - the local review pass's disclosures, where the repo sets `review.local`: what each pass found, and what was fixed, declined or held, as local findings rather than a reviewer's
    - the repo's own review rules, if it has any, by path and quoted: a severity bar, a threat model or a budget the repo set binds the verdict as much as the limits below
 
    **Do not tell it which findings you think are wrong or minor.** It is there to disagree with you, and an arbiter handed your opinion tends to give it back.
@@ -314,7 +356,7 @@ At the threshold the driver is the wrong one to judge the loop. It wrote every f
 
 **An arbitration is not a stop.** It is what happens instead of the stop at `max_review_rounds`, and instead of the stop a [repo's own rule](#the-repos-own-stop-rules) asks for. The row stays `In Review`, nothing is written to `Review-baselines`, and you go from the verdict to the push without anyone's say-so. If a required reviewer is still reviewing the current head when the verdict lands (a 👀 from it, or its check run in progress), you may hold the push so its findings join the same one, since that saves a round. That hold is a wait like any in §4: end the turn saying what you are waiting on, let its result or your check-in wake you, and push then. The first point at which a person is needed is [Stop for a person](#stop-for-a-person), at the arbitration's count plus `extra_rounds`.
 
-**Without a subagent**, as in a claude.ai skill upload, do the pass yourself against the same brief, starting from the diff and the findings rather than from your own replies, and say in the comment that the arbitration was not independent. A model the session can't use falls back to the session's model, the same as a skill's `model`.
+**Without a subagent**, as in a claude.ai skill upload, do the pass yourself against the same brief, starting from the diff and the findings rather than from your own replies, and reading the plan from that fresh export rather than from the checkout, and say in the comment that the arbitration was not independent. A model the session can't use falls back to the session's model, the same as a skill's `model`.
 
 **An `Arbitrations` entry in this budget with no verdict comment carrying that same entry in its marker** means a session died between recording the arbitration and posting it. Run the arbiter again; don't record it twice. A verdict from an earlier budget doesn't count: its marker names a different entry.
 
@@ -385,8 +427,9 @@ In that repo's clone, in this order:
 1. `git fetch --prune origin`, so the remote-tracking refs of branches the forge deleted go too.
 2. If the phase branch is checked out, `git switch --detach origin/<target_branch>`. Detached, so that no local copy of the target branch is created or relied on; §3 branches from the remote-tracking ref.
 3. `git branch -D <branch>`. Capital `-D`, because a squash or rebase merge leaves the branch's own commits off the target branch, and `-d` refuses a branch that has in fact landed.
+4. `git update-ref -d refs/phase-driver/pushed/<branch>`, where it exists. It is the record of what the driver pushed during a reconnect, as `references/recovery.md` says, and it means nothing once the phase has merged.
 
-**The guard is the one every delete has**, checked before step 2: the branch matches that repo's `branch_prefix`, is not the plan branch, and is not any repo's `target_branch` or release branch. A milestone row's branch is a `target_branch`, so this never touches it; its [re-sync](#re-sync) is a separate step. **Also leave the branch, and say so once, when the working tree has uncommitted changes, or when the branch's tip is not the change request's final head sha** as the forge reports it. Compare the sha, not the history: after a squash or rebase merge, and once the prune has removed the remote branch, the branch's commits are on no remote ref even when every one of them landed. Anything past that sha, or uncommitted, was not part of what merged, so it is either leftovers or someone's work in progress, and neither is yours to throw away.
+**The guard is the one every delete has**, checked before step 2: the branch matches that repo's `branch_prefix`, is not the plan branch, and is not any repo's `target_branch` or release branch. **A branch whose name ends `-orphaned` is never tidied**, here or by Reconcile: it holds work set aside when a claim was lost or a phase was reset, as `references/recovery.md` says, and a person decides what happens to it. Name any that exist in the clone once per session, in your status report, so they are not forgotten. A milestone row's branch is a `target_branch`, so this never touches it; its [re-sync](#re-sync) is a separate step. **Also leave the branch, and say so once, when the working tree has uncommitted changes, or when the branch's tip is not the change request's final head sha** as the forge reports it. Compare the sha, not the history: after a squash or rebase merge, and once the prune has removed the remote branch, the branch's commits are on no remote ref even when every one of them landed. Anything past that sha, or uncommitted, was not part of what merged, so it is either leftovers or someone's work in progress, and neither is yours to throw away.
 
 This is your clone only, never a person's checkout or a runner's build directory, which is why `merge.delete_branch` does not govern it: that key is about the branch on the forge. **A failure here is not a failure of the merge.** Say so once and carry on; nothing downstream depends on the local branch being gone.
 
